@@ -1,176 +1,165 @@
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import CountryCitySelect from "../Selected/CountryCitySelect";
 import NationalitySelect from "../Selected/NationalitySelect";
 
-export default function PersonalInformation() {
-  const [, setBirth] = useState({ country: "", city: "" }); //birth
-  const [, setResidence] = useState({ country: "", city: "" }); //residence
-  const [, setNationality] = useState(""); //nationality
+const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    whatsappPhone: "",
+    address: "",
+    gender: "",
+    maritalStatus: "",
+    birthDate: "",
+    nationality: "",
+    children: "",
+  });
+
+  const [, setBirth] = useState({ country: "", city: "" });
+  const [, setResidence] = useState({ country: "", city: "" });
+  const [, setNationality] = useState("");
+  const [touched, setTouched] = useState({});
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: value.trim() === "" }));
+  };
+
+  // 🔹 Ref ile dışarıdan kontrol fonksiyonu sağla
+  useImperativeHandle(ref, () => ({
+    isValid: () => {
+      // Zorunlu alanlardan en az biri boşsa false döner
+      const requiredFields = [
+        "firstName",
+        "lastName",
+        "email",
+        "phone",
+        "address",
+        "gender",
+        "maritalStatus",
+        "birthDate",
+      ];
+
+      return requiredFields.every(
+        (key) => formData[key] && formData[key].trim() !== ""
+      );
+    },
+  }));
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   return (
-    <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8">
+    <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Ad */}
-        <div>
-          <label
-            htmlFor="firstName"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Ad
-          </label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            placeholder="Adınızı giriniz"
-            autoComplete="given-name"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="Ad"
+          name="firstName"
+          value={formData.firstName}
+          placeholder="Adınızı giriniz"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.firstName}
+          maxLength={30}
+        />
 
         {/* Soyad */}
-        <div>
-          <label
-            htmlFor="lastName"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Soyad
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            placeholder="Soyadınızı giriniz"
-            autoComplete="family-name"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="Soyad"
+          name="lastName"
+          value={formData.lastName}
+          placeholder="Soyadınızı giriniz"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.lastName}
+          maxLength={30}
+        />
 
         {/* E-posta */}
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            E-posta
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="ornek@mail.com"
-            autoComplete="email"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="E-posta"
+          name="email"
+          type="email"
+          value={formData.email}
+          placeholder="ornek@mail.com"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.email}
+          maxLength={50}
+        />
 
         {/* Telefon */}
-        <div>
-          <label
-            htmlFor="phone"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Telefon
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            inputMode="tel"
-            placeholder="05xx xxx xx xx"
-            autoComplete="tel-national"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="Telefon"
+          name="phone"
+          type="tel"
+          value={formData.phone}
+          placeholder="05xx xxx xx xx"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.phone}
+          maxLength={15}
+        />
 
         {/* WhatsApp Telefon */}
-        <div>
-          <label
-            htmlFor="whatsappPhone"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            WhatsApp Telefon
-          </label>
-          <input
-            type="tel"
-            id="whatsappPhone"
-            name="whatsappPhone"
-            inputMode="tel"
-            placeholder="+90 5xx xxx xx xx"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="WhatsApp Telefon"
+          name="whatsappPhone"
+          type="tel"
+          value={formData.whatsappPhone}
+          placeholder="+90 5xx xxx xx xx"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.whatsappPhone}
+          maxLength={15}
+        />
+
         {/* Adres */}
-        <div>
-          <label
-            htmlFor="address"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Adres
-          </label>
-          <input
-            type="text"
-            id="address"
-            name="address"
-            placeholder="Mahalle / Cadde / No"
-            autoComplete="address-line1"
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-          />
-        </div>
+        <InputField
+          label="Adres"
+          name="address"
+          value={formData.address}
+          placeholder="Mahalle / Cadde / No"
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.address}
+          maxLength={80}
+        />
 
         {/* Cinsiyet */}
-        <div>
-          <label
-            htmlFor="gender"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Cinsiyet
-          </label>
-          <select
-            id="gender"
-            name="gender"
-            className="block w-full h-[43px] rounded-lg border border-gray-300 px-4 py-2 bg-white text-gray-900
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Seçiniz
-            </option>
-            <option value="female">Kadın</option>
-            <option value="male">Erkek</option>
-          </select>
-        </div>
+        <SelectField
+          label="Cinsiyet"
+          name="gender"
+          value={formData.gender}
+          options={[
+            { value: "female", label: "Kadın" },
+            { value: "male", label: "Erkek" },
+          ]}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.gender}
+        />
 
         {/* Medeni Durum */}
-        <div>
-          <label
-            htmlFor="maritalStatus"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Medeni Durum
-          </label>
-          <select
-            id="maritalStatus"
-            name="maritalStatus"
-            className="block w-full h-[43px] rounded-lg border border-gray-300 px-4 py-2 bg-white text-gray-900
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Seçiniz
-            </option>
-            <option value="single">Bekâr</option>
-            <option value="married">Evli</option>
-            <option value="divorced">Boşanmış</option>
-            <option value="widowed">Dul</option>
-          </select>
-        </div>
+        <SelectField
+          label="Medeni Durum"
+          name="maritalStatus"
+          value={formData.maritalStatus}
+          options={[
+            { value: "single", label: "Bekâr" },
+            { value: "married", label: "Evli" },
+            { value: "divorced", label: "Boşanmış" },
+            { value: "widowed", label: "Dul" },
+          ]}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.maritalStatus}
+        />
 
         {/* Doğum Tarihi */}
         <div>
@@ -178,37 +167,43 @@ export default function PersonalInformation() {
             htmlFor="birthDate"
             className="block text-sm font-bold text-gray-700 mb-1"
           >
-            Doğum Tarihi
+            Doğum Tarihi <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             id="birthDate"
             name="birthDate"
-            onFocus={(e) => e.target.showPicker && e.target.showPicker()}
-            onClick={(e) => e.target.showPicker && e.target.showPicker()}
-            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
+            required
+            value={formData.birthDate}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:outline-none transition cursor-pointer"
           />
+          {touched.birthDate && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              Zorunlu alan, lütfen doldurunuz.
+            </p>
+          )}
         </div>
 
-        {/* Ülke / Şehir Select */}
-        {/*Doğum yeri Ülke Şehir*/}
+        {/* Doğum Yeri */}
         <CountryCitySelect
           countryLabel="Ülke (Doğum)"
           cityLabel="Şehir (Doğum Yeri)"
           countryId="countryOfBirth"
           cityId="birthPlace"
           onChange={setBirth}
-          className=""
+          required
         />
 
-        {/* Yaşadığı yer (ülke/şehir) */}
+        {/* Yaşadığı Yer */}
         <CountryCitySelect
           countryLabel="Yaşadığı Ülke"
           cityLabel="Yaşadığı Şehir"
           countryId="residenceCountry"
           cityId="residenceCity"
           onChange={setResidence}
-          className=""
+          required
         />
 
         {/* Uyruğu */}
@@ -217,39 +212,125 @@ export default function PersonalInformation() {
           id="nationality"
           name="nationality"
           defaultValue=""
-          className=""
           onChange={setNationality}
+          required
         />
 
-        {/* Cinsiyet */}
-        <div>
-          <label
-            htmlFor="children"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Çocuk Sayısı
-          </label>
-          <select
-            id="children"
-            name="children"
-            className="block w-full h-[43px] rounded-lg border border-gray-300 px-4 py-2 bg-white text-gray-900
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            defaultValue=""
-          >
-            <option value="" disabled>
-              Seçiniz
-            </option>
-            <option value="0">0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">Daha Fazla</option>
-          </select>
-        </div>
+        {/* Çocuk Sayısı */}
+        <SelectField
+          label="Çocuk Sayısı"
+          name="children"
+          value={formData.children}
+          options={[...Array(8)].map((_, i) => ({
+            value: i === 7 ? "7+" : i,
+            label: i === 7 ? "Daha Fazla" : i.toString(),
+          }))}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          showError={touched.children}
+        />
+      </div>
+    </div>
+  );
+});
+
+/* --- Input Field --- */
+function InputField({
+  label,
+  name,
+  value,
+  type = "text",
+  placeholder,
+  onChange,
+  onBlur,
+  showError,
+  maxLength = 50,
+}) {
+  const remaining = maxLength - value.length;
+
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block text-sm font-bold text-gray-700 mb-1"
+      >
+        {label} <span className="text-red-500">*</span>
+      </label>
+
+      <input
+        type={type}
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        required
+        maxLength={maxLength}
+        className="block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none transition cursor-pointer"
+      />
+
+      <div className="flex justify-between items-center mt-1">
+        {showError && (
+          <p className="text-xs text-red-600 font-medium">
+            Zorunlu alan, lütfen doldurunuz.
+          </p>
+        )}
+        <p
+          className={`text-xs ${
+            remaining <= 5 ? "text-red-500" : "text-gray-400"
+          }`}
+        >
+          {value.length}/{maxLength}
+        </p>
       </div>
     </div>
   );
 }
+
+/* --- Select Field --- */
+function SelectField({
+  label,
+  name,
+  value,
+  options,
+  onChange,
+  onBlur,
+  showError,
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block text-sm font-bold text-gray-700 mb-1"
+      >
+        {label} <span className="text-red-500">*</span>
+      </label>
+      <select
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        required
+        className="block w-full h-[43px] rounded-lg border border-gray-300 px-4 py-2 bg-white text-gray-900 focus:outline-none transition cursor-pointer"
+      >
+        <option value="" disabled>
+          Seçiniz
+        </option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {showError && (
+        <p className="text-xs text-red-600 mt-1 font-medium">
+          Zorunlu alan, lütfen seçim yapınız.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default PersonalInformation;

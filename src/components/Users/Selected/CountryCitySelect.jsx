@@ -1,4 +1,3 @@
-// components/Users/Selected/CountryCitySelect.jsx
 import { useEffect, useState, useMemo } from "react";
 import Select from "react-select";
 import countriesData from "../../../json/country_city_nationality.json";
@@ -29,20 +28,22 @@ export default function CountryCitySelect({
     defaultCity ? { value: defaultCity, label: defaultCity } : null
   );
 
-  // Seçilen ülkeye göre şehir/state listesi
+  // Dokunulma kontrolü
+  const [touched, setTouched] = useState({ country: false, city: false });
+
+  // Şehir seçenekleri
   const cityOptions = useMemo(() => {
     if (!country) return [];
     const entry = countriesData.find((x) => x?.name === country.value);
     const states = (entry?.states || [])
       .map((s) => (typeof s === "string" ? s : s?.name))
       .filter(Boolean);
-
     const uniq = [...new Set(states)].sort((a, b) => a.localeCompare(b, "tr"));
     const options = uniq.map((s) => ({ value: s, label: s }));
     return options.length ? options : [{ value: "none", label: "Şehri Yok" }];
   }, [country?.value]);
 
-  // Ülke değişince şehir seçimini resetle / defaultCity varsa uygula
+  // Ülke değişince şehir resetle
   useEffect(() => {
     if (!country) {
       setCity(null);
@@ -66,7 +67,7 @@ export default function CountryCitySelect({
     onChange?.({ country: country?.value || "", city: city?.value || "" });
   }, [country, city, onChange]);
 
-  // ---- React-Select görünümü: native select’lere benzetildi ----
+  // ---- React-Select görünümü (native gibi) ----
   const rsClassNames = {
     container: () => "w-full",
     control: ({ isFocused, isDisabled }) =>
@@ -77,7 +78,7 @@ export default function CountryCitySelect({
           ? "opacity-70 cursor-not-allowed bg-gray-100"
           : "cursor-pointer",
         isFocused
-          ? "border-blue-500 "
+          ? "border-blue-500"
           : "border-gray-300 hover:border-gray-400 focus:border-blue-500",
         "transition focus:outline-none",
       ].join(" "),
@@ -114,6 +115,7 @@ export default function CountryCitySelect({
     isSearchable: true,
   };
 
+  // === Render ===
   return (
     <>
       {/* Ülke Select */}
@@ -122,19 +124,26 @@ export default function CountryCitySelect({
           htmlFor={countryId}
           className="block text-sm font-bold text-gray-700 mb-1"
         >
-          {countryLabel}
+          {countryLabel} <span className="text-red-500">*</span>
         </label>
         <Select
           inputId={countryId}
           options={countryOptions}
           value={country}
+          required
           onChange={(opt) => {
             setCountry(opt);
-            setCity(null); // ülke değişince şehir temizle
+            setCity(null);
           }}
+          onBlur={() => setTouched((prev) => ({ ...prev, country: true }))}
           placeholder={countryPlaceholder}
           {...sharedProps}
         />
+        {touched.country && !country && (
+          <p className="text-xs text-red-600 mt-1 font-medium">
+            Zorunlu alan, lütfen seçim yapınız.
+          </p>
+        )}
       </div>
 
       {/* Şehir Select */}
@@ -143,13 +152,15 @@ export default function CountryCitySelect({
           htmlFor={cityId}
           className="block text-sm font-bold text-gray-700 mb-1"
         >
-          {cityLabel}
+          {cityLabel} <span className="text-red-500">*</span>
         </label>
         <Select
           inputId={cityId}
           options={cityOptions}
           value={city}
+          required
           onChange={setCity}
+          onBlur={() => setTouched((prev) => ({ ...prev, city: true }))}
           placeholder={
             !country
               ? `Önce ${countryLabel.toLowerCase()} seçin`
@@ -158,6 +169,11 @@ export default function CountryCitySelect({
           isDisabled={!country || cityOptions.length === 0}
           {...sharedProps}
         />
+        {touched.city && !city && (
+          <p className="text-xs text-red-600 mt-1 font-medium">
+            Zorunlu alan, lütfen seçim yapınız.
+          </p>
+        )}
       </div>
     </>
   );

@@ -1,4 +1,3 @@
-// components/Users/Selected/NationalitySelect.jsx
 import { useMemo, useEffect, useState } from "react";
 import Select from "react-select";
 import nationalityData from "../../../json/country_city_nationality.json";
@@ -30,6 +29,9 @@ export default function NationalitySelect({
   const [selected, setSelected] = useState(
     defaultValue ? { value: defaultValue, label: defaultValue } : null
   );
+
+  // Dokunulma (blur) kontrolü
+  const [touched, setTouched] = useState(false);
 
   // Parent'a bildir
   useEffect(() => {
@@ -90,17 +92,27 @@ export default function NationalitySelect({
         htmlFor={id}
         className="block text-sm font-bold text-gray-700 mb-1"
       >
-        {label}
+        {label} <span className="text-red-500">*</span>
       </label>
+
       <Select
         inputId={id}
         name={name}
         options={options}
         value={selected}
+        required
         onChange={setSelected}
+        onBlur={() => setTouched(true)}
         placeholder={placeholder}
         {...sharedProps}
       />
+
+      {/* Uyarı mesajı */}
+      {touched && !selected && (
+        <p className="text-xs text-red-600 mt-1 font-medium">
+          Zorunlu alan, lütfen seçim yapınız.
+        </p>
+      )}
     </div>
   );
 }

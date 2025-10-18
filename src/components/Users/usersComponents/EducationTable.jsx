@@ -48,6 +48,10 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
   useImperativeHandle(ref, () => ({
     openCreate,
   }));
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows, // <--- 🔥 tablo verilerini dışarı aktarır
+  }));
 
   return (
     <div className="space-y-3">
