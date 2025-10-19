@@ -31,27 +31,27 @@ const ApplicationConfirmSection = ({
   const handleSubmit = () => {
     const missingSections = [];
 
-    // 🔸 1. Kişisel Bilgiler
+    //  1. Kişisel Bilgiler
     const personalValid = validatePersonalInfo?.() ?? false;
     if (!personalValid) missingSections.push("Kişisel Bilgiler");
 
-    // 🔸 2. Eğitim Bilgileri
+    //  2. Eğitim Bilgileri
     const educationValid = (educationRef.current?.getData?.() ?? []).length > 0;
     if (!educationValid) missingSections.push("Eğitim Bilgileri");
 
-    // 🔸 3. Diğer Kişisel Bilgiler
+    //  3. Diğer Kişisel Bilgiler
     const otherValid = (otherInfoRef.current?.getData?.() ?? []).length > 0;
     if (!otherValid) missingSections.push("Diğer Kişisel Bilgiler");
 
-    // 🔸 4. İş Başvuru Detayları
+    //  4. İş Başvuru Detayları
     const jobValid = validateJobDetails?.() ?? false;
     if (!jobValid) missingSections.push("İş Başvuru Detayları");
 
-    // 🔸 5. Onay Kutuları
+    //  5. Onay Kutuları
     const allChecked = Object.values(checks).every(Boolean);
     if (!allChecked) missingSections.push("Onay Kutuları");
 
-    // 🔸 Eksik varsa SweetAlert2 ile bildir
+    //  Eksik varsa SweetAlert2 ile bildir
     if (missingSections.length > 0) {
       Swal.fire({
         icon: "error",
@@ -70,7 +70,7 @@ const ApplicationConfirmSection = ({
       return;
     }
 
-    // ✅ Her şey tamamsa başarı mesajı
+    //  Her şey tamamsa başarı mesajı
     toast.success("Başvurunuz başarıyla gönderildi!", {
       position: "top-center",
       autoClose: 3000,

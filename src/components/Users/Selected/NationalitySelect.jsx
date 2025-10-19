@@ -43,15 +43,14 @@ export default function NationalitySelect({
     container: () => "w-full",
     control: ({ isFocused, isDisabled }) =>
       [
-        "w-full h-[43px] rounded-lg border px-3",
-        "bg-white",
+        "w-full h-[43px] rounded-lg bg-white border border-gray-300 px-3 shadow-none",
         isDisabled
-          ? "opacity-70 cursor-not-allowed bg-gray-100"
+          ? "opacity-60 cursor-not-allowed bg-gray-100"
           : "cursor-pointer",
         isFocused
-          ? "border-blue-500"
-          : "border-gray-300 hover:border-gray-400 focus:border-blue-500",
-        "transition focus:outline-none",
+          ? "border-gray-400"
+          : "border-gray-300 hover:border-gray-400 focus:border-gray-400",
+        "transition-colors duration-150 focus:outline-none",
       ].join(" "),
     valueContainer: () => "py-1 gap-1",
     placeholder: () => "text-gray-400",
@@ -59,16 +58,19 @@ export default function NationalitySelect({
     input: () => "text-gray-900",
     indicatorsContainer: () => "gap-1",
     indicatorSeparator: () => "hidden",
-    dropdownIndicator: ({ isFocused }) =>
-      ["transition", isFocused ? "text-blue-600" : "text-gray-500"].join(" "),
-    clearIndicator: () => "text-gray-500 hover:text-red-600",
+    dropdownIndicator: () => "text-gray-500 hover:text-gray-700 transition",
+    clearIndicator: () => "text-gray-500 hover:text-red-500 transition",
     menu: () =>
-      "mt-1 border border-gray-200 rounded-md bg-white shadow-lg overflow-hidden",
-    menuList: () => "max-h-56 overflow-auto",
+      "mt-1 border border-gray-200 rounded-md bg-white shadow-none overflow-hidden",
+    menuList: () => "max-h-56 overflow-auto shadow-none",
     option: ({ isFocused, isSelected }) =>
       [
-        "px-3 py-2 cursor-pointer",
-        isSelected ? "bg-blue-600 text-white" : isFocused ? "bg-gray-100" : "",
+        "px-3 py-2 cursor-pointer select-none",
+        isSelected
+          ? "bg-gray-200 text-gray-900"
+          : isFocused
+          ? "bg-gray-100"
+          : "bg-white",
       ].join(" "),
     noOptionsMessage: () => "px-3 py-2 text-gray-500",
   };

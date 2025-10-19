@@ -47,7 +47,7 @@ const OtherPersonalInformationTable = forwardRef(
       }));
     };
 
-    // 🔹 Minimal flat tasarım
+    //  Minimal flat tasarım
     const rsClassNames = {
       container: () => "w-full",
       control: () =>

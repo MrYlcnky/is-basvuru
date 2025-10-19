@@ -52,6 +52,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     programlar: [],
     kagitOyunlari: [],
     lojman: "",
+    tercihNedeni: "",
   });
   const [errors, setErrors] = useState({});
 
@@ -69,6 +70,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           formData.departmanlar.length > 0 &&
           formData.programlar.length > 0 &&
           formData.lojman &&
+          formData.tercihNedeni.trim() !== "" &&
           (!dealerSelected || formData.kagitOyunlari.length > 0);
         return required;
       },
@@ -152,6 +154,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     if (dealerSelected && formData.kagitOyunlari.length === 0)
       newErrors.kagitOyunlari = true;
     setErrors(newErrors);
+    if (!formData.tercihNedeni.trim()) newErrors.tercihNedeni = true;
   }, [formData, dealerSelected]);
 
   return (
@@ -267,6 +270,46 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           error={errors.lojman}
           styles={customStyles}
         />
+
+        {/* Neden Bizi Tercih Ettiniz */}
+        <div className="sm:col-span-2 lg:col-span-3">
+          <label
+            htmlFor="tercihNedeni"
+            className="block text-sm sm:text-[15px] font-semibold text-gray-700 mb-1"
+          >
+            Neden Bizi Tercih Ettiniz? <span className="text-red-500">*</span>
+          </label>
+
+          <textarea
+            id="tercihNedeni"
+            name="tercihNedeni"
+            rows={4}
+            maxLength={500}
+            placeholder="Kısa bir açıklama yazınız (örneğin: kariyer gelişimi, ekip kültürü, lokasyon vb.)"
+            value={formData.tercihNedeni}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, tercihNedeni: e.target.value }))
+            }
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none resize-none shadow-none"
+          />
+
+          <div className="flex justify-between items-center mt-1">
+            {errors.tercihNedeni && (
+              <p className="text-xs text-red-600 font-medium">
+                Zorunlu alan, lütfen doldurunuz.
+              </p>
+            )}
+            <p
+              className={`text-xs ${
+                formData.tercihNedeni.length >= 480
+                  ? "text-red-500"
+                  : "text-gray-400"
+              }`}
+            >
+              {formData.tercihNedeni.length}/500
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* --- Önizleme --- */}
