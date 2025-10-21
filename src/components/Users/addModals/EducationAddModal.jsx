@@ -1,10 +1,122 @@
 // components/Users/addModals/EducationAddModal.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
 
+/* -------------------- ZOD ŞEMASI -------------------- */
+const eduSchema = z
+  .object({
+    seviye: z.string().min(1, "Seviye zorunlu."),
+    okul: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
+        "Okul yalnızca harflerden ve rakamlardan oluşmalı"
+      )
+      .min(5, "Okul adı zorunlu.")
+      .max(100, "Okul adı 150 karakteri geçemez."),
+    bolum: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
+        "Okul yalnızca harflerden ve rakamlardan oluşmalı"
+      )
+      .min(5, "Bölüm adı zorunlu.")
+      .max(100, "Bölüm adı 150 karakteri geçemez."),
+    notSistemi: z.enum(["4", "100"], {
+      errorMap: () => ({ message: "Not sistemi seçiniz" }),
+    }),
+    gano: z
+      .string()
+      .optional()
+      .refine((v) => v === "" || (!isNaN(v) && Number(v) >= 0), {
+        message: "Geçerli bir sayı giriniz",
+      }),
+    baslangic: z.date({ required_error: "Başlangıç tarihi zorunlu." }),
+    bitis: z.date({ required_error: "Bitiş tarihi zorunlu." }),
+    diplomaDurum: z
+      .string()
+      .min(1, "Diploma durumu zorunlu.")
+      .refine(
+        (v) => ["Mezun", "Devam", "Ara Verdi", "Terk"].includes(v),
+        "Geçerli diploma durumu seçiniz"
+      ),
+  })
+  .superRefine((data, ctx) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Tarihler kontrol
+    if (data.baslangic && data.bitis) {
+      // aynı gün kontrolü
+      if (
+        data.baslangic.getFullYear() === data.bitis.getFullYear() &&
+        data.baslangic.getMonth() === data.bitis.getMonth() &&
+        data.baslangic.getDate() === data.bitis.getDate()
+      ) {
+        ctx.addIssue({
+          path: ["bitis"],
+          code: z.ZodIssueCode.custom,
+          message: "Başlangıç ve bitiş aynı gün olamaz.",
+        });
+      }
+
+      // bitiş < başlangıç
+      if (data.bitis.getTime() < data.baslangic.getTime()) {
+        ctx.addIssue({
+          path: ["bitis"],
+          code: z.ZodIssueCode.custom,
+          message: "Bitiş, başlangıçtan önce olamaz.",
+        });
+      }
+    }
+
+    // bugünden ileri olamaz
+    if (data.baslangic > today) {
+      ctx.addIssue({
+        path: ["baslangic"],
+        code: z.ZodIssueCode.custom,
+        message: "Başlangıç tarihi bugünden ileri olamaz.",
+      });
+    }
+    if (data.bitis > today) {
+      ctx.addIssue({
+        path: ["bitis"],
+        code: z.ZodIssueCode.custom,
+        message: "Bitiş tarihi bugünden ileri olamaz.",
+      });
+    }
+
+    // GANO kontrol
+    if (data.gano && data.gano !== "") {
+      const n = Number(data.gano);
+      const max = data.notSistemi === "100" ? 100 : 4;
+      if (n > max) {
+        ctx.addIssue({
+          path: ["gano"],
+          code: z.ZodIssueCode.custom,
+          message: `GANO 0 ile ${max} arasında olmalı.`,
+        });
+      }
+      if (data.notSistemi === "4" && String(n).includes(".")) {
+        const decimals = String(n).split(".")[1];
+        if (decimals && decimals.length > 2) {
+          ctx.addIssue({
+            path: ["gano"],
+            code: z.ZodIssueCode.custom,
+            message: "4'lük sistemde en fazla 2 ondalık basamak giriniz.",
+          });
+        }
+      }
+    }
+  });
+
+/* -------------------- COMPONENT -------------------- */
 export default function EducationAddModal({
   open,
   mode = "create",
@@ -21,22 +133,22 @@ export default function EducationAddModal({
     bolum: "",
     notSistemi: "4",
     gano: "",
-    baslangic: null, // Date
-    bitis: null, // Date
+    baslangic: null,
+    bitis: null,
     diplomaDurum: "",
   });
+  const [errors, setErrors] = useState({});
 
-  // "bugün" (max) sınırı — başlangıç ve bitiş bugünü aşamaz
+  // tarih sınırı (bugün)
   const today = useMemo(() => {
     const t = new Date();
-    // sadece tarih kısmı
     return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
   }, []);
   const todayISO = toISODate(today);
 
+  // modal reset
   useEffect(() => {
     if (!open) return;
-
     if (mode === "edit" && initialData) {
       setFormData({
         seviye: initialData.seviye ?? "",
@@ -47,7 +159,6 @@ export default function EducationAddModal({
           initialData.gano === null || initialData.gano === undefined
             ? ""
             : String(initialData.gano),
-        // gelen değer string "YYYY-MM-DD" olabilir; Date'e çevir
         baslangic: toDateSafe(initialData.baslangic),
         bitis: toDateSafe(initialData.bitis),
         diplomaDurum: initialData.diplomaDurum ?? "",
@@ -63,75 +174,57 @@ export default function EducationAddModal({
         bitis: null,
         diplomaDurum: "",
       });
+      setErrors({});
     }
   }, [open, mode, initialData]);
 
-  //modal kapatma
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
 
-  const ganoMax = useMemo(
-    () => (formData.notSistemi === "100" ? 100 : 4),
-    [formData.notSistemi]
-  );
-  const ganoStep = "0.01";
+  // alan değişimi
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const next = { ...formData, [name]: value };
+    setFormData(next);
 
-  const handleBasicChange = (e) =>
-    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-
-  const errors = useMemo(() => {
-    const e = {};
-    if (!formData.seviye) e.seviye = "Seviye zorunlu.";
-    if (!formData.okul.trim()) e.okul = "Okul adı zorunlu.";
-    if (!formData.bolum.trim()) e.bolum = "Bölüm zorunlu.";
-    if (!formData.diplomaDurum) e.diplomaDurum = "Diploma durumu zorunlu.";
-    if (!formData.baslangic) e.baslangic = "Başlangıç tarihi zorunlu.";
-    if (!formData.bitis) e.bitis = "Bitiş tarihi zorunlu.";
-
-    if (formData.baslangic && formData.bitis) {
-      if (formData.bitis.getTime() < formData.baslangic.getTime()) {
-        e.bitis = "Bitiş, başlangıçtan önce olamaz.";
-      }
+    const parsed = eduSchema.safeParse(next);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find((i) => i.path[0] === name);
+      setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
+    } else {
+      setErrors((p) => ({ ...p, [name]: "" }));
     }
+  };
 
-    // Tarihler bugün'ü aşamaz
-    if (formData.baslangic && formData.baslangic.getTime() > today.getTime()) {
-      e.baslangic = "Başlangıç tarihi bugünden ileri olamaz.";
+  const handleDateChange = (name, value) => {
+    const next = { ...formData, [name]: value ? toDateSafe(value) : null };
+    setFormData(next);
+    const parsed = eduSchema.safeParse(next);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find((i) => i.path[0] === name);
+      setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
+    } else {
+      setErrors((p) => ({ ...p, [name]: "" }));
     }
-    if (formData.bitis && formData.bitis.getTime() > today.getTime()) {
-      e.bitis = "Bitiş tarihi bugünden ileri olamaz.";
-    }
+  };
 
-    if (formData.gano !== "") {
-      const n = Number(formData.gano);
-      if (Number.isNaN(n) || n < 0 || n > ganoMax) {
-        e.gano = `GANO 0 ile ${ganoMax} arasında olmalı.`;
-      }
-      if (formData.notSistemi === "4" && !e.gano) {
-        const decimals = String(formData.gano).split(".")[1];
-        if (decimals && decimals.length > 2) {
-          e.gano = "4'lük sistemde en fazla 2 ondalık basamak giriniz.";
-        }
-      }
-    }
-    return e;
-  }, [formData, ganoMax, today]);
-
-  const isValid = Object.keys(errors).length === 0;
-  const disabledTip = !isValid ? Object.values(errors).join(" • ") : "";
+  const isValid = eduSchema.safeParse(formData).success;
+  const disabledTip = !isValid ? "Tüm zorunlu alanları doğru doldurunuz." : "";
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValid) return;
-
-    let ganoValue = formData.gano === "" ? null : Number(formData.gano);
-    if (ganoValue !== null && !isNaN(ganoValue)) {
-      ganoValue = Number(ganoValue.toFixed(2));
+    const parsed = eduSchema.safeParse(formData);
+    if (!parsed.success) {
+      const newErrs = {};
+      parsed.error.issues.forEach((i) => {
+        newErrs[i.path[0]] = i.message;
+      });
+      setErrors(newErrs);
+      return;
     }
 
-    const payload = { ...formData, gano: ganoValue };
+    const payload = parsed.data;
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
-
     onClose?.();
   };
 
@@ -144,8 +237,6 @@ export default function EducationAddModal({
     >
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         className="w-full max-w-2xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -164,11 +255,10 @@ export default function EducationAddModal({
           </button>
         </div>
 
-        {/* Form (flex column; içerik scroll, alt bar sabit) */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          {/* Scroll olan içerik */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Seviye & Okul */}
+            {/* Seviye */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -177,9 +267,8 @@ export default function EducationAddModal({
                 <select
                   name="seviye"
                   value={formData.seviye}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  required
                 >
                   <option value="">Seçiniz</option>
                   <option value="Lise">Lise</option>
@@ -189,6 +278,9 @@ export default function EducationAddModal({
                   <option value="Doktora">Doktora</option>
                   <option value="Diğer">Diğer</option>
                 </select>
+                {errors.seviye && (
+                  <p className="mt-1 text-xs text-red-600">{errors.seviye}</p>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
@@ -197,16 +289,34 @@ export default function EducationAddModal({
                 <input
                   type="text"
                   name="okul"
+                  maxLength={100}
                   value={formData.okul}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Erciyes Üniversitesi"
-                  required
                 />
+                <div className="flex justify-between mt-1">
+                  {errors.okul ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.okul}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.okul.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.okul.length}/100
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Bölüm & Durum */}
+            {/* Bölüm & Diploma */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
@@ -215,12 +325,30 @@ export default function EducationAddModal({
                 <input
                   type="text"
                   name="bolum"
+                  maxLength={100}
                   value={formData.bolum}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Bilgisayar Mühendisliği"
-                  required
                 />
+                <div className="flex justify-between mt-1">
+                  {errors.bolum ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.bolum}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.bolum.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.bolum.length}/100
+                  </p>
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -229,9 +357,8 @@ export default function EducationAddModal({
                 <select
                   name="diplomaDurum"
                   value={formData.diplomaDurum}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  required
                 >
                   <option value="">Seçiniz</option>
                   <option value="Mezun">Mezun</option>
@@ -239,10 +366,15 @@ export default function EducationAddModal({
                   <option value="Ara Verdi">Ara Verdi</option>
                   <option value="Terk">Terk</option>
                 </select>
+                {errors.diplomaDurum && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.diplomaDurum}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Not & GANO */}
+            {/* Not Sistemi & GANO */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -251,9 +383,8 @@ export default function EducationAddModal({
                 <select
                   name="notSistemi"
                   value={formData.notSistemi}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  required
                 >
                   <option value="4">4'lük</option>
                   <option value="100">100'lük</option>
@@ -264,12 +395,8 @@ export default function EducationAddModal({
                 <input
                   type="number"
                   name="gano"
-                  inputMode="decimal"
-                  min="0"
-                  max={ganoMax}
-                  step={ganoStep}
                   value={formData.gano}
-                  onChange={handleBasicChange}
+                  onChange={handleChange}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder={
                     formData.notSistemi === "100" ? "0 - 100" : "0.00 - 4.00"
@@ -281,7 +408,7 @@ export default function EducationAddModal({
               </div>
             </div>
 
-            {/* Tarihler (tam tarih) */}
+            {/* Tarihler */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -289,27 +416,14 @@ export default function EducationAddModal({
                 </label>
                 <input
                   type="date"
-                  value={toISODate(formData.baslangic)}
-                  onFocus={(e) => e.target.showPicker && e.target.showPicker()}
-                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                  value={
+                    formData.baslangic ? toISODate(formData.baslangic) : ""
+                  }
+                  max={todayISO}
                   onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      baslangic: toDateSafe(e.target.value),
-                    }))
+                    handleDateChange("baslangic", e.target.value)
                   }
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer [::-webkit-calendar-picker-indicator]:cursor-pointer"
-                  // max: bitiş (varsa) ile bugün'ün küçük olanı
-                  max={
-                    formData.bitis
-                      ? toISODate(
-                          new Date(
-                            Math.min(formData.bitis.getTime(), today.getTime())
-                          )
-                        )
-                      : todayISO
-                  }
-                  required
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
                 />
                 {errors.baslangic && (
                   <p className="mt-1 text-xs text-red-600">
@@ -323,25 +437,11 @@ export default function EducationAddModal({
                 </label>
                 <input
                   type="date"
-                  value={toISODate(formData.bitis)}
-                  onFocus={(e) => e.target.showPicker && e.target.showPicker()}
-                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      bitis: toDateSafe(e.target.value),
-                    }))
-                  }
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer [::-webkit-calendar-picker-indicator]:cursor-pointer"
-                  // min: başlangıç (varsa), yoksa undefined
-                  min={
-                    formData.baslangic
-                      ? toISODate(formData.baslangic)
-                      : undefined
-                  }
-                  // max: bugün
+                  value={formData.bitis ? toISODate(formData.bitis) : ""}
+                  min={formData.baslangic ? toISODate(formData.baslangic) : ""}
                   max={todayISO}
-                  required
+                  onChange={(e) => handleDateChange("bitis", e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
                 />
                 {errors.bitis && (
                   <p className="mt-1 text-xs text-red-600">{errors.bitis}</p>
@@ -350,44 +450,30 @@ export default function EducationAddModal({
             </div>
           </div>
 
-          {/* Sabit alt aksiyon bar */}
+          {/* Alt butonlar */}
           <div className="border-t bg-white px-6 py-3">
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition"
               >
                 İptal
               </button>
-
-              {mode === "create" ? (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                      : "bg-blue-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  Kaydet
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                      : "bg-green-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  Güncelle
-                </button>
-              )}
+              <button
+                type="submit"
+                disabled={!isValid}
+                title={disabledTip}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                  isValid
+                    ? mode === "edit"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                {mode === "edit" ? "Güncelle" : "Kaydet"}
+              </button>
             </div>
           </div>
         </form>

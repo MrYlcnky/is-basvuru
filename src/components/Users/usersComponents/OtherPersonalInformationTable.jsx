@@ -1,7 +1,112 @@
 // components/Users/tables/OtherPersonalInformationTable.jsx
 import { forwardRef, useImperativeHandle, useState } from "react";
+import { z } from "zod";
 import Select from "react-select";
 
+/* -------------------- ZOD ŞEMASI (PersonalInformation stili: string + refine) -------------------- */
+const oneOf = (vals) => (v) => vals.includes(v);
+const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
+
+const otherInfoSchema = z
+  .object({
+    // Multi-select: listedekilerden olmalı ve en az 1 seçim yapılmalı
+    kktcGecerliBelge: z
+      .array(
+        z
+          .string()
+          .refine(
+            oneOf([
+              "Vatandaşlık",
+              "Çalışma İzni",
+              "Öğrenci Belgesi",
+              "Belge Yok",
+            ]),
+            "KKTC Geçerli Belge seçiniz"
+          )
+      )
+      .min(1, "KKTC Geçerli Belge seçiniz"),
+
+    // Select’ler
+    davaDurumu: z.string().refine(oneOf(["Yok", "Var"]), "Dava durumu seçiniz"),
+
+    // Varsa: yalnızca harf/rakam/boşluk; yoksa sorun yok
+    davaNedeni: z
+      .string()
+      .trim()
+      .max(250, "En fazla 250 karakter yazabilirsiniz")
+      .refine((v) => !v || ALNUM_TR.test(v), {
+        message: "Sadece harf ve rakam kullanabilirsiniz",
+      }),
+
+    sigara: z
+      .string()
+      .refine(oneOf(["Evet", "Hayır"]), "Sigara için Evet veya Hayır seçiniz"),
+
+    kaliciRahatsizlik: z
+      .string()
+      .refine(
+        oneOf(["Evet", "Hayır"]),
+        "Kalıcı rahatsızlık için Evet veya Hayır seçiniz"
+      ),
+
+    // Varsa: yalnızca harf/rakam/boşluk; yoksa sorun yok
+    rahatsizlikAciklama: z
+      .string()
+      .trim()
+      .max(250, "En fazla 250 karakter yazabilirsiniz")
+      .refine((v) => !v || ALNUM_TR.test(v), {
+        message: "Sadece harf ve rakam kullanabilirsiniz",
+      }),
+
+    ehliyet: z.string().refine(oneOf(["Var", "Yok"]), "Ehliyet durumu seçiniz"),
+
+    askerlik: z
+      .string()
+      .refine(
+        oneOf(["Yapıldı", "Yapılmadı", "Tecilli", "Muaf"]),
+        "Askerlik durumu seçiniz"
+      ),
+
+    // Sayısal alanlar (string -> number dönüştür, aralık doğrula)
+    boy: z.coerce
+      .number({ invalid_type_error: "Boy sayı olmalıdır" })
+      .int("Boy tam sayı olmalıdır")
+      .min(120, "Boy en az 120 cm olmalıdır")
+      .max(230, "Boy en fazla 230 cm olabilir"),
+
+    kilo: z.coerce
+      .number({ invalid_type_error: "Kilo sayı olmalıdır" })
+      .int("Kilo tam sayı olmalıdır")
+      .min(30, "Kilo en az 30 kg olmalıdır")
+      .max(250, "Kilo en fazla 250 kg olabilir"),
+  })
+  .superRefine((data, ctx) => {
+    // Dava = Var ise neden zorunlu ve min 3
+    if (data.davaDurumu === "Var") {
+      if (!data.davaNedeni || data.davaNedeni.trim().length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["davaNedeni"],
+          message: "Dava nedeni en az 3 karakter olmalıdır",
+        });
+      }
+    }
+    // Kalıcı rahatsızlık = Evet ise açıklama zorunlu ve min 10
+    if (data.kaliciRahatsizlik === "Evet") {
+      if (
+        !data.rahatsizlikAciklama ||
+        data.rahatsizlikAciklama.trim().length < 10
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["rahatsizlikAciklama"],
+          message: "Rahatsızlık açıklaması en az 10 karakter olmalıdır",
+        });
+      }
+    }
+  });
+
+/* -------------------- COMPONENT -------------------- */
 const OtherPersonalInformationTable = forwardRef(
   function OtherPersonalInformationTable(_, ref) {
     const [formData, setFormData] = useState({
@@ -17,7 +122,38 @@ const OtherPersonalInformationTable = forwardRef(
       kilo: "",
     });
 
-    const [touched, setTouched] = useState({});
+    const [errors, setErrors] = useState({});
+
+    // Alan bazlı doğrulama (PersonalInformation.jsx ile uyumlu)
+    const validateField = (name, value) => {
+      const next = { ...formData, [name]: value };
+      const result = otherInfoSchema.safeParse(next);
+
+      if (!result.success) {
+        const issue = result.error.issues.find((i) => i.path[0] === name);
+        setErrors((prev) => ({ ...prev, [name]: issue ? issue.message : "" }));
+      } else {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+
+      // Koşullu alanları senkron tut (davaNedeni / rahatsizlikAciklama)
+      if (name === "davaDurumu" || name === "davaNedeni") {
+        const r = otherInfoSchema.safeParse(next);
+        const msg = !r.success
+          ? r.error.issues.find((i) => i.path[0] === "davaNedeni")?.message ||
+            ""
+          : "";
+        setErrors((prev) => ({ ...prev, davaNedeni: msg }));
+      }
+      if (name === "kaliciRahatsizlik" || name === "rahatsizlikAciklama") {
+        const r = otherInfoSchema.safeParse(next);
+        const msg = !r.success
+          ? r.error.issues.find((i) => i.path[0] === "rahatsizlikAciklama")
+              ?.message || ""
+          : "";
+        setErrors((prev) => ({ ...prev, rahatsizlikAciklama: msg }));
+      }
+    };
 
     useImperativeHandle(ref, () => ({
       getData: () =>
@@ -26,28 +162,35 @@ const OtherPersonalInformationTable = forwardRef(
             Array.isArray(v) ? v.length > 0 : v && v.toString().trim() !== ""
           )
         ),
+      // Submit öncesi toplu doğrulama
+      isValid: () => {
+        const res = otherInfoSchema.safeParse(formData);
+        const newErrors = {};
+        if (!res.success) {
+          res.error.issues.forEach((i) => {
+            newErrors[i.path[0]] = i.message;
+          });
+          setErrors(newErrors);
+        } else {
+          setErrors({});
+        }
+        return res.success;
+      },
     }));
 
     const handleChange = (e) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleBlur = (e) => {
-      const { name, value } = e.target;
-      setTouched((prev) => ({ ...prev, [name]: value.trim() === "" }));
+      validateField(name, value);
     };
 
     const handleMultiSelect = (selected) => {
       const values = selected ? selected.map((opt) => opt.value) : [];
       setFormData((prev) => ({ ...prev, kktcGecerliBelge: values }));
-      setTouched((prev) => ({
-        ...prev,
-        kktcGecerliBelge: values.length === 0,
-      }));
+      validateField("kktcGecerliBelge", values);
     };
 
-    //  Minimal flat tasarım
+    // react-select (sadece kktcGecerliBelge için)
     const rsClassNames = {
       container: () => "w-full",
       control: () =>
@@ -108,9 +251,9 @@ const OtherPersonalInformationTable = forwardRef(
                 typeof document !== "undefined" ? document.body : null
               }
             />
-            {touched.kktcGecerliBelge && (
+            {errors.kktcGecerliBelge && (
               <p className="text-xs text-red-600 mt-1 font-medium">
-                Zorunlu alan, lütfen seçim yapınız.
+                {errors.kktcGecerliBelge}
               </p>
             )}
           </div>
@@ -121,24 +264,24 @@ const OtherPersonalInformationTable = forwardRef(
             name="davaDurumu"
             value={formData.davaDurumu}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.davaDurumu}
             options={[
+              { value: "", label: "Seçiniz" },
               { value: "Yok", label: "Yok" },
               { value: "Var", label: "Var" },
             ]}
+            error={errors.davaDurumu}
           />
 
           {/* Dava Nedeni */}
           <InputField
             label="Dava Nedeni"
             name="davaNedeni"
+            maxLength={250}
             value={formData.davaNedeni}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.davaNedeni}
             placeholder="Dava nedenini yazınız"
             disabled={formData.davaDurumu !== "Var"}
+            error={errors.davaNedeni}
           />
 
           {/* Sigara */}
@@ -147,12 +290,12 @@ const OtherPersonalInformationTable = forwardRef(
             name="sigara"
             value={formData.sigara}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.sigara}
             options={[
+              { value: "", label: "Seçiniz" },
               { value: "Evet", label: "Evet" },
               { value: "Hayır", label: "Hayır" },
             ]}
+            error={errors.sigara}
           />
 
           {/* Kalıcı Rahatsızlık */}
@@ -161,24 +304,24 @@ const OtherPersonalInformationTable = forwardRef(
             name="kaliciRahatsizlik"
             value={formData.kaliciRahatsizlik}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.kaliciRahatsizlik}
             options={[
+              { value: "", label: "Seçiniz" },
               { value: "Evet", label: "Evet" },
               { value: "Hayır", label: "Hayır" },
             ]}
+            error={errors.kaliciRahatsizlik}
           />
 
           {/* Rahatsızlık Açıklama */}
           <InputField
             label="Rahatsızlık Açıklaması"
             name="rahatsizlikAciklama"
+            maxLength={250}
             value={formData.rahatsizlikAciklama}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.rahatsizlikAciklama}
             placeholder="Rahatsızlığınızı açıklayınız"
             disabled={formData.kaliciRahatsizlik !== "Evet"}
+            error={errors.rahatsizlikAciklama}
           />
 
           {/* Ehliyet */}
@@ -187,12 +330,12 @@ const OtherPersonalInformationTable = forwardRef(
             name="ehliyet"
             value={formData.ehliyet}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.ehliyet}
             options={[
+              { value: "", label: "Seçiniz" },
               { value: "Var", label: "Var" },
               { value: "Yok", label: "Yok" },
             ]}
+            error={errors.ehliyet}
           />
 
           {/* Askerlik */}
@@ -201,39 +344,41 @@ const OtherPersonalInformationTable = forwardRef(
             name="askerlik"
             value={formData.askerlik}
             onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.askerlik}
             options={[
+              { value: "", label: "Seçiniz" },
               { value: "Yapıldı", label: "Yapıldı" },
               { value: "Yapılmadı", label: "Yapılmadı" },
               { value: "Tecilli", label: "Tecilli" },
               { value: "Muaf", label: "Muaf" },
             ]}
+            error={errors.askerlik}
           />
 
-          {/* Boy */}
-          <InputField
-            label="Boy (cm)"
-            name="boy"
-            type="number"
-            value={formData.boy}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.boy}
-            placeholder="Örn. 173"
-          />
-
-          {/* Kilo */}
-          <InputField
-            label="Kilo (kg)"
-            name="kilo"
-            type="number"
-            value={formData.kilo}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            showError={touched.kilo}
-            placeholder="Örn. 82"
-          />
+          {/* Boy / Kilo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <InputField
+                label="Boy (cm)"
+                name="boy"
+                type="number"
+                value={formData.boy}
+                onChange={handleChange}
+                placeholder="Örn. 173"
+                error={errors.boy}
+              />
+            </div>
+            <div>
+              <InputField
+                label="Kilo (kg)"
+                name="kilo"
+                type="number"
+                value={formData.kilo}
+                onChange={handleChange}
+                placeholder="Örn. 82"
+                error={errors.kilo}
+              />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -246,51 +391,64 @@ function InputField({
   name,
   value,
   onChange,
-  onBlur,
   placeholder,
   type = "text",
   disabled = false,
-  showError,
+  error,
+  maxLength,
 }) {
+  const base =
+    "block w-full rounded-lg border px-3 py-2 transition focus:outline-none focus:ring-0";
+  const enabled = "bg-white border-gray-300 text-gray-900";
+  const disabledCls =
+    "bg-gray-200 border-gray-300 text-gray-500 placeholder:text-gray-400 cursor-not-allowed opacity-80";
+
+  const charCount = value?.length || 0;
+
   return (
     <div>
       <label className="block text-sm font-bold text-gray-700 mb-1">
         {label} <span className="text-red-500">*</span>
       </label>
+
       <input
         type={type}
         id={name}
         name={name}
         value={value}
         onChange={onChange}
-        onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled}
-        className={`block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none transition-none ${
-          disabled
-            ? "bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed"
-            : ""
-        }`}
+        readOnly={disabled}
+        maxLength={maxLength}
+        aria-disabled={disabled}
+        aria-invalid={!!error}
+        tabIndex={disabled ? -1 : 0}
+        className={`${base} ${disabled ? disabledCls : enabled}`}
       />
-      {showError && (
-        <p className="text-xs text-red-600 mt-1 font-medium">
-          Zorunlu alan, lütfen doldurunuz.
-        </p>
-      )}
+
+      <div className="flex justify-between mt-1">
+        {error ? (
+          <p className="text-xs text-red-600 font-medium">{error}</p>
+        ) : (
+          <span />
+        )}
+        {maxLength && (
+          <p
+            className={`text-xs ${
+              charCount >= maxLength * 0.9 ? "text-red-500" : "text-gray-400"
+            }`}
+          >
+            {charCount}/{maxLength}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
 /* --- SelectField --- */
-function SelectField({
-  label,
-  name,
-  value,
-  onChange,
-  onBlur,
-  options,
-  showError,
-}) {
+function SelectField({ label, name, value, onChange, options, error }) {
   return (
     <div>
       <label className="block text-sm font-bold text-gray-700 mb-1">
@@ -301,23 +459,16 @@ function SelectField({
         name={name}
         value={value}
         onChange={onChange}
-        onBlur={onBlur}
-        required
-        className="block w-full h-[43px] rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition-none"
+        className="block w-full h-[43px] rounded-lg border px-3 py-2 bg-white text-gray-900 focus:outline-none transition border-gray-300"
       >
-        <option value="" disabled>
-          Seçiniz
-        </option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      {showError && (
-        <p className="text-xs text-red-600 mt-1 font-medium">
-          Zorunlu alan, lütfen seçim yapınız.
-        </p>
+      {error && (
+        <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
       )}
     </div>
   );

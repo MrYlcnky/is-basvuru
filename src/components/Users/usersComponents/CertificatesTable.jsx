@@ -145,7 +145,7 @@ const CertificateTable = forwardRef(function CertificateTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticCertificatesDB() {
   const rows = [
-    {
+    /* {
       id: 1,
       ad: ".NET Core Kursu",
       kurum: "BTK Akademi",
@@ -168,7 +168,7 @@ export function staticCertificatesDB() {
       sure: "30 Saat",
       verilisTarihi: "2024-02-10",
       gecerlilikTarihi: "2027-02-10",
-    },
+    },*/
   ];
   return rows;
 }

@@ -1,107 +1,165 @@
 import { forwardRef, useImperativeHandle, useState } from "react";
+import { z } from "zod";
 import CountryCitySelect from "../Selected/CountryCitySelect";
 import NationalitySelect from "../Selected/NationalitySelect";
 
+// Zod doğrulama şeması
+const schema = z.object({
+  ad: z
+    .string()
+    .min(1, "Ad gerekli")
+    .max(30, "Ad en fazla 30 karakter olabilir")
+    .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/, "Ad yalnızca harflerden oluşmalı"),
+  soyad: z
+    .string()
+    .min(1, "Soyad gerekli")
+    .max(30, "Soyad en fazla 30 karakter olabilir")
+    .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/, "Soyad yalnızca harflerden oluşmalı"),
+  eposta: z.string().email("Geçerli bir e-posta adresi giriniz"),
+  telefon: z
+    .string()
+    .min(1, "Telefon gerekli")
+    .transform((v) => v.replace(/[\s()-]/g, "")) // boşluk, parantez, tire temizle
+    .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
+      message: "Telefon numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX).",
+    }),
+  whatsapp: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.replace(/[\s()-]/g, "") : v))
+    .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), {
+      message: "WhatsApp numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX).",
+    }),
+  adres: z
+    .string()
+    .min(5, "Adres en az 5 karakter olmalıdır")
+    .max(90, "Adres en fazla 90 karakter olabilir"),
+  cinsiyet: z.string().min(1, "Cinsiyet seçiniz"),
+  medeniDurum: z.string().min(1, "Medeni durum seçiniz"),
+  dogumTarihi: z
+    .string()
+    .min(1, "Doğum tarihi gerekli")
+    .refine((date) => {
+      if (!date) return false;
+      const d = new Date(date);
+      const min = new Date("1950-01-01");
+      const today = new Date();
+      return d >= min && d <= today;
+    }, "Doğum tarihi 1950'den önce veya bugünden ileri olamaz")
+    .refine((d) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const cutoff = new Date(
+        today.getFullYear() - 15,
+        today.getMonth(),
+        today.getDate()
+      );
+      return d <= cutoff; // en az 15 yaş
+    }, "En az 15 yaşında olmalısınız."),
+  cocukSayisi: z.string().optional(),
+});
+
 const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    whatsappPhone: "",
-    address: "",
-    gender: "",
-    maritalStatus: "",
-    birthDate: "",
-    nationality: "",
-    children: "",
-    photo: null,
+    ad: "",
+    soyad: "",
+    eposta: "",
+    telefon: "",
+    whatsapp: "",
+    adres: "",
+    cinsiyet: "",
+    medeniDurum: "",
+    dogumTarihi: "",
+    uyruk: "",
+    cocukSayisi: "",
+    foto: null,
   });
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [photoError, setPhotoError] = useState("");
-  const [touched, setTouched] = useState({});
 
-  const [, setBirth] = useState({ country: "", city: "" });
-  const [, setResidence] = useState({ country: "", city: "" });
-  const [, setNationality] = useState("");
+  const [errors, setErrors] = useState({});
+  const [fotoPreview, setFotoPreview] = useState(null);
+  const [fotoError, setFotoError] = useState("");
+  const [, setDogumYeri] = useState({ country: "", city: "" });
+  const [, setIkamet] = useState({ country: "", city: "" });
+  const [, setUyruk] = useState("");
 
-  const handleBlur = (e) => {
-    const { name, value } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: value.trim() === "" }));
+  // Zod doğrulaması
+  const validateField = (name, value) => {
+    const result = schema.safeParse({ ...formData, [name]: value });
+    if (!result.success) {
+      const fieldError = result.error.issues.find((i) => i.path[0] === name);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: fieldError ? fieldError.message : "",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
-  // 📸 Fotoğraf yükleme işlemi
-  const handlePhotoUpload = (e) => {
+  // Fotoğraf yükleme işlemi
+  const handleFotoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setPhotoError("Lütfen yalnızca görüntü dosyası yükleyiniz (JPG, PNG).");
-      setFormData((p) => ({ ...p, photo: null }));
-      setPhotoPreview(null);
+      setFotoError("Lütfen yalnızca JPG veya PNG dosyası yükleyiniz");
+      setFormData((p) => ({ ...p, foto: null }));
+      setFotoPreview(null);
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setPhotoError("Fotoğraf boyutu 2 MB'den küçük olmalıdır.");
-      setFormData((p) => ({ ...p, photo: null }));
-      setPhotoPreview(null);
+      setFotoError("Fotoğraf boyutu 2 MB'den küçük olmalıdır");
+      setFormData((p) => ({ ...p, foto: null }));
+      setFotoPreview(null);
       return;
     }
 
-    setPhotoError("");
-    setFormData((prev) => ({ ...prev, photo: file }));
+    setFotoError("");
+    setFormData((prev) => ({ ...prev, foto: file }));
 
     const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result);
+    reader.onloadend = () => setFotoPreview(reader.result);
     reader.readAsDataURL(file);
   };
 
-  // 🔹 Ref ile dışarıdan kontrol fonksiyonu sağla
+  // Ref ile dışarıdan kontrol fonksiyonu
   useImperativeHandle(ref, () => ({
     isValid: () => {
-      const requiredFields = [
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "address",
-        "gender",
-        "maritalStatus",
-        "birthDate",
-      ];
+      const result = schema.safeParse(formData);
+      const newErrors = {};
 
-      const basicValid = requiredFields.every(
-        (key) => formData[key] && formData[key].trim() !== ""
-      );
-
-      const photoValid = !!formData.photo;
-
-      // Eğer foto eksikse uyarıyı aktif et
-      if (!photoValid && !photoError) {
-        setPhotoError("Zorunlu alan, lütfen vesikalık yükleyiniz.");
+      if (!result.success) {
+        result.error.issues.forEach((i) => {
+          newErrors[i.path[0]] = i.message;
+        });
+        setErrors(newErrors);
       }
 
-      return basicValid && photoValid;
+      const fotoValid = !!formData.foto;
+      if (!fotoValid && !fotoError)
+        setFotoError("Zorunlu alan, lütfen vesikalık yükleyiniz");
+
+      return result.success && fotoValid;
     },
   }));
 
+  // Her değişiklikte anlık doğrulama
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    validateField(name, value);
   };
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none">
-      {/* --- Form Alanları --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* --- Vesikalık Fotoğraf Alanı --- */}
+        {/* Vesikalık Fotoğraf Alanı */}
         <div className="flex flex-col sm:flex-row items-start gap-6 ">
-          {/* Kare önizleme kutusu */}
           <div className="relative w-32 h-32 rounded-lg overflow-hidden border-4 border-gray-300 bg-gray-100 shadow-md flex items-center justify-center">
-            {photoPreview ? (
+            {fotoPreview ? (
               <img
-                src={photoPreview}
+                src={fotoPreview}
                 alt="Vesikalık"
                 className="object-cover w-full h-full"
               />
@@ -112,211 +170,180 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
             )}
           </div>
 
-          {/* Fotoğraf yükleme alanı */}
           <div className="flex flex-col">
             <label
-              htmlFor="photo"
+              htmlFor="foto"
               className="block text-sm font-bold text-gray-700 mb-2"
             >
               Vesikalık Fotoğraf <span className="text-red-500">*</span>
             </label>
 
-            {/* Dosya input (Yükle butonlu) */}
             <div className="flex items-center gap-3">
               <label
-                htmlFor="photo"
+                htmlFor="foto"
                 className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition"
               >
-                📤 {photoPreview ? "Değiştir" : "Yükle"}
+                📤 {fotoPreview ? "Değiştir" : "Yükle"}
               </label>
               <input
                 type="file"
-                id="photo"
+                id="foto"
                 accept="image/*"
-                onChange={handlePhotoUpload}
+                onChange={handleFotoUpload}
                 className="hidden"
               />
             </div>
 
-            {/* Hata veya bilgi mesajları */}
-            {photoError && (
+            {fotoError && (
               <p className="text-xs text-red-600 mt-1 font-medium">
-                {photoError}
+                {fotoError}
               </p>
             )}
-            {!formData.photo && !photoError && (
+            {!formData.foto && !fotoError && (
               <p className="text-xs text-gray-400 mt-1">
                 * Maksimum 2 MB, JPG veya PNG olmalıdır.
               </p>
             )}
           </div>
         </div>
+
         <InputField
           label="Ad"
-          name="firstName"
-          value={formData.firstName}
+          name="ad"
+          value={formData.ad}
           placeholder="Adınızı giriniz"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.firstName}
-          maxLength={30}
+          error={errors.ad}
         />
 
         <InputField
           label="Soyad"
-          name="lastName"
-          value={formData.lastName}
+          name="soyad"
+          value={formData.soyad}
           placeholder="Soyadınızı giriniz"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.lastName}
-          maxLength={30}
+          error={errors.soyad}
         />
 
         <InputField
           label="E-posta"
-          name="email"
+          name="eposta"
           type="email"
-          value={formData.email}
+          value={formData.eposta}
           placeholder="ornek@mail.com"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.email}
-          maxLength={50}
+          error={errors.eposta}
         />
 
         <InputField
           label="Telefon"
-          name="phone"
+          name="telefon"
           type="tel"
-          value={formData.phone}
-          placeholder="05xx xxx xx xx"
+          value={formData.telefon}
+          placeholder="+XX XXXXXXXX"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.phone}
-          maxLength={15}
+          error={errors.telefon}
         />
 
         <InputField
           label="WhatsApp Telefon"
-          name="whatsappPhone"
+          name="whatsapp"
           type="tel"
-          value={formData.whatsappPhone}
-          placeholder="+90 5xx xxx xx xx"
+          value={formData.whatsapp}
+          placeholder="+XX XXXXXXXX"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.whatsappPhone}
-          maxLength={15}
+          error={errors.whatsapp}
         />
 
         <InputField
           label="Adres"
-          name="address"
-          value={formData.address}
+          name="adres"
+          value={formData.adres}
           placeholder="Mahalle / Cadde / No"
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.address}
-          maxLength={80}
+          error={errors.adres}
         />
 
         <SelectField
           label="Cinsiyet"
-          name="gender"
-          value={formData.gender}
+          name="cinsiyet"
+          value={formData.cinsiyet}
           options={[
-            { value: "female", label: "Kadın" },
-            { value: "male", label: "Erkek" },
+            { value: "", label: "Seçiniz" },
+            { value: "Kadın", label: "Kadın" },
+            { value: "Erkek", label: "Erkek" },
           ]}
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.gender}
+          error={errors.cinsiyet}
         />
 
         <SelectField
           label="Medeni Durum"
-          name="maritalStatus"
-          value={formData.maritalStatus}
+          name="medeniDurum"
+          value={formData.medeniDurum}
           options={[
-            { value: "single", label: "Bekâr" },
-            { value: "married", label: "Evli" },
-            { value: "divorced", label: "Boşanmış" },
-            { value: "widowed", label: "Dul" },
+            { value: "", label: "Seçiniz" },
+            { value: "Bekâr", label: "Bekâr" },
+            { value: "Evli", label: "Evli" },
+            { value: "Boşanmış", label: "Boşanmış" },
+            { value: "Dul", label: "Dul" },
           ]}
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.maritalStatus}
+          error={errors.medeniDurum}
         />
 
-        <div>
-          <label
-            htmlFor="birthDate"
-            className="block text-sm font-bold text-gray-700 mb-1"
-          >
-            Doğum Tarihi <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            id="birthDate"
-            name="birthDate"
-            required
-            value={formData.birthDate}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className="block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:outline-none transition cursor-pointer"
-          />
-          {touched.birthDate && (
-            <p className="text-xs text-red-600 mt-1 font-medium">
-              Zorunlu alan, lütfen doldurunuz.
-            </p>
-          )}
-        </div>
+        <InputField
+          label="Doğum Tarihi"
+          name="dogumTarihi"
+          type="date"
+          value={formData.dogumTarihi}
+          onChange={handleChange}
+          error={errors.dogumTarihi}
+        />
 
         <CountryCitySelect
           countryLabel="Ülke (Doğum)"
           cityLabel="Şehir (Doğum Yeri)"
-          countryId="countryOfBirth"
-          cityId="birthPlace"
-          onChange={setBirth}
+          countryId="dogumUlke"
+          cityId="dogumSehir"
+          onChange={setDogumYeri}
           required
         />
 
         <CountryCitySelect
           countryLabel="Yaşadığı Ülke"
           cityLabel="Yaşadığı Şehir"
-          countryId="residenceCountry"
-          cityId="residenceCity"
-          onChange={setResidence}
+          countryId="ikametUlke"
+          cityId="ikametSehir"
+          onChange={setIkamet}
           required
         />
 
         <NationalitySelect
           label="Uyruğu"
-          id="nationality"
-          name="nationality"
+          id="uyruk"
+          name="uyruk"
           defaultValue=""
-          onChange={setNationality}
+          onChange={setUyruk}
           required
         />
 
         <SelectField
           label="Çocuk Sayısı"
-          name="children"
-          value={formData.children}
+          name="cocukSayisi"
+          value={formData.cocukSayisi}
           options={[...Array(8)].map((_, i) => ({
             value: i === 7 ? "7+" : i,
             label: i === 7 ? "Daha Fazla" : i.toString(),
           }))}
           onChange={handleChange}
-          onBlur={handleBlur}
-          showError={touched.children}
+          error={errors.cocukSayisi}
         />
       </div>
     </div>
   );
 });
 
-/* --- Input Field --- */
 function InputField({
   label,
   name,
@@ -324,12 +351,8 @@ function InputField({
   type = "text",
   placeholder,
   onChange,
-  onBlur,
-  showError,
-  maxLength = 50,
+  error,
 }) {
-  const remaining = maxLength - value.length;
-
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-bold text-gray-700">
@@ -342,41 +365,18 @@ function InputField({
         name={name}
         value={value}
         onChange={onChange}
-        onBlur={onBlur}
         placeholder={placeholder}
-        required
-        maxLength={maxLength}
-        className="block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900  focus:outline-none transition cursor-pointer"
+        className="block w-full  rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
       />
 
-      <div className="flex justify-between items-center mt-1">
-        {showError && (
-          <p className="text-xs text-red-600 font-medium">
-            Zorunlu alan, lütfen doldurunuz.
-          </p>
-        )}
-        <p
-          className={`text-xs ${
-            remaining <= 5 ? "text-red-500" : "text-gray-400"
-          }`}
-        >
-          {value.length}/{maxLength}
-        </p>
-      </div>
+      {error && (
+        <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
+      )}
     </div>
   );
 }
 
-/* --- Select Field --- */
-function SelectField({
-  label,
-  name,
-  value,
-  options,
-  onChange,
-  onBlur,
-  showError,
-}) {
+function SelectField({ label, name, value, options, onChange, error }) {
   return (
     <div>
       <label
@@ -390,23 +390,16 @@ function SelectField({
         name={name}
         value={value}
         onChange={onChange}
-        onBlur={onBlur}
-        required
-        className="block w-full h-[43px] rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition cursor-pointer"
+        className="block w-full h-[43px] rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
       >
-        <option value="" disabled>
-          Seçiniz
-        </option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      {showError && (
-        <p className="text-xs text-red-600 mt-1 font-medium">
-          Zorunlu alan, lütfen seçim yapınız.
-        </p>
+      {error && (
+        <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
       )}
     </div>
   );

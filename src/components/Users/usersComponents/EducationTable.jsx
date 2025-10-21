@@ -179,7 +179,7 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticEducationDB() {
   const rows = [
-    {
+    /*{
       id: 1,
       seviye: "Lise",
       okul: "Eti Anadolu",
@@ -189,18 +189,7 @@ export function staticEducationDB() {
       baslangic: "2014-09-15", // tam tarih
       bitis: "2018-06-10",
       diplomaDurum: "Mezun",
-    },
-    {
-      id: 2,
-      seviye: "Lisans",
-      okul: "Erciyes Üniversitesi",
-      bolum: "Bilgisayar Mühendisliği",
-      notSistemi: "4",
-      gano: 3.12,
-      baslangic: "2019-09-23",
-      bitis: "2023-06-20",
-      diplomaDurum: "Mezun",
-    },
+    },*/
   ];
   return rows;
 }
