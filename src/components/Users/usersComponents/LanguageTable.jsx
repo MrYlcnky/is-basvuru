@@ -144,7 +144,7 @@ const LanguageTable = forwardRef(function LanguageTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticLanguageTableDB() {
   const rows = [
-    {
+    /* {
       id: 1,
       dil: "İngilizce ",
       konusma: "A1",
@@ -170,7 +170,7 @@ export function staticLanguageTableDB() {
       okuma: "B2",
       dinleme: "B1",
       ogrenilenKurum: "Udemy",
-    },
+    },*/
   ];
   return rows;
 }

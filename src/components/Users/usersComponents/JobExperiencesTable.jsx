@@ -200,7 +200,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticJobExperiencesTableDB() {
   const rows = [
-    {
+    /* {
       id: 1,
       isAdi:
         "Şahin Bilgisayar Yazılım A.Ş. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaa",
@@ -239,7 +239,7 @@ export function staticJobExperiencesTableDB() {
       ayrilisSebebi: "Ders Yoğunluğu",
       isUlke: "Turkey",
       isSehir: "Kayseri",
-    },
+    },*/
   ];
   return rows;
 }

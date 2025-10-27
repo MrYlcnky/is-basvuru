@@ -214,6 +214,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           placeholder="Adınızı giriniz"
           onChange={handleChange}
           error={errors.ad}
+          max={30}
         />
 
         <InputField
@@ -223,6 +224,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           placeholder="Soyadınızı giriniz"
           onChange={handleChange}
           error={errors.soyad}
+          max={30}
         />
 
         <InputField
@@ -262,6 +264,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           placeholder="Mahalle / Cadde / No"
           onChange={handleChange}
           error={errors.adres}
+          max={90}
         />
 
         <SelectField
@@ -352,7 +355,10 @@ function InputField({
   placeholder,
   onChange,
   error,
+  max, // <-- SADECE sayaç için eklendi
 }) {
+  const length = typeof value === "string" ? value.length : 0;
+
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-bold text-gray-700">
@@ -366,11 +372,28 @@ function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="block w-full  rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
+        className="block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
       />
 
-      {error && (
-        <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
+      {typeof max === "number" ? (
+        <div className="flex justify-between items-center mt-1">
+          {error ? (
+            <p className="text-xs text-red-600 font-medium">{error}</p>
+          ) : (
+            <span />
+          )}
+          <p
+            className={`text-xs ${
+              length >= max ? "text-red-500" : "text-gray-400"
+            }`}
+          >
+            {length}/{max}
+          </p>
+        </div>
+      ) : (
+        error && (
+          <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
+        )
       )}
     </div>
   );

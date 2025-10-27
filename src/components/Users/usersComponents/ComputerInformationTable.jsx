@@ -119,7 +119,7 @@ const ComputerInformationTable = forwardRef(function ComputerInformationTable(
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticComputerInformationDB() {
   const rows = [
-    {
+    /*{
       id: 1,
       programAdi: ".NET Core ",
       yetkinlik: "Orta",
@@ -133,7 +133,7 @@ export function staticComputerInformationDB() {
       id: 3,
       programAdi: "Adobe",
       yetkinlik: "Zayıf",
-    },
+    },*/
   ];
   return rows;
 }

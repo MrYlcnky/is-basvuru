@@ -145,7 +145,7 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticReferencesDB() {
   const rows = [
-    {
+    /* {
       id: 1,
       calistigiKurum: "Bünyemizde / Grubumuzda",
       referansAdi: "Mehmet",
@@ -171,7 +171,7 @@ export function staticReferencesDB() {
       referansIsYeri: "Yalçınkaya A.Ş",
       referansGorevi: "Yazılım Geliştirici",
       referansTelefon: "+905488583819",
-    },
+    },*/
   ];
   return rows;
 }

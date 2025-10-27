@@ -1,8 +1,20 @@
 // components/Users/addModals/ComputerInformationAddModal.jsx
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
+import { z } from "zod";
+
+// Zod şeması
+// Zod şeması
+const schema = z.object({
+  programAdi: z
+    .string()
+    .trim()
+    .min(1, "Program adı zorunlu.")
+    .max(60, "Program adı en fazla 60 karakter olabilir."),
+  yetkinlik: z.string().min(1, "Yetkinlik zorunlu."),
+});
 
 export default function ComputerInformationAddModal({
   open,
@@ -19,6 +31,8 @@ export default function ComputerInformationAddModal({
     yetkinlik: "",
   });
 
+  const [errors, setErrors] = useState({}); // { programAdi?: string, yetkinlik?: string }
+
   // Modal her açıldığında formu doldur/temizle
   useEffect(() => {
     if (!open) return;
@@ -27,35 +41,59 @@ export default function ComputerInformationAddModal({
         programAdi: initialData.programAdi ?? "",
         yetkinlik: initialData.yetkinlik ?? "",
       });
+      setErrors({});
     } else {
-      setFormData({
-        programAdi: "",
-        yetkinlik: "",
-      });
+      setFormData({ programAdi: "", yetkinlik: "" });
+      setErrors({});
     }
   }, [open, mode, initialData]);
-  //modal kapatma
+
+  // Dış alan tıklamasıyla kapatma
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
-  // Validasyon
-  const errors = useMemo(() => {
-    const e = {};
-    if (!formData.programAdi.trim()) e.programAdi = "Program adı zorunlu.";
-    if (!formData.yetkinlik) e.yetkinlik = "Yetkinlik zorunlu.";
-    return e;
-  }, [formData]);
 
-  const isValid = Object.keys(errors).length === 0;
-  const disabledTip = !isValid ? Object.values(errors).join(" • ") : "";
+  // Tek alan anlık doğrulama
+  const validateField = (name, value) => {
+    const candidate = { ...formData, [name]: value };
+    const result = schema.safeParse(candidate);
 
-  //Submit
+    if (!result.success) {
+      const fieldIssue = result.error.issues.find((i) => i.path[0] === name);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: fieldIssue ? fieldIssue.message : "",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Form genel geçerliliği
+  const isValid = schema.safeParse(formData).success;
+  const disabledTip = !isValid
+    ? (() => {
+        const r = schema.safeParse(formData);
+        if (!r.success) return r.error.issues.map((i) => i.message).join(" • ");
+        return "";
+      })()
+    : "";
+
+  // Submit
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValid) return;
 
-    const payload = {
-      ...formData,
-    };
+    const parsed = schema.safeParse(formData);
+    if (!parsed.success) {
+      // Tüm hataları state'e yaz
+      const next = {};
+      parsed.error.issues.forEach((i) => {
+        const key = i.path[0];
+        if (key) next[key] = i.message;
+      });
+      setErrors(next);
+      return;
+    }
 
+    const payload = parsed.data; // trim uygulanmış halde
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
@@ -64,6 +102,7 @@ export default function ComputerInformationAddModal({
 
   // Modal Açık Değilse Render Etme
   if (!open) return null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
@@ -93,11 +132,11 @@ export default function ComputerInformationAddModal({
           </button>
         </div>
 
-        {/* Form (flex column; içerik scroll, alt bar sabit) */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           {/* Scroll olan içerik */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/*1 Program Adı - Yetkinlik */}
+            {/* Program Adı - Yetkinlik */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
@@ -106,18 +145,34 @@ export default function ComputerInformationAddModal({
                 <input
                   type="text"
                   value={formData.programAdi}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, programAdi: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData((p) => ({ ...p, programAdi: v }));
+                    validateField("programAdi", v);
+                  }}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Excel Programları, Photoshop"
+                  maxLength={60}
                   required
                 />
-                {errors.programAdi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.programAdi}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.programAdi ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.programAdi}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.programAdi.length >= 54
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.programAdi.length}/60
                   </p>
-                )}
+                </div>
               </div>
 
               <div className="sm:col-span-2">
@@ -125,11 +180,12 @@ export default function ComputerInformationAddModal({
                   Yetkinlik
                 </label>
                 <select
-                  name="Yetkinlik"
                   value={formData.yetkinlik}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, yetkinlik: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData((p) => ({ ...p, yetkinlik: v }));
+                    validateField("yetkinlik", v);
+                  }}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   required
                 >
@@ -151,7 +207,6 @@ export default function ComputerInformationAddModal({
 
           {/* Sabit alt aksiyon bar */}
           <div className="border-t bg-white px-6 py-3">
-            {" "}
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"

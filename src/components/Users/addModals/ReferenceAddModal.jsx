@@ -1,9 +1,56 @@
 // components/Users/addModals/ReferenceAddModal.jsx
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
+import { z } from "zod";
 
+/* -------------------- REGEX -------------------- */
+// Ad/Soyad: sadece harf (TR) + boşluk
+const NAME_STRICT_RE = /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/u;
+// İşyeri/Görev: harf (TR), rakam, boşluk, apostrof (' veya ’) ve tire (-)
+const ORG_JOB_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s'’]+$/u;
+// Telefon: + opsiyonel; rakam, boşluk, parantez ve tire; 8–20 karakter
+const PHONE_RE = /^\+?[0-9\s()-]{8,20}$/;
+
+/* -------------------- ZOD ŞEMASI -------------------- */
+const refSchema = z.object({
+  calistigiKurum: z.string().min(1, "Çalıştığı kurum seçimi zorunlu."),
+  referansAdi: z
+    .string()
+    .trim()
+    .regex(NAME_STRICT_RE, "Ad yalnızca harf ve boşluk içerebilir.")
+    .min(2, "Ad en az 2 karakter olmalı.")
+    .max(50, "Ad en fazla 50 karakter olabilir."),
+  referansSoyadi: z
+    .string()
+    .trim()
+    .regex(NAME_STRICT_RE, "Soyad yalnızca harf ve boşluk içerebilir.")
+    .min(2, "Soyad en az 2 karakter olmalı.")
+    .max(50, "Soyad en fazla 50 karakter olabilir."),
+  referansIsYeri: z
+    .string()
+    .trim()
+    .regex(
+      ORG_JOB_RE,
+      "İşyeri yalnızca harf, rakam, boşluk, ' ve - içerebilir."
+    )
+    .min(2, "İşyeri zorunlu.")
+    .max(100, "İşyeri en fazla 100 karakter olabilir."),
+  referansGorevi: z
+    .string()
+    .trim()
+    .regex(ORG_JOB_RE, "Görev yalnızca harf, rakam, boşluk, ' ve - içerebilir.")
+    .min(2, "Görev zorunlu.")
+    .max(100, "Görev en fazla 100 karakter olabilir."),
+  referansTelefon: z
+    .string()
+    .trim()
+    .min(1, "Telefon zorunlu.")
+    .regex(PHONE_RE, "Telefon numarası geçersiz. Örn: +90 5XX XXX XX XX"),
+});
+
+/* -------------------- COMPONENT -------------------- */
 export default function ReferenceAddModal({
   open,
   mode = "create",
@@ -23,6 +70,10 @@ export default function ReferenceAddModal({
     referansTelefon: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const [isValid, setIsValid] = useState(true);
+  const [disabledTip, setDisabledTip] = useState("");
+
   // Modal açıldığında formu doldur / temizle
   useEffect(() => {
     if (!open) return;
@@ -35,6 +86,7 @@ export default function ReferenceAddModal({
         referansGorevi: initialData.referansGorevi ?? "",
         referansTelefon: initialData.referansTelefon ?? "",
       });
+      setErrors({});
     } else {
       setFormData({
         calistigiKurum: "",
@@ -44,34 +96,66 @@ export default function ReferenceAddModal({
         referansGorevi: "",
         referansTelefon: "",
       });
+      setErrors({});
     }
   }, [open, mode, initialData]);
 
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
 
-  // Validasyon
-  const errors = useMemo(() => {
-    const e = {};
-    if (!formData.calistigiKurum.trim())
-      e.calistigiKurum = "Çalıştığı kurum seçimi zorunlu.";
-    if (!formData.referansAdi.trim()) e.referansAdi = "Ad zorunlu.";
-    if (!formData.referansSoyadi.trim()) e.referansSoyadi = "Soyad zorunlu.";
-    if (!formData.referansIsYeri.trim()) e.referansIsYeri = "İşyeri zorunlu.";
-    if (!formData.referansGorevi.trim()) e.referansGorevi = "Görev zorunlu.";
-    if (!formData.referansTelefon.trim())
-      e.referansTelefon = "Telefon zorunlu.";
-    return e;
-  }, [formData]);
+  // Sade onChange (input/select)
+  const onInput = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+  };
 
-  const isValid = Object.keys(errors).length === 0;
-  const disabledTip = !isValid ? Object.values(errors).join(" • ") : "";
+  // Debounced toplu doğrulama
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const parsed = refSchema.safeParse(formData);
+      if (!parsed.success) {
+        const next = {};
+        parsed.error.issues.forEach((i) => {
+          const key = i.path[0];
+          if (key) next[key] = i.message;
+        });
+        setErrors(next);
+        setIsValid(false);
+        setDisabledTip(parsed.error.issues.map((i) => i.message).join(" • "));
+      } else {
+        setErrors({});
+        setIsValid(true);
+        setDisabledTip("");
+      }
+    }, 150);
+    return () => clearTimeout(id);
+  }, [formData]);
 
   // Submit
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValid) return;
+    const parsed = refSchema.safeParse(formData);
+    if (!parsed.success) {
+      const next = {};
+      parsed.error.issues.forEach((i) => {
+        const key = i.path[0];
+        if (key) next[key] = i.message;
+      });
+      setErrors(next);
+      setIsValid(false);
+      setDisabledTip(parsed.error.issues.map((i) => i.message).join(" • "));
+      return;
+    }
 
-    const payload = { ...formData };
+    const d = parsed.data;
+    const payload = {
+      calistigiKurum: d.calistigiKurum,
+      referansAdi: d.referansAdi.trim(),
+      referansSoyadi: d.referansSoyadi.trim(),
+      referansIsYeri: d.referansIsYeri.trim(),
+      referansGorevi: d.referansGorevi.trim(),
+      referansTelefon: d.referansTelefon.trim(),
+    };
+
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
@@ -119,13 +203,9 @@ export default function ReferenceAddModal({
                   Çalıştığı Kurum
                 </label>
                 <select
+                  name="calistigiKurum"
                   value={formData.calistigiKurum}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      calistigiKurum: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   required
                 >
@@ -147,22 +227,32 @@ export default function ReferenceAddModal({
                 <label className="block text-sm text-gray-600 mb-1">Adı</label>
                 <input
                   type="text"
+                  name="referansAdi"
                   value={formData.referansAdi}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      referansAdi: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
+                  maxLength={50}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Mehmet"
                   required
                 />
-                {errors.referansAdi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.referansAdi}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.referansAdi ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.referansAdi}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.referansAdi.length >= 45
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.referansAdi.length}/50
                   </p>
-                )}
+                </div>
               </div>
 
               {/* Referans Soyadı */}
@@ -172,22 +262,32 @@ export default function ReferenceAddModal({
                 </label>
                 <input
                   type="text"
+                  name="referansSoyadi"
                   value={formData.referansSoyadi}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      referansSoyadi: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
+                  maxLength={50}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Yalçınkaya"
                   required
                 />
-                {errors.referansSoyadi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.referansSoyadi}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.referansSoyadi ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.referansSoyadi}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.referansSoyadi.length >= 45
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.referansSoyadi.length}/50
                   </p>
-                )}
+                </div>
               </div>
 
               {/* İşyeri */}
@@ -197,22 +297,32 @@ export default function ReferenceAddModal({
                 </label>
                 <input
                   type="text"
+                  name="referansIsYeri"
                   value={formData.referansIsYeri}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      referansIsYeri: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
+                  maxLength={100}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  placeholder="Örn: Chamada Girne"
+                  placeholder="Örn: O'Brien Hotels - IT"
                   required
                 />
-                {errors.referansIsYeri && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.referansIsYeri}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.referansIsYeri ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.referansIsYeri}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.referansIsYeri.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.referansIsYeri.length}/100
                   </p>
-                )}
+                </div>
               </div>
 
               {/* Görev */}
@@ -222,22 +332,32 @@ export default function ReferenceAddModal({
                 </label>
                 <input
                   type="text"
+                  name="referansGorevi"
                   value={formData.referansGorevi}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      referansGorevi: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
+                  maxLength={100}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  placeholder="Örn: IT Uzmanı"
+                  placeholder="Örn: Senior DevOps Engineer"
                   required
                 />
-                {errors.referansGorevi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.referansGorevi}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.referansGorevi ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.referansGorevi}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.referansGorevi.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.referansGorevi.length}/100
                   </p>
-                )}
+                </div>
               </div>
 
               {/* Telefon */}
@@ -247,22 +367,32 @@ export default function ReferenceAddModal({
                 </label>
                 <input
                   type="tel"
+                  name="referansTelefon"
                   value={formData.referansTelefon}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      referansTelefon: e.target.value,
-                    }))
-                  }
+                  onChange={onInput}
+                  maxLength={20}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
-                  placeholder="+90..."
+                  placeholder="+90 5XX XXX XX XX"
                   required
                 />
-                {errors.referansTelefon && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.referansTelefon}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.referansTelefon ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.referansTelefon}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.referansTelefon.length >= 18
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.referansTelefon.length}/20
                   </p>
-                )}
+                </div>
               </div>
             </div>
           </div>

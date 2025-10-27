@@ -1,11 +1,119 @@
 // components/Users/addModals/JobExperiencesAddModal.jsx
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
 import CountryCitySelect from "../Selected/CountryCitySelect";
+import { z } from "zod";
 
+/* -------------------- REGEX (ESLint no-useless-escape uyumlu) -------------------- */
+// Harf (TR dâhil), rakam, boşluk ve . & ( ) ' / - karakterleri
+const NAME_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.&()'/]+$/u;
+// Harf (TR dâhil), rakam, boşluk ve . , % & ( ) ' / - karakterleri
+const TEXT_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.,&()'/%]+$/u;
+
+/* -------------------- ŞEMA (prop bağımlılığı için fabrika) -------------------- */
+const makeSchema = (anotherActiveExists) =>
+  z
+    .object({
+      isAdi: z
+        .string()
+        .trim()
+        .regex(
+          NAME_RE,
+          "Şirket / İş adı yalnızca harf, rakam, boşluk ve . & ( ) ' / içerebilir."
+        )
+        .min(1, "Şirket / İş adı zorunlu.")
+        .max(100, "En fazla 100 karakter."),
+      departman: z
+        .string()
+        .trim()
+        .regex(
+          NAME_RE,
+          "Departman yalnızca harf, rakam, boşluk ve . & ( ) ' / içerebilir."
+        )
+        .min(1, "Departman zorunlu.")
+        .max(100, "En fazla 100 karakter."),
+      pozisyon: z
+        .string()
+        .trim()
+        .regex(
+          NAME_RE,
+          "Pozisyon yalnızca harf, rakam, boşluk ve . & ( ) ' / içerebilir."
+        )
+        .min(1, "Pozisyon zorunlu.")
+        .max(100, "En fazla 100 karakter."),
+      gorev: z
+        .string()
+        .trim()
+        .regex(
+          NAME_RE,
+          "Görev yalnızca harf, rakam, boşluk ve . & ( ) ' / içerebilir."
+        )
+        .min(1, "Görev zorunlu.")
+        .max(120, "En fazla 120 karakter."),
+      ayrilisSebebi: z
+        .string()
+        .trim()
+        .regex(
+          TEXT_RE,
+          "Ayrılış sebebi yalnızca harf, rakam, boşluk ve . , % & ( ) ' / içerebilir."
+        )
+        .min(1, "Ayrılış sebebi zorunlu.")
+        .max(150, "En fazla 150 karakter."),
+      ucret: z
+        .string()
+        .trim()
+        .min(1, "Ücret zorunlu.")
+        .refine(
+          (v) => !isNaN(Number(String(v).replace(",", "."))),
+          "Ücret sayısal olmalıdır."
+        ),
+      // null -> undefined çeviriyoruz ki required_error tetiklensin
+      baslangicTarihi: z.preprocess(
+        (v) => (v === null ? undefined : v),
+        z.date({ required_error: "Başlangıç tarihi zorunlu." })
+      ),
+      bitisTarihi: z.preprocess(
+        (v) => (v === null ? undefined : v),
+        z.date().optional()
+      ),
+      isUlke: z.string().trim().min(1, "İş ülkesi zorunlu."),
+      isSehir: z.string().trim().min(1, "İş şehri zorunlu."),
+      halenCalisiyor: z.boolean(),
+    })
+    .superRefine((data, ctx) => {
+      // Yalnızca 1 aktif iş
+      if (anotherActiveExists && data.halenCalisiyor) {
+        ctx.addIssue({
+          path: ["halenCalisiyor"],
+          code: z.ZodIssueCode.custom,
+          message:
+            "Zaten halen çalıştığınız bir iş var. Bu kaydı aktif yapamazsınız.",
+        });
+      }
+      // Aktif değilse bitiş zorunlu
+      if (!data.halenCalisiyor && !data.bitisTarihi) {
+        ctx.addIssue({
+          path: ["bitisTarihi"],
+          code: z.ZodIssueCode.custom,
+          message: "Bitiş tarihi zorunlu.",
+        });
+      }
+      // Başlangıç <= Bitiş
+      if (data.baslangicTarihi && data.bitisTarihi) {
+        if (data.bitisTarihi.getTime() < data.baslangicTarihi.getTime()) {
+          ctx.addIssue({
+            path: ["bitisTarihi"],
+            code: z.ZodIssueCode.custom,
+            message: "Bitiş, başlangıçtan önce olamaz.",
+          });
+        }
+      }
+    });
+
+/* -------------------- COMPONENT -------------------- */
 export default function JobExperiencesAddModal({
   open,
   mode = "create",
@@ -31,6 +139,17 @@ export default function JobExperiencesAddModal({
     halenCalisiyor: false,
   });
 
+  const [errors, setErrors] = useState({});
+  const [isValid, setIsValid] = useState(true);
+  const [disabledTip, setDisabledTip] = useState("");
+
+  const schema = useMemo(
+    () => makeSchema(anotherActiveExists),
+    [anotherActiveExists]
+  );
+  const shape = schema.shape;
+
+  // Modal reset
   useEffect(() => {
     if (!open) return;
 
@@ -51,6 +170,9 @@ export default function JobExperiencesAddModal({
           !initialData.bitisTarihi ||
           initialData.bitisTarihi === "",
       });
+      setErrors({});
+      setIsValid(true);
+      setDisabledTip("");
     } else {
       setFormData({
         isAdi: "",
@@ -65,95 +187,125 @@ export default function JobExperiencesAddModal({
         isSehir: "",
         halenCalisiyor: false,
       });
+      setErrors({});
+      setIsValid(true);
+      setDisabledTip("");
     }
   }, [open, mode, initialData]);
 
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
 
-  const errors = useMemo(() => {
-    const e = {};
-    if (!formData.isAdi.trim()) e.isAdi = "Şirket / İş adı zorunlu.";
-    if (!formData.pozisyon.trim()) e.pozisyon = "Pozisyon zorunlu.";
-    if (!formData.departman.trim()) e.departman = "Departman zorunlu.";
-    if (!formData.gorev.trim()) e.gorev = "Görev zorunlu.";
-    if (!formData.ucret.trim()) e.ucret = "Ücret zorunlu.";
-    if (!formData.ayrilisSebebi.trim())
-      e.ayrilisSebebi = "Ayrılış sebebi zorunlu.";
-    if (!formData.baslangicTarihi)
-      e.baslangicTarihi = "Başlangıç tarihi zorunlu.";
+  /* -------------------- Doğrulayıcılar -------------------- */
+  // Sadece değişen alanı kontrol et (performans için)
+  const validateOne = (name, value) => {
+    if (!shape[name]) return;
+    const res = shape[name].safeParse(value);
+    setErrors((prev) => ({
+      ...prev,
+      [name]: res.success ? "" : res.error.issues[0]?.message || "",
+    }));
+  };
 
-    // Ülke/Şehir zorunlu
-    if (!formData.isUlke.trim()) e.isUlke = "İş ülkesi zorunlu.";
-    if (!formData.isSehir.trim()) e.isSehir = "İş şehri zorunlu.";
-
-    if (anotherActiveExists && formData.halenCalisiyor) {
-      e.halenCalisiyor =
-        "Zaten halen çalıştığınız bir iş var. Bu kaydı aktif yapamazsınız.";
+  // Çapraz kurallar (tarih/aktif iş) için form tamamını doğrula
+  const validateCross = (nextForm) => {
+    const res = schema.safeParse(nextForm);
+    if (!res.success) {
+      const next = {};
+      res.error.issues.forEach((i) => {
+        if (i.path[0]) next[i.path[0]] = i.message;
+      });
+      setErrors(next);
+      setIsValid(false);
+      setDisabledTip(res.error.issues.map((i) => i.message).join(" • "));
+    } else {
+      setErrors({});
+      setIsValid(true);
+      setDisabledTip("");
     }
+  };
 
-    if (!formData.halenCalisiyor) {
-      if (!formData.bitisTarihi) {
-        e.bitisTarihi = "Bitiş tarihi zorunlu.";
-      } else if (
-        formData.baslangicTarihi &&
-        formData.bitisTarihi.getTime() < formData.baslangicTarihi.getTime()
-      ) {
-        e.bitisTarihi = "Bitiş, başlangıçtan önce olamaz.";
-      }
-    }
+  /* -------------------- Handlers -------------------- */
+  // Metin/select alanları
+  const onInput = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => {
+      const next = { ...p, [name]: value };
+      validateOne(name, value);
+      return next;
+    });
+  };
 
-    if (
-      formData.ucret !== "" &&
-      isNaN(Number(String(formData.ucret).replace(",", ".")))
-    ) {
-      e.ucret = "Ücret sayısal olmalıdır.";
-    }
+  // Tarihler
+  const onDateChange = (name, value) => {
+    setFormData((p) => {
+      const next = { ...p, [name]: value ? toDateSafe(value) : null };
+      validateCross(next); // çapraz kurallar
+      return next;
+    });
+  };
 
-    return e;
-  }, [formData, anotherActiveExists]);
+  // Hâlen çalışıyorum
+  const toggleHalenCalisiyor = (checked) => {
+    setFormData((p) => {
+      const next = {
+        ...p,
+        halenCalisiyor: checked,
+        bitisTarihi: checked ? null : p.bitisTarihi,
+      };
+      validateCross(next); // çapraz kurallar
+      return next;
+    });
+  };
 
-  const isValid = Object.keys(errors).length === 0;
-  const disabledTip = !isValid ? Object.values(errors).join(" • ") : "";
+  // Ülke/Şehir
+  const onCountryCityChange = ({ country, city }) => {
+    setFormData((p) => {
+      const next = { ...p, isUlke: country, isSehir: city };
+      validateOne("isUlke", country);
+      validateOne("isSehir", city);
+      return next;
+    });
+  };
 
+  /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValid) return;
+    const parsed = schema.safeParse(formData);
+    if (!parsed.success) {
+      const newErrs = {};
+      parsed.error.issues.forEach((i) => {
+        newErrs[i.path[0]] = i.message;
+      });
+      setErrors(newErrs);
+      setIsValid(false);
+      setDisabledTip(parsed.error.issues.map((i) => i.message).join(" • "));
+      return;
+    }
 
-    const bitis =
-      formData.halenCalisiyor || !formData.bitisTarihi
-        ? ""
-        : toISODate(formData.bitisTarihi);
-
+    const d = parsed.data;
     const payload = {
-      isAdi: formData.isAdi.trim(),
-      departman: formData.departman.trim(),
-      pozisyon: formData.pozisyon.trim(),
-      gorev: formData.gorev.trim(),
-      ucret: formData.ucret === "" ? "" : String(formData.ucret),
-      baslangicTarihi: toISODate(formData.baslangicTarihi),
-      bitisTarihi: bitis,
-      ayrilisSebebi: formData.ayrilisSebebi.trim(),
-      isUlke: formData.isUlke.trim(),
-      isSehir: formData.isSehir.trim(),
-      halenCalisiyor: !!formData.halenCalisiyor,
+      isAdi: d.isAdi.trim(),
+      departman: d.departman.trim(),
+      pozisyon: d.pozisyon.trim(),
+      gorev: d.gorev.trim(),
+      ucret: d.ucret === "" ? "" : String(d.ucret),
+      baslangicTarihi: toISODate(d.baslangicTarihi),
+      bitisTarihi:
+        d.halenCalisiyor || !d.bitisTarihi ? "" : toISODate(d.bitisTarihi),
+      ayrilisSebebi: d.ayrilisSebebi.trim(),
+      isUlke: d.isUlke.trim(),
+      isSehir: d.isSehir.trim(),
+      halenCalisiyor: !!d.halenCalisiyor,
     };
 
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
-
     onClose?.();
-  };
-
-  const toggleHalenCalisiyor = (checked) => {
-    setFormData((p) => ({
-      ...p,
-      halenCalisiyor: checked,
-      bitisTarihi: checked ? null : p.bitisTarihi,
-    }));
   };
 
   if (!open) return null;
 
+  /* -------------------- RENDER -------------------- */
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
@@ -192,17 +344,32 @@ export default function JobExperiencesAddModal({
                 </label>
                 <input
                   type="text"
+                  name="isAdi"
                   value={formData.isAdi}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, isAdi: e.target.value }))
-                  }
+                  onChange={onInput}
+                  maxLength={100}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: ABC Teknoloji A.Ş."
                   required
                 />
-                {errors.isAdi && (
-                  <p className="mt-1 text-xs text-red-600">{errors.isAdi}</p>
-                )}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.isAdi ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.isAdi}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.isAdi.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.isAdi.length}/100
+                  </p>
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -210,19 +377,32 @@ export default function JobExperiencesAddModal({
                 </label>
                 <input
                   type="text"
+                  name="departman"
                   value={formData.departman}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, departman: e.target.value }))
-                  }
+                  onChange={onInput}
+                  maxLength={100}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Yazılım"
                   required
                 />
-                {errors.departman && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.departman}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.departman ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.departman}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.departman.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.departman.length}/100
                   </p>
-                )}
+                </div>
               </div>
             </div>
 
@@ -234,17 +414,32 @@ export default function JobExperiencesAddModal({
                 </label>
                 <input
                   type="text"
+                  name="pozisyon"
                   value={formData.pozisyon}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, pozisyon: e.target.value }))
-                  }
+                  onChange={onInput}
+                  maxLength={100}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Full Stack Developer"
                   required
                 />
-                {errors.pozisyon && (
-                  <p className="mt-1 text-xs text-red-600">{errors.pozisyon}</p>
-                )}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.pozisyon ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.pozisyon}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.pozisyon.length >= 90
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.pozisyon.length}/100
+                  </p>
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -252,17 +447,32 @@ export default function JobExperiencesAddModal({
                 </label>
                 <input
                   type="text"
+                  name="gorev"
                   value={formData.gorev}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, gorev: e.target.value }))
-                  }
+                  onChange={onInput}
+                  maxLength={120}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: Web geliştirme"
                   required
                 />
-                {errors.gorev && (
-                  <p className="mt-1 text-xs text-red-600">{errors.gorev}</p>
-                )}
+                <div className="flex justify-between items-center mt-1">
+                  {errors.gorev ? (
+                    <p className="text-xs text-red-600 font-medium">
+                      {errors.gorev}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <p
+                    className={`text-xs ${
+                      formData.gorev.length >= 110
+                        ? "text-red-500"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {formData.gorev.length}/120
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -274,10 +484,9 @@ export default function JobExperiencesAddModal({
                 </label>
                 <input
                   type="text"
+                  name="ucret"
                   value={formData.ucret}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, ucret: e.target.value }))
-                  }
+                  onChange={onInput}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                   placeholder="Örn: 2500"
                   required
@@ -294,18 +503,11 @@ export default function JobExperiencesAddModal({
                     cityLabel="Şehir (İş) *"
                     countryId="jobCountry"
                     cityId="jobCity"
-                    // Create modunda boş; Edit modunda mevcut değerler
                     defaultCountry={mode === "edit" ? formData.isUlke : ""}
                     defaultCity={mode === "edit" ? formData.isSehir : ""}
                     countryPlaceholder="Seçiniz"
                     cityPlaceholder="Seçiniz"
-                    onChange={({ country, city }) =>
-                      setFormData((p) => ({
-                        ...p,
-                        isUlke: country,
-                        isSehir: city,
-                      }))
-                    }
+                    onChange={onCountryCityChange}
                   />
                 </div>
                 {(errors.isUlke || errors.isSehir) && (
@@ -354,13 +556,8 @@ export default function JobExperiencesAddModal({
                   type="date"
                   value={toISODate(formData.baslangicTarihi)}
                   onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      baslangicTarihi: toDateSafe(e.target.value),
-                    }))
+                    onDateChange("baslangicTarihi", e.target.value)
                   }
-                  onFocus={(e) => e.target.showPicker && e.target.showPicker()}
-                  onClick={(e) => e.target.showPicker && e.target.showPicker()}
                   className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer [::-webkit-calendar-picker-indicator]:cursor-pointer"
                   required
                 />
@@ -379,12 +576,7 @@ export default function JobExperiencesAddModal({
                   type="date"
                   value={toISODate(formData.bitisTarihi)}
                   min={toISODate(formData.baslangicTarihi) || undefined}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      bitisTarihi: toDateSafe(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => onDateChange("bitisTarihi", e.target.value)}
                   disabled={formData.halenCalisiyor}
                   className={`w-full border rounded-lg px-3 py-2 focus:outline-none ${
                     formData.halenCalisiyor
@@ -407,19 +599,32 @@ export default function JobExperiencesAddModal({
               </label>
               <input
                 type="text"
+                name="ayrilisSebebi"
                 value={formData.ayrilisSebebi}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, ayrilisSebebi: e.target.value }))
-                }
+                onChange={onInput}
+                maxLength={150}
                 className="w-full border rounded-lg px-3 py-2 focus:outline-none"
                 placeholder="Örn: Eğitim / taşınma / proje bitişi..."
                 required
               />
-              {errors.ayrilisSebebi && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.ayrilisSebebi}
+              <div className="flex justify-between items-center mt-1">
+                {errors.ayrilisSebebi ? (
+                  <p className="text-xs text-red-600 font-medium">
+                    {errors.ayrilisSebebi}
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <p
+                  className={`text-xs ${
+                    formData.ayrilisSebebi.length >= 140
+                      ? "text-red-500"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {formData.ayrilisSebebi.length}/150
                 </p>
-              )}
+              </div>
             </div>
           </div>
 

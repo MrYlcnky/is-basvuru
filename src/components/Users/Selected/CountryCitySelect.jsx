@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+// components/Users/Selected/CountryCitySelect.jsx
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Select from "react-select";
 import countriesData from "../../../json/country_city_nationality.json";
 
@@ -14,36 +15,52 @@ export default function CountryCitySelect({
   countryPlaceholder = "Seçiniz",
   cityPlaceholder = "Seçiniz",
 }) {
-  // Ülke seçenekleri
-  const countryOptions = useMemo(() => {
-    const names = (countriesData || []).map((c) => c?.name).filter(Boolean);
-    const uniq = [...new Set(names)].sort((a, b) => a.localeCompare(b, "tr"));
-    return uniq.map((n) => ({ value: n, label: n }));
+  // Tek seferlik index: ülke->şehir haritası + ülke seçenekleri
+  const { countryOptions, statesMap } = useMemo(() => {
+    const map = new Map();
+    const names = [];
+    for (const c of countriesData || []) {
+      const name = c?.name;
+      if (!name) continue;
+      if (!map.has(name)) {
+        map.set(name, []);
+        names.push(name);
+      }
+      const states = (c?.states || [])
+        .map((s) => (typeof s === "string" ? s : s?.name))
+        .filter(Boolean);
+      if (states.length) {
+        const prev = map.get(name);
+        for (const s of states) if (!prev.includes(s)) prev.push(s);
+      }
+    }
+    names.sort((a, b) => a.localeCompare(b, "tr"));
+    for (const [k, arr] of map) {
+      arr.sort((a, b) => a.localeCompare(b, "tr"));
+      map.set(k, arr);
+    }
+    const opts = names.map((n) => ({ value: n, label: n }));
+    return { countryOptions: opts, statesMap: map };
   }, []);
 
+  // State
   const [country, setCountry] = useState(
     defaultCountry ? { value: defaultCountry, label: defaultCountry } : null
   );
   const [city, setCity] = useState(
     defaultCity ? { value: defaultCity, label: defaultCity } : null
   );
-
-  // Dokunulma kontrolü
   const [touched, setTouched] = useState({ country: false, city: false });
 
-  // Şehir seçenekleri
+  // Şehir seçenekleri (ülke değişince hesaplanır)
   const cityOptions = useMemo(() => {
     if (!country) return [];
-    const entry = countriesData.find((x) => x?.name === country.value);
-    const states = (entry?.states || [])
-      .map((s) => (typeof s === "string" ? s : s?.name))
-      .filter(Boolean);
-    const uniq = [...new Set(states)].sort((a, b) => a.localeCompare(b, "tr"));
-    const options = uniq.map((s) => ({ value: s, label: s }));
-    return options.length ? options : [{ value: "none", label: "Şehri Yok" }];
-  }, [country?.value]);
+    const list = statesMap.get(country.value) || [];
+    if (list.length === 0) return [{ value: "none", label: "Şehri Yok" }];
+    return list.map((s) => ({ value: s, label: s }));
+  }, [country?.value, statesMap]);
 
-  // Ülke değişince şehir resetle
+  // Ülke değişince şehir reset kuralı
   useEffect(() => {
     if (!country) {
       setCity(null);
@@ -60,21 +77,38 @@ export default function CountryCitySelect({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country?.value, defaultCity, cityOptions]);
+  }, [country?.value]);
 
   // Parent'a bildir
   useEffect(() => {
     onChange?.({ country: country?.value || "", city: city?.value || "" });
   }, [country, city, onChange]);
 
-  // ---- React-Select görünümü (native gibi) ----
+  // Stabil callback'ler
+  const handleCountryChange = useCallback((opt) => {
+    setCountry(opt);
+    setCity(null);
+  }, []);
+  const handleCityChange = useCallback((opt) => {
+    setCity(opt);
+  }, []);
+  const markCountryTouched = useCallback(
+    () => setTouched((t) => ({ ...t, country: true })),
+    []
+  );
+  const markCityTouched = useCallback(
+    () => setTouched((t) => ({ ...t, city: true })),
+    []
+  );
+
+  // react-select görsel sınıfları
   const rsClassNames = {
     container: () => "w-full",
     control: ({ isFocused, isDisabled }) =>
       [
-        "w-full h-[43px] rounded-lg bg-white border border-gray-300 px-3 shadow-none",
+        "w-full h-[43px] rounded-lg bg-white border px-3 shadow-none",
         isDisabled
-          ? "opacity-60 cursor-not-allowed bg-gray-100"
+          ? "opacity-60 cursor-not-allowed bg-gray-100 border-gray-200"
           : "cursor-pointer",
         isFocused
           ? "border-gray-400"
@@ -104,23 +138,29 @@ export default function CountryCitySelect({
     noOptionsMessage: () => "px-3 py-2 text-gray-500",
   };
 
-  const rsStyles = {
-    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-  };
+  const rsStyles = useMemo(
+    () => ({
+      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    }),
+    []
+  );
 
-  const sharedProps = {
-    unstyled: true,
-    classNames: rsClassNames,
-    styles: rsStyles,
-    menuPortalTarget: typeof document !== "undefined" ? document.body : null,
-    maxMenuHeight: 200,
-    isSearchable: true,
-  };
+  const sharedProps = useMemo(
+    () => ({
+      unstyled: true,
+      classNames: rsClassNames,
+      styles: rsStyles,
+      menuPortalTarget: typeof document !== "undefined" ? document.body : null,
+      maxMenuHeight: 200,
+      isSearchable: true,
+      // NOT: Virtualized MenuList kaldırıldı → ekstra bağımlılık yok
+    }),
+    [rsStyles]
+  );
 
-  // === Render ===
   return (
     <>
-      {/* Ülke Select */}
+      {/* Ülke */}
       <div className={`w-full ${className}`}>
         <label
           htmlFor={countryId}
@@ -133,12 +173,10 @@ export default function CountryCitySelect({
           options={countryOptions}
           value={country}
           required
-          onChange={(opt) => {
-            setCountry(opt);
-            setCity(null);
-          }}
-          onBlur={() => setTouched((prev) => ({ ...prev, country: true }))}
+          onChange={handleCountryChange}
+          onBlur={markCountryTouched}
           placeholder={countryPlaceholder}
+          isClearable
           {...sharedProps}
         />
         {touched.country && !country && (
@@ -148,7 +186,7 @@ export default function CountryCitySelect({
         )}
       </div>
 
-      {/* Şehir Select */}
+      {/* Şehir */}
       <div className={`w-full ${className}`}>
         <label
           htmlFor={cityId}
@@ -161,14 +199,15 @@ export default function CountryCitySelect({
           options={cityOptions}
           value={city}
           required
-          onChange={setCity}
-          onBlur={() => setTouched((prev) => ({ ...prev, city: true }))}
+          onChange={handleCityChange}
+          onBlur={markCityTouched}
           placeholder={
             !country
               ? `Önce ${countryLabel.toLowerCase()} seçin`
               : cityPlaceholder
           }
           isDisabled={!country || cityOptions.length === 0}
+          isClearable
           {...sharedProps}
         />
         {touched.city && !city && (
