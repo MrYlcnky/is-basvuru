@@ -45,7 +45,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     "Otel Housekeeping": ["HotelLogix"],
   };
 
-  // Departman → Pozisyon(lar)
   const departmentRoles = {
     "Casino F&B": ["Garson", "Barmen", "Barback", "Komi", "Supervisor"],
     "Casino Kasa": ["Cashier", "Cage Supervisor"],
@@ -155,35 +154,25 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   };
 
   /* -------------------- ZOD ŞEMASI -------------------- */
-  const optionSchema = z.object({
+  const optionSchema = z.object({ value: z.string(), label: z.string() });
+  const roleOptionSchema = z.object({
     value: z.string(),
     label: z.string(),
+    dept: z.string(),
   });
-
-  const roleOptionSchema = z.object({
-    value: z.string(), // "<Departman>::<Rol>"
-    label: z.string(), // "Rol"
-    dept: z.string(), // "Departman"
-  });
-
   const arrayNonEmpty = (schema, msg) => z.array(schema).min(1, msg);
 
-  // Şema: PersonalInformation stiline uyumlu (string + refine / array + min)
   const schema = z
     .object({
       subeler: arrayNonEmpty(optionSchema, "Şube seçiniz"),
       alanlar: arrayNonEmpty(optionSchema, "Alan seçiniz"),
       departmanlar: arrayNonEmpty(optionSchema, "Departman seçiniz"),
       programlar: arrayNonEmpty(optionSchema, "Program seçiniz"),
-
       departmanPozisyonlari: z.array(roleOptionSchema).optional().default([]),
-
       kagitOyunlari: z.array(optionSchema).optional().default([]),
-
       lojman: z
         .string()
         .refine((v) => ["Evet", "Hayır"].includes(v), "Lojman durumu seçiniz"),
-
       tercihNedeni: z
         .string()
         .min(1, "Neden tercih ettiğinizi yazınız")
@@ -194,7 +183,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
         .max(500, "En fazla 500 karakter yazabilirsiniz"),
     })
     .superRefine((data, ctx) => {
-      // Pozisyonlar: seçilen departmanlardan en az birinin rolü varsa pozisyon zorunlu
       const anyDeptHasRoles = data.departmanlar.some(
         (d) => (departmentRoles[d.value] || []).length > 0
       );
@@ -208,8 +196,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           message: "Pozisyon(lar) seçiniz",
         });
       }
-
-      // Kağıt oyunları: Casino Canlı Oyun seçiliyse zorunlu
       const canliOyun = data.departmanlar.some(
         (d) => d.value === "Casino Canlı Oyun"
       );
@@ -226,7 +212,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     });
 
   /* -------------------- Doğrulama Mantığı -------------------- */
-
   const validateAll = (nextData = formData) => {
     const res = schema.safeParse(nextData);
     if (!res.success) {
@@ -244,7 +229,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
 
   const validateField = (name, value) => {
     const next = { ...formData, [name]: value };
-    // Bağımlı alanlar için tam doğrulama daha güvenli
     validateAll(next);
   };
 
@@ -265,7 +249,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     validateField(key, v);
   };
 
-  // departman değişince pozisyonları departman filtresine göre kırp
   const onDepartmentsChange = (v) => {
     const allowedDepts = new Set((v || []).map((x) => x.value));
     const filteredRoles = (formData.departmanPozisyonlari || []).filter((r) =>
@@ -280,11 +263,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     validateAll(next);
   };
 
-  // --- Zorunlu alan göstergesi için (isteğe bağlı): state değişiminde re-validate
-  useEffect(() => {
-    // Bu küçük throttle benzeri kontrol, her değişimde hataları güncel tutar
-    // (İstersen kaldırabilirsin, validateField zaten çağrılıyor.)
-  }, [formData]);
+  useEffect(() => {}, [formData]);
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8">
@@ -310,7 +289,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
 
       {/* Form Alanları */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-        {/* 1. satır */}
         <SelectField
           label="Başvurulacak Şube(ler)"
           name="subeler"
@@ -355,7 +333,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           styles={customStyles}
         />
 
-        {/* 2. satır */}
         <SelectField
           label="Departman İçi Pozisyon(lar)"
           name="departmanPozisyonlari"
@@ -408,7 +385,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
         />
       </div>
 
-      {/* 3. satır: Lojman (2/12) + Tercih Nedeni (10/12) */}
+      {/* 3. satır: Lojman + Tercih Nedeni */}
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
         <div className="lg:col-span-2">
           <SelectField
@@ -527,14 +504,15 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           ].map(({ icon, label, value }, i) => (
             <p
               key={i}
-              className="flex items-center gap-2 p-1 sm:p-2 rounded-md hover:bg-gray-50 transition"
+              className="flex items-start gap-2 p-1 sm:p-2 rounded-md hover:bg-gray-50 transition"
             >
               <FontAwesomeIcon
                 icon={icon}
-                className="text-gray-400 text-sm sm:text-base"
+                className="mt-0.5 text-gray-400 text-sm sm:text-base"
               />
-              <strong>{label}:</strong>{" "}
-              <span className="text-gray-800 truncate">{value || "—"}</span>
+              <strong className="shrink-0">{label}:</strong>
+              {/* Çok satırlı kesme + hover'da tam metin */}
+              <ClampText text={value || "—"} lines={2} />
             </p>
           ))}
         </div>
@@ -547,6 +525,27 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     </div>
   );
 });
+
+/* --- Çok satırlı metni 2 satırda kesip tooltip veren yardımcı bileşen --- */
+function ClampText({ text, lines = 2 }) {
+  return (
+    <span
+      title={text} // hover'da orijinal tam metin
+      style={{
+        display: "-webkit-box",
+        WebkitLineClamp: lines,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "normal",
+        lineHeight: "1.25rem", // ~20px, Tailwind text-sm ile uyumlu
+      }}
+      className="text-gray-800"
+    >
+      {text}
+    </span>
+  );
+}
 
 /* --- Reusable Select Field --- */
 function SelectField({ label, error, ...props }) {

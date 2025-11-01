@@ -6,7 +6,6 @@ import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
 
 // Zod şeması
-// Zod şeması
 const schema = z.object({
   programAdi: z
     .string()
@@ -15,6 +14,10 @@ const schema = z.object({
     .max(60, "Program adı en fazla 60 karakter olabilir."),
   yetkinlik: z.string().min(1, "Yetkinlik zorunlu."),
 });
+
+// Ortak alan stilleri (hover: siyah, focus: siyah)
+const FIELD_BASE =
+  "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black focus:border-black";
 
 export default function ComputerInformationAddModal({
   open,
@@ -105,7 +108,7 @@ export default function ComputerInformationAddModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30  p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -150,7 +153,7 @@ export default function ComputerInformationAddModal({
                     setFormData((p) => ({ ...p, programAdi: v }));
                     validateField("programAdi", v);
                   }}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Excel Programları, Photoshop"
                   maxLength={60}
                   required
@@ -186,7 +189,7 @@ export default function ComputerInformationAddModal({
                     setFormData((p) => ({ ...p, yetkinlik: v }));
                     validateField("yetkinlik", v);
                   }}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={`${FIELD_BASE} h-[42px]`}
                   required
                 >
                   <option value="">Seçiniz</option>

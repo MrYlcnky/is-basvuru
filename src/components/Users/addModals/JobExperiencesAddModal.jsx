@@ -4,16 +4,47 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
-import CountryCitySelect from "../Selected/CountryCitySelect";
 import { z } from "zod";
+import ScrollSelect from "../Selected/ScrollSelect";
+import MuiDateStringField from "../Date/MuiDateStringField";
 
-/* -------------------- REGEX (ESLint no-useless-escape uyumlu) -------------------- */
+/* -------------------- REGEX -------------------- */
 // Harf (TR dâhil), rakam, boşluk ve . & ( ) ' / - karakterleri
 const NAME_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.&()'/]+$/u;
 // Harf (TR dâhil), rakam, boşluk ve . , % & ( ) ' / - karakterleri
 const TEXT_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.,&()'/%]+$/u;
 
-/* -------------------- ŞEMA (prop bağımlılığı için fabrika) -------------------- */
+/* -------------------- Ülke / İl seçenekleri -------------------- */
+const TR_IL_ILCE = {
+  İstanbul: ["Kadıköy", "Üsküdar", "Beşiktaş", "Bakırköy", "Sarıyer"],
+  Ankara: ["Çankaya", "Keçiören", "Yenimahalle", "Mamak", "Sincan"],
+  İzmir: ["Konak", "Karşıyaka", "Bornova", "Buca", "Bayraklı"],
+  Çorum: ["Merkez", "Sungurlu", "Osmancık", "İskilip", "Uğurludağ"],
+  Kayseri: ["Kocasinan", "Melikgazi", "Talas", "Develi", "İncesu"],
+  Antalya: ["Muratpaşa", "Kepez", "Konyaaltı", "Alanya", "Manavgat"],
+};
+
+const COUNTRY_OPTIONS = [
+  "Türkiye",
+  "Türkmenistan",
+  "Pakistan",
+  "Azerbaycan",
+  "Kazakistan",
+  "Kırgızistan",
+  "Özbekistan",
+  "Kuzey Kıbrıs (KKTC)",
+  "Bangladeş",
+  "Rusya",
+  "Diğer",
+];
+
+const onlyLettersTR = (s) => s.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ\s]/g, "");
+
+/* -------------------- ORTAK SINIF -------------------- */
+const FIELD_BASE =
+  "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
+
+/* -------------------- ŞEMA -------------------- */
 const makeSchema = (anotherActiveExists) =>
   z
     .object({
@@ -53,15 +84,17 @@ const makeSchema = (anotherActiveExists) =>
         )
         .min(1, "Görev zorunlu.")
         .max(120, "En fazla 120 karakter."),
+      // aktifken zorunlu değil; pasifken zorunlu
       ayrilisSebebi: z
         .string()
         .trim()
+        .max(150, "En fazla 150 karakter.")
         .regex(
           TEXT_RE,
           "Ayrılış sebebi yalnızca harf, rakam, boşluk ve . , % & ( ) ' / içerebilir."
         )
-        .min(1, "Ayrılış sebebi zorunlu.")
-        .max(150, "En fazla 150 karakter."),
+        .optional()
+        .or(z.literal("")),
       ucret: z
         .string()
         .trim()
@@ -70,7 +103,6 @@ const makeSchema = (anotherActiveExists) =>
           (v) => !isNaN(Number(String(v).replace(",", "."))),
           "Ücret sayısal olmalıdır."
         ),
-      // null -> undefined çeviriyoruz ki required_error tetiklensin
       baslangicTarihi: z.preprocess(
         (v) => (v === null ? undefined : v),
         z.date({ required_error: "Başlangıç tarihi zorunlu." })
@@ -84,7 +116,6 @@ const makeSchema = (anotherActiveExists) =>
       halenCalisiyor: z.boolean(),
     })
     .superRefine((data, ctx) => {
-      // Yalnızca 1 aktif iş
       if (anotherActiveExists && data.halenCalisiyor) {
         ctx.addIssue({
           path: ["halenCalisiyor"],
@@ -93,13 +124,22 @@ const makeSchema = (anotherActiveExists) =>
             "Zaten halen çalıştığınız bir iş var. Bu kaydı aktif yapamazsınız.",
         });
       }
-      // Aktif değilse bitiş zorunlu
-      if (!data.halenCalisiyor && !data.bitisTarihi) {
-        ctx.addIssue({
-          path: ["bitisTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: "Bitiş tarihi zorunlu.",
-        });
+      // Pasif ise bitiş ve ayrılış sebebi zorunlu
+      if (!data.halenCalisiyor) {
+        if (!data.bitisTarihi) {
+          ctx.addIssue({
+            path: ["bitisTarihi"],
+            code: z.ZodIssueCode.custom,
+            message: "Bitiş tarihi zorunlu.",
+          });
+        }
+        if (!data.ayrilisSebebi || data.ayrilisSebebi.trim().length === 0) {
+          ctx.addIssue({
+            path: ["ayrilisSebebi"],
+            code: z.ZodIssueCode.custom,
+            message: "Ayrılış sebebi zorunlu.",
+          });
+        }
       }
       // Başlangıç <= Bitiş
       if (data.baslangicTarihi && data.bitisTarihi) {
@@ -139,6 +179,18 @@ export default function JobExperiencesAddModal({
     halenCalisiyor: false,
   });
 
+  /* --------- Ülke/Şehir --------- */
+  const [jobCountry, setJobCountry] = useState("Türkiye");
+  const [jobCountryOther, setJobCountryOther] = useState("");
+  const [jobProvince, setJobProvince] = useState(""); // SADECE İL (ilçe yok)
+  const [jobPlaceOther, setJobPlaceOther] = useState("");
+
+  const countryOptions = COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }));
+  const ilOptions = Object.keys(TR_IL_ILCE).map((il) => ({
+    value: il,
+    label: il,
+  }));
+
   const [errors, setErrors] = useState({});
   const [isValid, setIsValid] = useState(true);
   const [disabledTip, setDisabledTip] = useState("");
@@ -149,12 +201,53 @@ export default function JobExperiencesAddModal({
   );
   const shape = schema.shape;
 
+  const syncField = (patch) => {
+    setFormData((p) => {
+      const next = { ...p, ...patch };
+      Object.entries(patch).forEach(([name, value]) =>
+        validateOne(name, value)
+      );
+      return next;
+    });
+  };
+
+  const syncJobToForm = () => {
+    const country = jobCountry === "Diğer" ? jobCountryOther : jobCountry;
+    const city =
+      jobCountry === "Türkiye" ? jobProvince || "" : jobPlaceOther || "";
+    syncField({ isUlke: country || "", isSehir: city || "" });
+  };
+
+  const parseInitialCountryCity = (ulkeVal, sehirVal) => {
+    if (!ulkeVal) {
+      setJobCountry("Türkiye");
+      setJobCountryOther("");
+      setJobProvince("");
+      setJobPlaceOther("");
+      return;
+    }
+    if (COUNTRY_OPTIONS.includes(ulkeVal)) {
+      setJobCountry(ulkeVal);
+      setJobCountryOther("");
+    } else {
+      setJobCountry("Diğer");
+      setJobCountryOther(ulkeVal);
+    }
+    if (ulkeVal === "Türkiye") {
+      setJobProvince(sehirVal || "");
+      setJobPlaceOther("");
+    } else {
+      setJobProvince("");
+      setJobPlaceOther(sehirVal || "");
+    }
+  };
+
   // Modal reset
   useEffect(() => {
     if (!open) return;
 
     if (mode === "edit" && initialData) {
-      setFormData({
+      const next = {
         isAdi: initialData.isAdi ?? "",
         departman: initialData.departman ?? "",
         pozisyon: initialData.pozisyon ?? "",
@@ -169,7 +262,9 @@ export default function JobExperiencesAddModal({
           initialData.halenCalisiyor === true ||
           !initialData.bitisTarihi ||
           initialData.bitisTarihi === "",
-      });
+      };
+      setFormData(next);
+      parseInitialCountryCity(next.isUlke, next.isSehir);
       setErrors({});
       setIsValid(true);
       setDisabledTip("");
@@ -187,16 +282,20 @@ export default function JobExperiencesAddModal({
         isSehir: "",
         halenCalisiyor: false,
       });
+      setJobCountry("Türkiye");
+      setJobCountryOther("");
+      setJobProvince("");
+      setJobPlaceOther("");
       setErrors({});
       setIsValid(true);
       setDisabledTip("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, initialData]);
 
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
 
   /* -------------------- Doğrulayıcılar -------------------- */
-  // Sadece değişen alanı kontrol et (performans için)
   const validateOne = (name, value) => {
     if (!shape[name]) return;
     const res = shape[name].safeParse(value);
@@ -206,7 +305,6 @@ export default function JobExperiencesAddModal({
     }));
   };
 
-  // Çapraz kurallar (tarih/aktif iş) için form tamamını doğrula
   const validateCross = (nextForm) => {
     const res = schema.safeParse(nextForm);
     if (!res.success) {
@@ -225,7 +323,6 @@ export default function JobExperiencesAddModal({
   };
 
   /* -------------------- Handlers -------------------- */
-  // Metin/select alanları
   const onInput = (e) => {
     const { name, value } = e.target;
     setFormData((p) => {
@@ -235,34 +332,23 @@ export default function JobExperiencesAddModal({
     });
   };
 
-  // Tarihler
   const onDateChange = (name, value) => {
     setFormData((p) => {
       const next = { ...p, [name]: value ? toDateSafe(value) : null };
-      validateCross(next); // çapraz kurallar
+      validateCross(next);
       return next;
     });
   };
 
-  // Hâlen çalışıyorum
   const toggleHalenCalisiyor = (checked) => {
     setFormData((p) => {
       const next = {
         ...p,
         halenCalisiyor: checked,
         bitisTarihi: checked ? null : p.bitisTarihi,
+        ayrilisSebebi: checked ? "" : p.ayrilisSebebi,
       };
-      validateCross(next); // çapraz kurallar
-      return next;
-    });
-  };
-
-  // Ülke/Şehir
-  const onCountryCityChange = ({ country, city }) => {
-    setFormData((p) => {
-      const next = { ...p, isUlke: country, isSehir: city };
-      validateOne("isUlke", country);
-      validateOne("isSehir", city);
+      validateCross(next);
       return next;
     });
   };
@@ -270,6 +356,8 @@ export default function JobExperiencesAddModal({
   /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
     e.preventDefault();
+    syncJobToForm();
+
     const parsed = schema.safeParse(formData);
     if (!parsed.success) {
       const newErrs = {};
@@ -292,7 +380,7 @@ export default function JobExperiencesAddModal({
       baslangicTarihi: toISODate(d.baslangicTarihi),
       bitisTarihi:
         d.halenCalisiyor || !d.bitisTarihi ? "" : toISODate(d.bitisTarihi),
-      ayrilisSebebi: d.ayrilisSebebi.trim(),
+      ayrilisSebebi: (d.ayrilisSebebi || "").trim(),
       isUlke: d.isUlke.trim(),
       isSehir: d.isSehir.trim(),
       halenCalisiyor: !!d.halenCalisiyor,
@@ -308,7 +396,7 @@ export default function JobExperiencesAddModal({
   /* -------------------- RENDER -------------------- */
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -335,7 +423,7 @@ export default function JobExperiencesAddModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 overflow-visible">
             {/* 1. Satır: Şirket / Departman */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -348,7 +436,7 @@ export default function JobExperiencesAddModal({
                   value={formData.isAdi}
                   onChange={onInput}
                   maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: ABC Teknoloji A.Ş."
                   required
                 />
@@ -381,7 +469,7 @@ export default function JobExperiencesAddModal({
                   value={formData.departman}
                   onChange={onInput}
                   maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Yazılım"
                   required
                 />
@@ -418,7 +506,7 @@ export default function JobExperiencesAddModal({
                   value={formData.pozisyon}
                   onChange={onInput}
                   maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Full Stack Developer"
                   required
                 />
@@ -451,7 +539,7 @@ export default function JobExperiencesAddModal({
                   value={formData.gorev}
                   onChange={onInput}
                   maxLength={120}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Web geliştirme"
                   required
                 />
@@ -476,7 +564,7 @@ export default function JobExperiencesAddModal({
               </div>
             </div>
 
-            {/* 3. Satır: Ücret + Ülke/Şehir */}
+            {/* 3. Satır: Ücret + Ülke */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
@@ -487,7 +575,7 @@ export default function JobExperiencesAddModal({
                   name="ucret"
                   value={formData.ucret}
                   onChange={onInput}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: 2500"
                   required
                 />
@@ -496,29 +584,115 @@ export default function JobExperiencesAddModal({
                 )}
               </div>
 
+              {/* Ülke (İş) */}
               <div className="sm:col-span-2">
+                <label className="block text-sm text-gray-600 mb-1">
+                  Ülke (İş) *
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <CountryCitySelect
-                    countryLabel="Ülke (İş) *"
-                    cityLabel="Şehir (İş) *"
-                    countryId="jobCountry"
-                    cityId="jobCity"
-                    defaultCountry={mode === "edit" ? formData.isUlke : ""}
-                    defaultCity={mode === "edit" ? formData.isSehir : ""}
-                    countryPlaceholder="Seçiniz"
-                    cityPlaceholder="Seçiniz"
-                    onChange={onCountryCityChange}
+                  <ScrollSelect
+                    name="isUlkeSelect"
+                    value={jobCountry}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setJobCountry(v);
+                      setJobCountryOther("");
+                      setJobProvince("");
+                      setJobPlaceOther("");
+                      syncField({
+                        isUlke: v === "Diğer" ? "" : v,
+                        isSehir: "",
+                      });
+                    }}
+                    options={[
+                      { value: "", label: "Seçiniz" },
+                      ...countryOptions,
+                    ]}
+                    placeholder="Seçiniz"
+                    showError={false}
+                    className="transition-none"
+                    menuClassName="transition-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Ülke adı (Diğer)"
+                    value={jobCountryOther}
+                    onChange={(e) => {
+                      const v = onlyLettersTR(e.target.value);
+                      setJobCountryOther(v);
+                      syncJobToForm();
+                    }}
+                    disabled={jobCountry !== "Diğer"}
+                    className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                      jobCountry === "Diğer"
+                        ? "bg-white border-gray-300 text-gray-900 hover:border-black"
+                        : "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+                    }`}
                   />
                 </div>
-                {(errors.isUlke || errors.isSehir) && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.isUlke || errors.isSehir}
-                  </p>
+                {errors.isUlke && (
+                  <p className="mt-1 text-xs text-red-600">{errors.isUlke}</p>
                 )}
               </div>
             </div>
 
-            {/* 3.5 Satır: Hâlen çalışıyorum */}
+            {/* 3.5 Satır: Şehir (İl) */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                Şehir (İş) *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {jobCountry === "Türkiye" ? (
+                  <>
+                    <ScrollSelect
+                      name="isIl"
+                      value={jobProvince}
+                      onChange={(e) => {
+                        setJobProvince(e.target.value);
+                        syncJobToForm();
+                      }}
+                      options={[
+                        { value: "", label: "İl Seçiniz" },
+                        ...ilOptions,
+                      ]}
+                      placeholder="İl Seçiniz"
+                      className="transition-none"
+                      menuClassName="transition-none"
+                    />
+                    <div className="hidden sm:block" />
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="İl / Şehir"
+                      value={jobPlaceOther}
+                      onChange={(e) => {
+                        const v = onlyLettersTR(e.target.value);
+                        setJobPlaceOther(v);
+                        syncJobToForm();
+                      }}
+                      disabled={
+                        !jobCountry ||
+                        (jobCountry === "Diğer" && !jobCountryOther)
+                      }
+                      className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                        !jobCountry ||
+                        (jobCountry === "Diğer" && !jobCountryOther)
+                          ? "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+                          : "bg-white border-gray-300 text-gray-900 hover:border-black"
+                      }`}
+                    />
+                    <div className="hidden sm:block" />
+                  </>
+                )}
+              </div>
+              {errors.isSehir && (
+                <p className="mt-1 text-xs text-red-600">{errors.isSehir}</p>
+              )}
+            </div>
+
+            {/* Hâlen çalışıyorum */}
             <div className="flex items-center gap-2 pt-1">
               <input
                 id="halenCalisiyorum"
@@ -546,56 +720,76 @@ export default function JobExperiencesAddModal({
               )}
             </div>
 
-            {/* 4. Satır: Başlangıç / Bitiş */}
+            {/* 4. Satır: Başlangıç / Bitiş (MUI) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Başlangıç Tarihi *
-                </label>
-                <input
-                  type="date"
+              <div className="shadow-none">
+                <MuiDateStringField
+                  label="Başlangıç Tarihi"
+                  name="baslangicTarihi"
                   value={toISODate(formData.baslangicTarihi)}
                   onChange={(e) =>
                     onDateChange("baslangicTarihi", e.target.value)
                   }
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer [::-webkit-calendar-picker-indicator]:cursor-pointer"
                   required
+                  min="1950-01-01"
+                  max="2099-12-31"
+                  size="small"
+                  error={errors.baslangicTarihi}
+                  sx={{
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#d1d5db",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                  }}
                 />
-                {errors.baslangicTarihi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.baslangicTarihi}
-                  </p>
-                )}
               </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Bitiş Tarihi{" "}
-                  {formData.halenCalisiyor ? "(Devam ediyor)" : "*"}
-                </label>
-                <input
-                  type="date"
-                  value={toISODate(formData.bitisTarihi)}
-                  min={toISODate(formData.baslangicTarihi) || undefined}
-                  onChange={(e) => onDateChange("bitisTarihi", e.target.value)}
-                  disabled={formData.halenCalisiyor}
-                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none ${
-                    formData.halenCalisiyor
-                      ? "bg-gray-100 cursor-not-allowed opacity-70"
-                      : "cursor-pointer [::-webkit-calendar-picker-indicator]:cursor-pointer"
+              <div className="shadow-none">
+                <MuiDateStringField
+                  label={`Bitiş Tarihi ${
+                    formData.halenCalisiyor ? "(Devam ediyor)" : "*"
                   }`}
+                  name="bitisTarihi"
+                  value={toISODate(formData.bitisTarihi)}
+                  onChange={(e) => onDateChange("bitisTarihi", e.target.value)}
+                  min={toISODate(formData.baslangicTarihi) || undefined}
+                  max="2099-12-31"
+                  size="small"
+                  disabled={formData.halenCalisiyor}
+                  error={errors.bitisTarihi}
+                  sx={{
+                    // normal/hov/focus border
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#d1d5db",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+
+                    //  disable iken gri arkaplan + daha soluk yazı
+                    "& .MuiInputBase-root.Mui-disabled": {
+                      backgroundColor: "#f3f4f6",
+                    }, // tailwind gray-100
+                    "& .MuiInputBase-input.Mui-disabled": {
+                      WebkitTextFillColor: "#6b7280",
+                    }, // gray-500
+                  }}
                 />
-                {errors.bitisTarihi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.bitisTarihi}
-                  </p>
-                )}
               </div>
             </div>
 
-            {/* 5. Satır: Ayrılış Sebebi */}
+            {/* 5. Satır: Ayrılış Sebebi (aktifken disable) */}
             <div>
               <label className="block text-sm text-gray-600 mb-1">
-                Ayrılış Sebebi *
+                Ayrılış Sebebi{" "}
+                {formData.halenCalisiyor ? "(Devam ediyor)" : "*"}
               </label>
               <input
                 type="text"
@@ -603,9 +797,13 @@ export default function JobExperiencesAddModal({
                 value={formData.ayrilisSebebi}
                 onChange={onInput}
                 maxLength={150}
-                className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                disabled={formData.halenCalisiyor}
+                className={`rounded-lg px-3 py-2 focus:outline-none border ${
+                  formData.halenCalisiyor
+                    ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-70"
+                    : "bg-white border-gray-300 hover:border-black"
+                } w-full`}
                 placeholder="Örn: Eğitim / taşınma / proje bitişi..."
-                required
               />
               <div className="flex justify-between items-center mt-1">
                 {errors.ayrilisSebebi ? (
@@ -617,12 +815,12 @@ export default function JobExperiencesAddModal({
                 )}
                 <p
                   className={`text-xs ${
-                    formData.ayrilisSebebi.length >= 140
+                    (formData.ayrilisSebebi || "").length >= 140
                       ? "text-red-500"
                       : "text-gray-400"
                   }`}
                 >
-                  {formData.ayrilisSebebi.length}/150
+                  {(formData.ayrilisSebebi || "").length}/150
                 </p>
               </div>
             </div>

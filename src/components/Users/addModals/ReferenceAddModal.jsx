@@ -50,6 +50,10 @@ const refSchema = z.object({
     .regex(PHONE_RE, "Telefon numarası geçersiz. Örn: +90 5XX XXX XX XX"),
 });
 
+/* -------------------- Ortak Alan Sınıfı -------------------- */
+const FIELD_BASE =
+  "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black focus:border-black";
+
 /* -------------------- COMPONENT -------------------- */
 export default function ReferenceAddModal({
   open,
@@ -166,7 +170,7 @@ export default function ReferenceAddModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30  p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -206,7 +210,7 @@ export default function ReferenceAddModal({
                   name="calistigiKurum"
                   value={formData.calistigiKurum}
                   onChange={onInput}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={`${FIELD_BASE} h-[43px]`}
                   required
                 >
                   <option value="">Seçiniz</option>
@@ -231,7 +235,7 @@ export default function ReferenceAddModal({
                   value={formData.referansAdi}
                   onChange={onInput}
                   maxLength={50}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Mehmet"
                   required
                 />
@@ -266,7 +270,7 @@ export default function ReferenceAddModal({
                   value={formData.referansSoyadi}
                   onChange={onInput}
                   maxLength={50}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Yalçınkaya"
                   required
                 />
@@ -301,7 +305,7 @@ export default function ReferenceAddModal({
                   value={formData.referansIsYeri}
                   onChange={onInput}
                   maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: O'Brien Hotels - IT"
                   required
                 />
@@ -336,7 +340,7 @@ export default function ReferenceAddModal({
                   value={formData.referansGorevi}
                   onChange={onInput}
                   maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: Senior DevOps Engineer"
                   required
                 />
@@ -371,7 +375,7 @@ export default function ReferenceAddModal({
                   value={formData.referansTelefon}
                   onChange={onInput}
                   maxLength={20}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="+90 5XX XXX XX XX"
                   required
                 />

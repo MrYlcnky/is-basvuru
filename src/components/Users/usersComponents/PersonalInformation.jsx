@@ -1,9 +1,52 @@
+// components/Users/PersonalInformation.jsx
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { z } from "zod";
-import CountryCitySelect from "../Selected/CountryCitySelect";
-import NationalitySelect from "../Selected/NationalitySelect";
+import MuiDateStringField from "../Date/MuiDateStringField";
+import ScrollSelect from "../Selected/ScrollSelect";
 
-// Zod doğrulama şeması
+/* -------------------- Sabit Veriler -------------------- */
+const TR_IL_ILCE = {
+  İstanbul: ["Kadıköy", "Üsküdar", "Beşiktaş", "Bakırköy", "Sarıyer"],
+  Ankara: ["Çankaya", "Keçiören", "Yenimahalle", "Mamak", "Sincan"],
+  İzmir: ["Konak", "Karşıyaka", "Bornova", "Buca", "Bayraklı"],
+  Çorum: ["Merkez", "Sungurlu", "Osmancık", "İskilip", "Uğurludağ"],
+  Kayseri: ["Kocasinan", "Melikgazi", "Talas", "Develi", "İncesu"],
+  Antalya: ["Muratpaşa", "Kepez", "Konyaaltı", "Alanya", "Manavgat"],
+};
+
+const COUNTRY_OPTIONS = [
+  "Türkiye",
+  "Türkmenistan",
+  "Pakistan",
+  "Azerbaycan",
+  "Kazakistan",
+  "Kırgızistan",
+  "Özbekistan",
+  "Kuzey Kıbrıs (KKTC)",
+  "Bangladeş",
+  "Rusya",
+  "Diğer",
+];
+
+// Ülke -> Uyruk eşleşmesi (select’te göstereceğiz)
+const NATIONALITY_MAP = {
+  Türkiye: "Türk",
+  Türkmenistan: "Türkmen",
+  Pakistan: "Pakistanlı",
+  Azerbaycan: "Azerbaycanlı",
+  Kazakistan: "Kazak",
+  Kırgızistan: "Kırgız",
+  Özbekistan: "Özbek",
+  "Kuzey Kıbrıs (KKTC)": "Kıbrıslı Türk",
+  Bangladeş: "Bangladeşli",
+  Rusya: "Rus",
+  Diğer: "Diğer",
+};
+
+/* -------------------- Yardımcı -------------------- */
+const onlyLettersTR = (s) => s.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ\s]/g, "");
+
+/* -------------------- Zod Şema -------------------- */
 const schema = z.object({
   ad: z
     .string()
@@ -19,7 +62,7 @@ const schema = z.object({
   telefon: z
     .string()
     .min(1, "Telefon gerekli")
-    .transform((v) => v.replace(/[\s()-]/g, "")) // boşluk, parantez, tire temizle
+    .transform((v) => v.replace(/[\s()-]/g, ""))
     .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
       message: "Telefon numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX).",
     }),
@@ -46,19 +89,26 @@ const schema = z.object({
       const today = new Date();
       return d >= min && d <= today;
     }, "Doğum tarihi 1950'den önce veya bugünden ileri olamaz")
-    .refine((d) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const cutoff = new Date(
-        today.getFullYear() - 15,
-        today.getMonth(),
-        today.getDate()
-      );
-      return d <= cutoff; // en az 15 yaş
+    .refine((date) => {
+      const d = new Date(date + "T00:00:00");
+      if (Number.isNaN(d.getTime())) return false;
+      const yBirth = d.getFullYear();
+      const now = new Date();
+      const yNow = now.getFullYear();
+      const yearDiff = yNow - yBirth;
+      return yearDiff >= 15;
     }, "En az 15 yaşında olmalısınız."),
   cocukSayisi: z.string().optional(),
+
+  dogumUlke: z.string().min(1, "Doğum ülkesi zorunlu"),
+  dogumSehir: z.string().min(1, "Doğum yeri (İl/İlçe) zorunlu"),
+  ikametUlke: z.string().min(1, "Yaşadığı ülke zorunlu"),
+  ikametSehir: z.string().min(1, "Yaşadığı şehir (İl/İlçe) zorunlu"),
+
+  uyruk: z.string().min(1, "Uyruğu seçiniz"),
 });
 
+/* -------------------- Bileşen -------------------- */
 const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
   const [formData, setFormData] = useState({
     ad: "",
@@ -73,16 +123,121 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
     uyruk: "",
     cocukSayisi: "",
     foto: null,
+
+    dogumUlke: "Türkiye",
+    dogumSehir: "",
+    ikametUlke: "Türkiye",
+    ikametSehir: "",
   });
 
   const [errors, setErrors] = useState({});
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoError, setFotoError] = useState("");
-  const [, setDogumYeri] = useState({ country: "", city: "" });
-  const [, setIkamet] = useState({ country: "", city: "" });
-  const [, setUyruk] = useState("");
 
-  // Zod doğrulaması
+  /* ---------- Doğum ---------- */
+  const [birthCountry, setBirthCountry] = useState("Türkiye");
+  const [birthCountryOther, setBirthCountryOther] = useState("");
+  const [birthProvince, setBirthProvince] = useState("");
+  const [birthDistrict, setBirthDistrict] = useState("");
+  const [birthPlaceOther, setBirthPlaceOther] = useState("");
+
+  /* ---------- İkamet ---------- */
+  const [resCountry, setResCountry] = useState("Türkiye");
+  const [resCountryOther, setResCountryOther] = useState("");
+  const [resProvince, setResProvince] = useState("");
+  const [resDistrict, setResDistrict] = useState("");
+  const [resPlaceOther, setResPlaceOther] = useState("");
+
+  /* ---------- Uyruk ---------- */
+  const NATIONALITY_OPTIONS = Object.values(NATIONALITY_MAP);
+  const [nationalitySel, setNationalitySel] = useState("");
+  const [nationalityOther, setNationalityOther] = useState("");
+
+  const syncField = (patch) => {
+    setFormData((p) => ({ ...p, ...patch }));
+    Object.entries(patch).forEach(([k, v]) => validateField(k, v));
+  };
+
+  const syncBirthToForm = () => {
+    const country = birthCountry === "Diğer" ? birthCountryOther : birthCountry;
+    const city =
+      birthCountry === "Türkiye"
+        ? (birthProvince &&
+            birthDistrict &&
+            `${birthProvince}/${birthDistrict}`) ||
+          birthProvince ||
+          ""
+        : birthPlaceOther || "";
+    syncField({ dogumUlke: country || "", dogumSehir: city || "" });
+  };
+
+  const syncResToForm = () => {
+    const country = resCountry === "Diğer" ? resCountryOther : resCountry;
+    const city =
+      resCountry === "Türkiye"
+        ? (resProvince && resDistrict && `${resProvince}/${resDistrict}`) ||
+          resProvince ||
+          ""
+        : resPlaceOther || "";
+    syncField({ ikametUlke: country || "", ikametSehir: city || "" });
+  };
+
+  const syncNationalityToForm = (
+    sel = nationalitySel,
+    other = nationalityOther
+  ) => {
+    const val = sel === "Diğer" ? other || "" : sel || "";
+    syncField({ uyruk: val });
+  };
+
+  /* -------------------- Fotoğraf -------------------- */
+  const handleFotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFotoError("Lütfen yalnızca JPG veya PNG dosyası yükleyiniz");
+      setFormData((p) => ({ ...p, foto: null }));
+      setFotoPreview(null);
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setFotoError("Fotoğraf boyutu 2 MB'den küçük olmalıdır");
+      setFormData((p) => ({ ...p, foto: null }));
+      setFotoPreview(null);
+      return;
+    }
+    setFotoError("");
+    setFormData((prev) => ({ ...prev, foto: file }));
+    const reader = new FileReader();
+    reader.onloadend = () => setFotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  /* -------------------- Ref API -------------------- */
+  useImperativeHandle(ref, () => ({
+    isValid: () => {
+      const result = schema.safeParse(formData);
+      const newErrors = {};
+      if (!result.success) {
+        result.error.issues.forEach((i) => {
+          newErrors[i.path[0]] = i.message;
+        });
+        setErrors(newErrors);
+      }
+      const fotoValid = !!formData.foto;
+      if (!fotoValid && !fotoError)
+        setFotoError("Zorunlu alan, lütfen vesikalık yükleyiniz");
+      return result.success && fotoValid;
+    },
+  }));
+
+  /* -------------------- Generic change -------------------- */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    validateField(name, value);
+  };
+
   const validateField = (name, value) => {
     const result = schema.safeParse({ ...formData, [name]: value });
     if (!result.success) {
@@ -96,66 +251,36 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
     }
   };
 
-  // Fotoğraf yükleme işlemi
-  const handleFotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setFotoError("Lütfen yalnızca JPG veya PNG dosyası yükleyiniz");
-      setFormData((p) => ({ ...p, foto: null }));
-      setFotoPreview(null);
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      setFotoError("Fotoğraf boyutu 2 MB'den küçük olmalıdır");
-      setFormData((p) => ({ ...p, foto: null }));
-      setFotoPreview(null);
-      return;
-    }
-
-    setFotoError("");
-    setFormData((prev) => ({ ...prev, foto: file }));
-
-    const reader = new FileReader();
-    reader.onloadend = () => setFotoPreview(reader.result);
-    reader.readAsDataURL(file);
-  };
-
-  // Ref ile dışarıdan kontrol fonksiyonu
-  useImperativeHandle(ref, () => ({
-    isValid: () => {
-      const result = schema.safeParse(formData);
-      const newErrors = {};
-
-      if (!result.success) {
-        result.error.issues.forEach((i) => {
-          newErrors[i.path[0]] = i.message;
-        });
-        setErrors(newErrors);
-      }
-
-      const fotoValid = !!formData.foto;
-      if (!fotoValid && !fotoError)
-        setFotoError("Zorunlu alan, lütfen vesikalık yükleyiniz");
-
-      return result.success && fotoValid;
-    },
+  /* -------------------- Options Helpers -------------------- */
+  const countryOptions = COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }));
+  const genderOptions = [
+    { value: "", label: "Seçiniz" },
+    { value: "Kadın", label: "Kadın" },
+    { value: "Erkek", label: "Erkek" },
+  ];
+  const maritalOptions = [
+    { value: "", label: "Seçiniz" },
+    { value: "Bekâr", label: "Bekâr" },
+    { value: "Evli", label: "Evli" },
+    { value: "Boşanmış", label: "Boşanmış" },
+    { value: "Dul", label: "Dul" },
+  ];
+  const childOptions = [...Array(8)].map((_, i) => ({
+    value: i === 7 ? "7+" : String(i),
+    label: i === 7 ? "Daha Fazla" : String(i),
   }));
-
-  // Her değişiklikte anlık doğrulama
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    validateField(name, value);
-  };
+  const ilOptions = Object.keys(TR_IL_ILCE).map((il) => ({
+    value: il,
+    label: il,
+  }));
+  const ilceOptions = (il) =>
+    (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }));
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Vesikalık Fotoğraf Alanı */}
-        <div className="flex flex-col sm:flex-row items-start gap-6 ">
+        {/* --- Foto --- */}
+        <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative w-32 h-32 rounded-lg overflow-hidden border-4 border-gray-300 bg-gray-100 shadow-md flex items-center justify-center">
             {fotoPreview ? (
               <img
@@ -169,7 +294,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
               </span>
             )}
           </div>
-
           <div className="flex flex-col">
             <label
               htmlFor="foto"
@@ -177,7 +301,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
             >
               Vesikalık Fotoğraf <span className="text-red-500">*</span>
             </label>
-
             <div className="flex items-center gap-3">
               <label
                 htmlFor="foto"
@@ -193,7 +316,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
                 className="hidden"
               />
             </div>
-
             {fotoError && (
               <p className="text-xs text-red-600 mt-1 font-medium">
                 {fotoError}
@@ -207,6 +329,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           </div>
         </div>
 
+        {/* Ad / Soyad */}
         <InputField
           label="Ad"
           name="ad"
@@ -216,7 +339,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           error={errors.ad}
           max={30}
         />
-
         <InputField
           label="Soyad"
           name="soyad"
@@ -227,6 +349,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           max={30}
         />
 
+        {/* E-posta / Telefon / WhatsApp */}
         <InputField
           label="E-posta"
           name="eposta"
@@ -236,7 +359,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           onChange={handleChange}
           error={errors.eposta}
         />
-
         <InputField
           label="Telefon"
           name="telefon"
@@ -246,7 +368,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           onChange={handleChange}
           error={errors.telefon}
         />
-
         <InputField
           label="WhatsApp Telefon"
           name="whatsapp"
@@ -257,6 +378,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           error={errors.whatsapp}
         />
 
+        {/* Adres */}
         <InputField
           label="Adres"
           name="adres"
@@ -266,87 +388,349 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
           error={errors.adres}
           max={90}
         />
+        {/* Doğum Tarihi (MUI) */}
+        <div className="shadow-none outline-none">
+          <MuiDateStringField
+            label="Doğum Tarihi"
+            name="dogumTarihi"
+            value={formData.dogumTarihi}
+            onChange={handleChange}
+            required
+            error={errors.dogumTarihi}
+            min="1950-01-01"
+            max="2025-12-31"
+            size="small"
+          />
+        </div>
 
-        <SelectField
+        {/* Cinsiyet / Medeni Durum (ScrollSelect) */}
+        <ScrollSelect
           label="Cinsiyet"
           name="cinsiyet"
           value={formData.cinsiyet}
-          options={[
-            { value: "", label: "Seçiniz" },
-            { value: "Kadın", label: "Kadın" },
-            { value: "Erkek", label: "Erkek" },
-          ]}
+          options={genderOptions}
           onChange={handleChange}
           error={errors.cinsiyet}
         />
-
-        <SelectField
+        <ScrollSelect
           label="Medeni Durum"
           name="medeniDurum"
           value={formData.medeniDurum}
-          options={[
-            { value: "", label: "Seçiniz" },
-            { value: "Bekâr", label: "Bekâr" },
-            { value: "Evli", label: "Evli" },
-            { value: "Boşanmış", label: "Boşanmış" },
-            { value: "Dul", label: "Dul" },
-          ]}
+          options={maritalOptions}
           onChange={handleChange}
           error={errors.medeniDurum}
         />
 
-        <InputField
-          label="Doğum Tarihi"
-          name="dogumTarihi"
-          type="date"
-          value={formData.dogumTarihi}
-          onChange={handleChange}
-          error={errors.dogumTarihi}
-        />
-
-        <CountryCitySelect
-          countryLabel="Ülke (Doğum)"
-          cityLabel="Şehir (Doğum Yeri)"
-          countryId="dogumUlke"
-          cityId="dogumSehir"
-          onChange={setDogumYeri}
-          required
-        />
-
-        <CountryCitySelect
-          countryLabel="Yaşadığı Ülke"
-          cityLabel="Yaşadığı Şehir"
-          countryId="ikametUlke"
-          cityId="ikametSehir"
-          onChange={setIkamet}
-          required
-        />
-
-        <NationalitySelect
-          label="Uyruğu"
-          id="uyruk"
-          name="uyruk"
-          defaultValue=""
-          onChange={setUyruk}
-          required
-        />
-
-        <SelectField
+        {/* Çocuk Sayısı (ScrollSelect) */}
+        <ScrollSelect
           label="Çocuk Sayısı"
           name="cocukSayisi"
           value={formData.cocukSayisi}
-          options={[...Array(8)].map((_, i) => ({
-            value: i === 7 ? "7+" : i,
-            label: i === 7 ? "Daha Fazla" : i.toString(),
-          }))}
           onChange={handleChange}
+          options={childOptions}
           error={errors.cocukSayisi}
         />
+
+        {/* -------------------- UYRUĞU (ScrollSelect + Diğer input) -------------------- */}
+        <div className="lg:col-span-1 mt-1">
+          <label className="block text-sm font-bold text-gray-700 ">
+            Uyruğu <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Sol: ScrollSelect */}
+            <ScrollSelect
+              name="uyrukSelect"
+              value={nationalitySel}
+              onChange={(e) => {
+                const v = e.target.value;
+                setNationalitySel(v);
+                if (v !== "Diğer") setNationalityOther("");
+                syncNationalityToForm(v, v === "Diğer" ? nationalityOther : "");
+              }}
+              options={[
+                { value: "", label: "Seçiniz" },
+                ...Object.values(NATIONALITY_MAP).map((n) => ({
+                  value: n,
+                  label: n,
+                })),
+              ]}
+              placeholder="Seçiniz"
+            />
+
+            {/* Sağ: “Diğer” input (sadece Diğer seçiliyse aktif) */}
+            <input
+              type="text"
+              placeholder="Uyruğu (Diğer)"
+              value={nationalityOther}
+              onChange={(e) => {
+                const v = onlyLettersTR(e.target.value);
+                setNationalityOther(v);
+                syncNationalityToForm("Diğer", v);
+              }}
+              disabled={nationalitySel !== "Diğer"}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                nationalitySel === "Diğer"
+                  ? "bg-white border-gray-300 text-gray-900 hover:border-black"
+                  : "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+              }`}
+            />
+          </div>
+          {errors.uyruk && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.uyruk}
+            </p>
+          )}
+        </div>
+
+        {/* Ülke (Doğum) */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            Ülke (Doğum) <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ScrollSelect
+              name="dogumUlke"
+              value={birthCountry}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBirthCountry(v);
+                setBirthCountryOther("");
+                setBirthProvince("");
+                setBirthDistrict("");
+                setBirthPlaceOther("");
+                syncField({
+                  dogumUlke: v === "Diğer" ? "" : v,
+                  dogumSehir: "",
+                });
+              }}
+              options={[{ value: "", label: "Seçiniz" }, ...countryOptions]}
+              placeholder="Seçiniz"
+              error={errors.dogumUlke}
+              showError={false}
+            />
+
+            <input
+              type="text"
+              placeholder="Ülke adı (Diğer)"
+              value={birthCountryOther}
+              onChange={(e) => {
+                const v = onlyLettersTR(e.target.value);
+                setBirthCountryOther(v);
+                syncBirthToForm();
+              }}
+              disabled={birthCountry !== "Diğer"}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                birthCountry === "Diğer"
+                  ? "bg-white border-gray-300 text-gray-900 hover:border-black"
+                  : "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+              }`}
+            />
+          </div>
+          {errors.dogumUlke && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.dogumUlke}
+            </p>
+          )}
+        </div>
+
+        {/* Şehir (Doğum Yeri) */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            Şehir (Doğum Yeri) <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {birthCountry === "Türkiye" ? (
+              <>
+                <ScrollSelect
+                  name="dogumIl"
+                  value={birthProvince}
+                  onChange={(e) => {
+                    setBirthProvince(e.target.value);
+                    setBirthDistrict("");
+                    syncBirthToForm();
+                  }}
+                  options={[{ value: "", label: "İl Seçiniz" }, ...ilOptions]}
+                  placeholder="İl Seçiniz"
+                />
+
+                <ScrollSelect
+                  name="dogumIlce"
+                  value={birthDistrict}
+                  onChange={(e) => {
+                    setBirthDistrict(e.target.value);
+                    syncBirthToForm();
+                  }}
+                  options={[
+                    {
+                      value: "",
+                      label: birthProvince ? "İlçe Seçiniz" : "Önce il seçiniz",
+                    },
+                    ...(birthProvince ? ilceOptions(birthProvince) : []),
+                  ]}
+                  placeholder={
+                    birthProvince ? "İlçe Seçiniz" : "Önce il seçiniz"
+                  }
+                  disabled={!birthProvince}
+                />
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="İl / İlçe"
+                  value={birthPlaceOther}
+                  onChange={(e) => {
+                    const v = onlyLettersTR(e.target.value);
+                    setBirthPlaceOther(v);
+                    syncBirthToForm();
+                  }}
+                  disabled={
+                    !birthCountry ||
+                    (birthCountry === "Diğer" && !birthCountryOther)
+                  }
+                  className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                    !birthCountry ||
+                    (birthCountry === "Diğer" && !birthCountryOther)
+                      ? "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+                      : "bg-white border-gray-300 text-gray-900 hover:border-black"
+                  }`}
+                />
+                <div className="hidden sm:block" />
+              </>
+            )}
+          </div>
+          {errors.dogumSehir && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.dogumSehir}
+            </p>
+          )}
+        </div>
+
+        {/* Yaşadığı Ülke */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            Yaşadığı Ülke <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ScrollSelect
+              name="ikametUlke"
+              value={resCountry}
+              onChange={(e) => {
+                const v = e.target.value;
+                setResCountry(v);
+                setResCountryOther("");
+                setResProvince("");
+                setResDistrict("");
+                setResPlaceOther("");
+                syncField({
+                  ikametUlke: v === "Diğer" ? "" : v,
+                  ikametSehir: "",
+                });
+              }}
+              options={[{ value: "", label: "Seçiniz" }, ...countryOptions]}
+              placeholder="Seçiniz"
+              error={errors.ikametUlke}
+              showError={false}
+            />
+
+            <input
+              type="text"
+              placeholder="Ülke adı (Diğer)"
+              value={resCountryOther}
+              onChange={(e) => {
+                const v = onlyLettersTR(e.target.value);
+                setResCountryOther(v);
+                syncResToForm();
+              }}
+              disabled={resCountry !== "Diğer"}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                resCountry === "Diğer"
+                  ? "bg-white border-gray-300 text-gray-900 hover:border-black"
+                  : "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+              }`}
+            />
+          </div>
+          {errors.ikametUlke && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.ikametUlke}
+            </p>
+          )}
+        </div>
+
+        {/* Yaşadığı Şehir */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            Yaşadığı Şehir <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {resCountry === "Türkiye" ? (
+              <>
+                <ScrollSelect
+                  name="ikametIl"
+                  value={resProvince}
+                  onChange={(e) => {
+                    setResProvince(e.target.value);
+                    setResDistrict("");
+                    syncResToForm();
+                  }}
+                  options={[{ value: "", label: "İl Seçiniz" }, ...ilOptions]}
+                  placeholder="İl Seçiniz"
+                />
+
+                <ScrollSelect
+                  name="ikametIlce"
+                  value={resDistrict}
+                  onChange={(e) => {
+                    setResDistrict(e.target.value);
+                    syncResToForm();
+                  }}
+                  options={[
+                    {
+                      value: "",
+                      label: resProvince ? "İlçe Seçiniz" : "Önce il seçiniz",
+                    },
+                    ...(resProvince ? ilceOptions(resProvince) : []),
+                  ]}
+                  placeholder={resProvince ? "İlçe Seçiniz" : "Önce il seçiniz"}
+                  disabled={!resProvince}
+                />
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="İl / İlçe"
+                  value={resPlaceOther}
+                  onChange={(e) => {
+                    const v = onlyLettersTR(e.target.value);
+                    setResPlaceOther(v);
+                    syncResToForm();
+                  }}
+                  disabled={
+                    !resCountry || (resCountry === "Diğer" && !resCountryOther)
+                  }
+                  className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                    !resCountry || (resCountry === "Diğer" && !resCountryOther)
+                      ? "bg-gray-200 border-gray-300 text-gray-500 disabled:cursor-not-allowed"
+                      : "bg-white border-gray-300 text-gray-900 hover:border-black"
+                  }`}
+                />
+                <div className="hidden sm:block" />
+              </>
+            )}
+          </div>
+          {errors.ikametSehir && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.ikametSehir}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 });
 
+/* -------------------- Alt Bileşenler -------------------- */
 function InputField({
   label,
   name,
@@ -355,16 +739,14 @@ function InputField({
   placeholder,
   onChange,
   error,
-  max, // <-- SADECE sayaç için eklendi
+  max,
 }) {
   const length = typeof value === "string" ? value.length : 0;
-
   return (
-    <div>
+    <div className="mt-0.5">
       <label htmlFor={name} className="block text-sm font-bold text-gray-700">
         {label} <span className="text-red-500">*</span>
       </label>
-
       <input
         type={type}
         id={name}
@@ -372,11 +754,14 @@ function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
+        className={`block w-full h-[43px] rounded-lg border mt-0.5 px-3 py-2 bg-white text-gray-900 focus:outline-none transition ${
+          error
+            ? "border-red-500 hover:border-red-500"
+            : "border-gray-300 hover:border-black"
+        }`}
       />
-
       {typeof max === "number" ? (
-        <div className="flex justify-between items-center mt-1">
+        <div className="mt-1 flex items-center justify-between">
           {error ? (
             <p className="text-xs text-red-600 font-medium">{error}</p>
           ) : (
@@ -394,35 +779,6 @@ function InputField({
         error && (
           <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
         )
-      )}
-    </div>
-  );
-}
-
-function SelectField({ label, name, value, options, onChange, error }) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-bold text-gray-700 mb-1"
-      >
-        {label} <span className="text-red-500">*</span>
-      </label>
-      <select
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="block w-full h-[43px] rounded-lg border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:outline-none transition"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="text-xs text-red-600 mt-1 font-medium">{error}</p>
       )}
     </div>
   );

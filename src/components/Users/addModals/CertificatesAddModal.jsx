@@ -5,9 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
+import MuiDateStringField from "../Date/MuiDateStringField";
 
 /* -------------------- Regex -------------------- */
 const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
+
+/* -------------------- Input base (hover: black) -------------------- */
+const FIELD_BASE =
+  "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
 
 /* -------------------- ZOD ŞEMASI -------------------- */
 const certSchema = z
@@ -192,11 +197,17 @@ export default function CertificatesAddModal({
     );
   };
 
+  const toStr = (d) => (typeof d === "string" ? d : d ? toISODate(d) : "");
+
+  // MUI onChange: string (YYYY-MM-DD) gelir → formda saklamak için handleChange'e pasla
+  const handleMuiString = ({ target: { name, value } }) =>
+    handleChange(name, value || null);
+
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -236,7 +247,7 @@ export default function CertificatesAddModal({
                   value={formData.ad}
                   maxLength={100}
                   onChange={(e) => handleChange("ad", e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: React Bootcamp"
                 />
                 <div className="flex justify-between mt-1">
@@ -259,7 +270,7 @@ export default function CertificatesAddModal({
                   value={formData.kurum}
                   maxLength={100}
                   onChange={(e) => handleChange("kurum", e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: BTK Akademi"
                 />
                 <div className="flex justify-between mt-1">
@@ -285,7 +296,7 @@ export default function CertificatesAddModal({
                   value={formData.sure}
                   maxLength={50}
                   onChange={(e) => handleChange("sure", e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={FIELD_BASE}
                   placeholder="Örn: 3 Ay"
                 />
                 <div className="flex justify-between mt-1">
@@ -300,51 +311,52 @@ export default function CertificatesAddModal({
 
               {/* Veriliş Tarihi */}
               <div className="sm:col-span-2">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Veriliş Tarihi *
-                </label>
-                <input
-                  type="date"
-                  value={toISODate(formData.verilisTarihi)}
-                  onChange={(e) =>
-                    handleChange(
-                      "verilisTarihi",
-                      e.target.value ? toDateSafe(e.target.value) : null
-                    )
-                  }
+                <MuiDateStringField
+                  label="Veriliş Tarihi"
+                  name="verilisTarihi"
+                  value={toStr(formData.verilisTarihi)}
+                  onChange={handleMuiString}
+                  required
+                  error={errors.verilisTarihi}
+                  min="1950-01-01"
                   max={todayISO}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
+                  sx={{
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#d1d5db",
+                    },
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "black",
+                    },
+                  }}
                 />
-                {errors.verilisTarihi && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.verilisTarihi}
-                  </p>
-                )}
               </div>
             </div>
 
             {/* Geçerlilik Tarihi */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-gray-600 mb-1">
-                Geçerlilik Tarihi (Opsiyonel)
-              </label>
-              <input
-                type="date"
-                value={toISODate(formData.gecerlilikTarihi)}
-                onChange={(e) =>
-                  handleChange(
-                    "gecerlilikTarihi",
-                    e.target.value ? toDateSafe(e.target.value) : null
-                  )
-                }
-                min={toISODate(formData.verilisTarihi) || undefined}
-                className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
+              <MuiDateStringField
+                label="Geçerlilik Tarihi (Opsiyonel)"
+                name="gecerlilikTarihi"
+                value={toStr(formData.gecerlilikTarihi)}
+                onChange={handleMuiString}
+                required={false}
+                error={errors.gecerlilikTarihi}
+                min={toStr(formData.verilisTarihi) || undefined}
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#d1d5db",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "black",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "black",
+                  },
+                }}
               />
-              {errors.gecerlilikTarihi && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.gecerlilikTarihi}
-                </p>
-              )}
             </div>
           </div>
 

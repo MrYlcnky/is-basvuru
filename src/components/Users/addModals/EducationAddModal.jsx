@@ -4,9 +4,27 @@ import { z } from "zod";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
-import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
+import { toDateSafe, toISODate } from "../modalHooks/dateUtils"; // yolunu kendi projene göre düzelt
+import MuiDateStringField from "../Date/MuiDateStringField";
 
-/* -------------------- ZOD ŞEMASI -------------------- */
+/* -------------------- Yardımcı -------------------- */
+const isValidISODate = (s) => {
+  if (!s) return false;
+  const d = new Date(s + "T00:00:00");
+  return !Number.isNaN(d.getTime());
+};
+const toDate = (s) => (s ? new Date(s + "T00:00:00") : null);
+
+/* -------------------- Ortak Alan Sınıfları -------------------- */
+const BASE_FIELD =
+  "w-full rounded-lg border px-3 py-2 transition border-gray-300 hover:border-black focus:outline-none";
+const BASE_SELECT =
+  "w-full h-[43px] rounded-lg border px-3 py-2 transition border-gray-300 hover:border-black focus:outline-none cursor-pointer";
+
+/* -------------------- ZOD ŞEMASI (tarihler string) -------------------- */
+/* BİTİŞ TARİHİ KURALI:
+   - Mezun veya Ara Verdi => bitiş ZORUNLU
+   - Devam veya Terk       => bitiş İSTENMEZ (UI’de disable, şemada da gereksiz) */
 const eduSchema = z
   .object({
     seviye: z.string().min(1, "Seviye zorunlu."),
@@ -24,7 +42,7 @@ const eduSchema = z
       .trim()
       .regex(
         /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-        "Okul yalnızca harflerden ve rakamlardan oluşmalı"
+        "Bölüm yalnızca harf ve rakam içermeli"
       )
       .min(5, "Bölüm adı zorunlu.")
       .max(100, "Bölüm adı 150 karakteri geçemez."),
@@ -37,8 +55,8 @@ const eduSchema = z
       .refine((v) => v === "" || (!isNaN(v) && Number(v) >= 0), {
         message: "Geçerli bir sayı giriniz",
       }),
-    baslangic: z.date({ required_error: "Başlangıç tarihi zorunlu." }),
-    bitis: z.date({ required_error: "Bitiş tarihi zorunlu." }),
+    baslangic: z.string().min(1, "Başlangıç tarihi zorunlu."),
+    bitis: z.string().optional().default(""), // zorunluluk diplomaDurum’a göre superRefine’de
     diplomaDurum: z
       .string()
       .min(1, "Diploma durumu zorunlu.")
@@ -48,51 +66,79 @@ const eduSchema = z
       ),
   })
   .superRefine((data, ctx) => {
+    // Başlangıç kontrolleri
+    if (!isValidISODate(data.baslangic)) {
+      ctx.addIssue({
+        path: ["baslangic"],
+        code: z.ZodIssueCode.custom,
+        message: "Başlangıç tarihi geçersiz.",
+      });
+      return;
+    }
+    const start = toDate(data.baslangic);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    // Tarihler kontrol
-    if (data.baslangic && data.bitis) {
-      // aynı gün kontrolü
-      if (
-        data.baslangic.getFullYear() === data.bitis.getFullYear() &&
-        data.baslangic.getMonth() === data.bitis.getMonth() &&
-        data.baslangic.getDate() === data.bitis.getDate()
-      ) {
-        ctx.addIssue({
-          path: ["bitis"],
-          code: z.ZodIssueCode.custom,
-          message: "Başlangıç ve bitiş aynı gün olamaz.",
-        });
-      }
-
-      // bitiş < başlangıç
-      if (data.bitis.getTime() < data.baslangic.getTime()) {
-        ctx.addIssue({
-          path: ["bitis"],
-          code: z.ZodIssueCode.custom,
-          message: "Bitiş, başlangıçtan önce olamaz.",
-        });
-      }
-    }
-
-    // bugünden ileri olamaz
-    if (data.baslangic > today) {
+    if (start > today) {
       ctx.addIssue({
         path: ["baslangic"],
         code: z.ZodIssueCode.custom,
         message: "Başlangıç tarihi bugünden ileri olamaz.",
       });
     }
-    if (data.bitis > today) {
-      ctx.addIssue({
-        path: ["bitis"],
-        code: z.ZodIssueCode.custom,
-        message: "Bitiş tarihi bugünden ileri olamaz.",
-      });
+
+    const requiresEnd = ["Mezun", "Ara Verdi"].includes(data.diplomaDurum);
+
+    // Bitiş gerektiren durumlar
+    if (requiresEnd) {
+      if (!data.bitis || data.bitis.trim() === "") {
+        ctx.addIssue({
+          path: ["bitis"],
+          code: z.ZodIssueCode.custom,
+          message: "Bitiş tarihi zorunlu.",
+        });
+        return;
+      }
+      if (!isValidISODate(data.bitis)) {
+        ctx.addIssue({
+          path: ["bitis"],
+          code: z.ZodIssueCode.custom,
+          message: "Bitiş tarihi geçersiz.",
+        });
+        return;
+      }
+      const end = toDate(data.bitis);
+
+      if (end > today) {
+        ctx.addIssue({
+          path: ["bitis"],
+          code: z.ZodIssueCode.custom,
+          message: "Bitiş tarihi bugünden ileri olamaz.",
+        });
+      }
+      if (start && end) {
+        if (
+          start.getFullYear() === end.getFullYear() &&
+          start.getMonth() === end.getMonth() &&
+          start.getDate() === end.getDate()
+        ) {
+          ctx.addIssue({
+            path: ["bitis"],
+            code: z.ZodIssueCode.custom,
+            message: "Başlangıç ve bitiş aynı gün olamaz.",
+          });
+        }
+        if (end.getTime() < start.getTime()) {
+          ctx.addIssue({
+            path: ["bitis"],
+            code: z.ZodIssueCode.custom,
+            message: "Bitiş, başlangıçtan önce olamaz.",
+          });
+        }
+      }
     }
 
-    // GANO kontrol
+    // GANO kontrolleri
     if (data.gano && data.gano !== "") {
       const n = Number(data.gano);
       const max = data.notSistemi === "100" ? 100 : 4;
@@ -133,20 +179,18 @@ export default function EducationAddModal({
     bolum: "",
     notSistemi: "4",
     gano: "",
-    baslangic: null,
-    bitis: null,
+    baslangic: "",
+    bitis: "",
     diplomaDurum: "",
   });
   const [errors, setErrors] = useState({});
 
-  // tarih sınırı (bugün)
   const today = useMemo(() => {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
   }, []);
   const todayISO = toISODate(today);
 
-  // modal reset
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -159,10 +203,15 @@ export default function EducationAddModal({
           initialData.gano === null || initialData.gano === undefined
             ? ""
             : String(initialData.gano),
-        baslangic: toDateSafe(initialData.baslangic),
-        bitis: toDateSafe(initialData.bitis),
+        baslangic: initialData.baslangic
+          ? toISODate(toDateSafe(initialData.baslangic))
+          : "",
+        bitis: initialData.bitis
+          ? toISODate(toDateSafe(initialData.bitis))
+          : "",
         diplomaDurum: initialData.diplomaDurum ?? "",
       });
+      setErrors({});
     } else {
       setFormData({
         seviye: "",
@@ -170,8 +219,8 @@ export default function EducationAddModal({
         bolum: "",
         notSistemi: "4",
         gano: "",
-        baslangic: null,
-        bitis: null,
+        baslangic: "",
+        bitis: "",
         diplomaDurum: "",
       });
       setErrors({});
@@ -180,30 +229,35 @@ export default function EducationAddModal({
 
   const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
 
-  // alan değişimi
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const next = { ...formData, [name]: value };
-    setFormData(next);
+    let next = { ...formData, [name]: value };
 
-    const parsed = eduSchema.safeParse(next);
-    if (!parsed.success) {
-      const issue = parsed.error.issues.find((i) => i.path[0] === name);
-      setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
-    } else {
-      setErrors((p) => ({ ...p, [name]: "" }));
+    // Diploma durumu Devam/Terk → bitişi temizle ve disable edeceğiz
+    if (name === "diplomaDurum") {
+      if (value === "Devam" || value === "Terk") {
+        next.bitis = "";
+        setErrors((p) => ({ ...p, bitis: "" }));
+      }
     }
-  };
 
-  const handleDateChange = (name, value) => {
-    const next = { ...formData, [name]: value ? toDateSafe(value) : null };
     setFormData(next);
+
     const parsed = eduSchema.safeParse(next);
     if (!parsed.success) {
-      const issue = parsed.error.issues.find((i) => i.path[0] === name);
-      setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
+      const issue =
+        parsed.error.issues.find((i) => i.path[0] === name) ||
+        (name === "diplomaDurum" &&
+          parsed.error.issues.find((i) => i.path[0] === "bitis"));
+      setErrors((p) => ({
+        ...p,
+        [issue?.path?.[0] || name]: issue ? issue.message : "",
+      }));
     } else {
       setErrors((p) => ({ ...p, [name]: "" }));
+      if (name === "diplomaDurum") {
+        setErrors((p) => ({ ...p, bitis: "" }));
+      }
     }
   };
 
@@ -222,7 +276,19 @@ export default function EducationAddModal({
       return;
     }
 
-    const payload = parsed.data;
+    const payload = {
+      ...parsed.data,
+      baslangic: toDate(parsed.data.baslangic),
+      bitis:
+        parsed.data.bitis && parsed.data.bitis !== ""
+          ? toDate(parsed.data.bitis)
+          : null,
+      gano:
+        parsed.data.gano === "" || parsed.data.gano == null
+          ? null
+          : Number(parsed.data.gano),
+    };
+
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
     onClose?.();
@@ -230,9 +296,12 @@ export default function EducationAddModal({
 
   if (!open) return null;
 
+  const isEndDisabled =
+    formData.diplomaDurum === "Devam" || formData.diplomaDurum === "Terk";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30  p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -259,7 +328,7 @@ export default function EducationAddModal({
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* Seviye */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1  sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
                   Seviye *
@@ -268,7 +337,7 @@ export default function EducationAddModal({
                   name="seviye"
                   value={formData.seviye}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_SELECT}
                 >
                   <option value="">Seçiniz</option>
                   <option value="Lise">Lise</option>
@@ -292,7 +361,7 @@ export default function EducationAddModal({
                   maxLength={100}
                   value={formData.okul}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_FIELD}
                   placeholder="Örn: Erciyes Üniversitesi"
                 />
                 <div className="flex justify-between mt-1">
@@ -328,7 +397,7 @@ export default function EducationAddModal({
                   maxLength={100}
                   value={formData.bolum}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_FIELD}
                   placeholder="Örn: Bilgisayar Mühendisliği"
                 />
                 <div className="flex justify-between mt-1">
@@ -358,7 +427,7 @@ export default function EducationAddModal({
                   name="diplomaDurum"
                   value={formData.diplomaDurum}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_SELECT}
                 >
                   <option value="">Seçiniz</option>
                   <option value="Mezun">Mezun</option>
@@ -384,7 +453,7 @@ export default function EducationAddModal({
                   name="notSistemi"
                   value={formData.notSistemi}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_SELECT}
                 >
                   <option value="4">4'lük</option>
                   <option value="100">100'lük</option>
@@ -397,7 +466,7 @@ export default function EducationAddModal({
                   name="gano"
                   value={formData.gano}
                   onChange={handleChange}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none"
+                  className={BASE_FIELD}
                   placeholder={
                     formData.notSistemi === "100" ? "0 - 100" : "0.00 - 4.00"
                   }
@@ -408,43 +477,36 @@ export default function EducationAddModal({
               </div>
             </div>
 
-            {/* Tarihler */}
+            {/* Tarihler (MUI) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Başlangıç Tarihi *
-                </label>
-                <input
-                  type="date"
-                  value={
-                    formData.baslangic ? toISODate(formData.baslangic) : ""
-                  }
+              <div className="shadow-none outline-none">
+                <MuiDateStringField
+                  label="Başlangıç Tarihi"
+                  name="baslangic"
+                  value={formData.baslangic}
+                  onChange={handleChange}
+                  required
+                  error={errors.baslangic}
+                  min="1950-01-01"
                   max={todayISO}
-                  onChange={(e) =>
-                    handleDateChange("baslangic", e.target.value)
-                  }
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
                 />
-                {errors.baslangic && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.baslangic}
-                  </p>
-                )}
               </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Bitiş Tarihi *
-                </label>
-                <input
-                  type="date"
-                  value={formData.bitis ? toISODate(formData.bitis) : ""}
-                  min={formData.baslangic ? toISODate(formData.baslangic) : ""}
+              <div className="shadow-none outline-none">
+                <MuiDateStringField
+                  label="Bitiş Tarihi"
+                  name="bitis"
+                  value={formData.bitis}
+                  onChange={handleChange}
+                  required={false}
+                  error={errors.bitis}
+                  min={formData.baslangic || "1950-01-01"}
                   max={todayISO}
-                  onChange={(e) => handleDateChange("bitis", e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 focus:outline-none cursor-pointer"
+                  disabled={isEndDisabled}
                 />
-                {errors.bitis && (
-                  <p className="mt-1 text-xs text-red-600">{errors.bitis}</p>
+                {isEndDisabled && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Devam Ediyor / Terk durumunda bitiş tarihi girilmez.
+                  </p>
                 )}
               </div>
             </div>
