@@ -66,7 +66,7 @@ export default function ScrollSelect({
   const BUTTON_BASE =
     "w-full h-[42px] rounded-lg border px-3 py-2 text-left focus:outline-none transition relative";
   const BUTTON_ENABLED = error
-    ? "bg-white text-gray-900 border-red-500 hover:border-red-500 cursor-pointer"
+    ? "bg-white text-gray-900 border-gray-300 hover:border-black cursor-pointer"
     : "bg-white text-gray-900 border-gray-300 hover:border-black cursor-pointer";
   const BUTTON_DISABLED =
     "bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed";

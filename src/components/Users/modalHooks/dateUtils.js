@@ -32,3 +32,14 @@ export const formatDate = (dateLike) => {
   const y = d.getFullYear();
   return `${dd}.${mm}.${y}`;
 };
+
+
+// 🔹 Bugünün ISO'su (YYYY-MM-DD) – lokal saat
+export const todayISO = () => toISODate(new Date());
+
+// 🔹 Dün’ün ISO'su (YYYY-MM-DD) – lokal saat
+export const yesterdayISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return toISODate(d);
+};

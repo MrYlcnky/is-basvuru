@@ -1,14 +1,13 @@
-// components/Users/addModals/LanguageAddModal.jsx
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
+import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 
 /* -------------------- Ortak Sınıflar -------------------- */
 const BASE_SELECT =
   "w-full h-[43px] border rounded-lg px-3 py-2 focus:outline-none transition border-gray-300 hover:border-black cursor-pointer";
-
 const BASE_INPUT =
   "w-full h-[43px] border rounded-lg px-3 py-2 focus:outline-none transition border-gray-300 hover:border-black";
 
@@ -38,20 +37,19 @@ const schema = z.object({
     ),
 });
 
-/* -------------------- COMPONENT -------------------- */
 export default function LanguageAddModal({
   open,
   mode = "create",
   initialData = null, // { id, dil, konusma, yazma, okuma, dinleme, ogrenilenKurum }
   onClose,
-  onSave, // (payload) => void
-  onUpdate, // (payload) => void
+  onSave,
+  onUpdate,
 }) {
   const dialogRef = useRef(null);
 
   // "Dil" alanını iki parçaya ayırıyoruz: select + diğer metin
-  const [dilSelect, setDilSelect] = useState(""); // "İngilizce" | "Almanca" | "Diğer" | ""
-  const [dilOther, setDilOther] = useState(""); // serbest metin (yalnız "Diğer" seçiliyken)
+  const [dilSelect, setDilSelect] = useState("");
+  const [dilOther, setDilOther] = useState("");
 
   const [formData, setFormData] = useState({
     dil: "",
@@ -71,15 +69,25 @@ export default function LanguageAddModal({
     ogrenilenKurum: "",
   });
 
-  // "Diğer Dil Adı" alanına otomatik odak
   const otherRef = useRef(null);
+
+  /* ---------- SCROLL LOCK ---------- */
+  useEffect(() => {
+    if (open) lockScroll();
+    else unlockScroll();
+    return () => unlockScroll();
+  }, [open]);
+
+  const handleClose = () => {
+    unlockScroll();
+    onClose?.();
+  };
 
   // Modal her açıldığında formu doldur/temizle
   useEffect(() => {
     if (!open) return;
 
     if (mode === "edit" && initialData) {
-      // Gelen "dil" değerini select seçenekleriyle eşleştir
       const incomingDil = initialData.dil ?? "";
       const isKnown = ["İngilizce", "Almanca"].includes(incomingDil);
       setDilSelect(isKnown ? incomingDil : incomingDil ? "Diğer" : "");
@@ -116,8 +124,8 @@ export default function LanguageAddModal({
     });
   }, [open, mode, initialData]);
 
-  // modal kapatma
-  const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
+  // backdrop click ile kapat
+  const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
   // Tek handleChange + alan bazlı Zod kontrol
   const handleChange = (e) => {
@@ -162,10 +170,9 @@ export default function LanguageAddModal({
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
-    onClose?.();
+    handleClose(); // kilidi kaldır + kapat
   };
 
-  // Modal Açık Değilse Render Etme
   if (!open) return null;
 
   const dilCounterColor =
@@ -192,7 +199,7 @@ export default function LanguageAddModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Kapat"
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
@@ -218,7 +225,6 @@ export default function LanguageAddModal({
                     setDilSelect(v);
                     if (v !== "Diğer") setDilOther("");
 
-                    // Diğer seçiliyken input beklenir
                     const effective = v === "Diğer" ? "" : v;
                     handleChange({ target: { name: "dil", value: effective } });
 
@@ -238,7 +244,6 @@ export default function LanguageAddModal({
                   <option value="Diğer">Diğer</option>
                 </select>
 
-                {/* Hata mesajı (tek satır) */}
                 <div className="mt-1 min-h-[1rem]">
                   {errors.dil && (
                     <p
@@ -251,7 +256,7 @@ export default function LanguageAddModal({
                 </div>
               </div>
 
-              {/* Diğer Dil Adı (sayaç sağ altta) */}
+              {/* Diğer Dil Adı */}
               <div className="sm:col-span-2 relative">
                 <label className="block text-sm text-gray-600 mb-1">
                   Diğer Dil Adı
@@ -294,109 +299,38 @@ export default function LanguageAddModal({
 
             {/* 2 Konuşma - Yazma - Okuma - Dinleme */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="sm:col-span-1">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Konuşma Seviyesi
-                </label>
-                <select
-                  name="konusma"
-                  value={formData.konusma}
-                  onChange={handleChange}
-                  className={`${BASE_SELECT} ${
-                    errors.konusma ? "border-red-500 hover:border-red-500" : ""
-                  }`}
-                  required
-                >
-                  <option value="">Seçiniz</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
-                </select>
-                {errors.konusma && (
-                  <p className="mt-1 text-xs text-red-600">{errors.konusma}</p>
-                )}
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Yazma Seviyesi
-                </label>
-                <select
-                  name="yazma"
-                  value={formData.yazma}
-                  onChange={handleChange}
-                  className={`${BASE_SELECT} ${
-                    errors.yazma ? "border-red-500 hover:border-red-500" : ""
-                  }`}
-                  required
-                >
-                  <option value="">Seçiniz</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
-                </select>
-                {errors.yazma && (
-                  <p className="mt-1 text-xs text-red-600">{errors.yazma}</p>
-                )}
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Okuma Seviyesi
-                </label>
-                <select
-                  name="okuma"
-                  value={formData.okuma}
-                  onChange={handleChange}
-                  className={`${BASE_SELECT} ${
-                    errors.okuma ? "border-red-500 hover:border-red-500" : ""
-                  }`}
-                  required
-                >
-                  <option value="">Seçiniz</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
-                </select>
-                {errors.okuma && (
-                  <p className="mt-1 text-xs text-red-600">{errors.okuma}</p>
-                )}
-              </div>
-
-              <div className="sm:col-span-1">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Dinleme Seviyesi
-                </label>
-                <select
-                  name="dinleme"
-                  value={formData.dinleme}
-                  onChange={handleChange}
-                  className={`${BASE_SELECT} ${
-                    errors.dinleme ? "border-red-500 hover:border-red-500" : ""
-                  }`}
-                  required
-                >
-                  <option value="">Seçiniz</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
-                </select>
-                {errors.dinleme && (
-                  <p className="mt-1 text-xs text-red-600">{errors.dinleme}</p>
-                )}
-              </div>
+              {[
+                ["konusma", "Konuşma Seviyesi"],
+                ["yazma", "Yazma Seviyesi"],
+                ["okuma", "Okuma Seviyesi"],
+                ["dinleme", "Dinleme Seviyesi"],
+              ].map(([name, label]) => (
+                <div key={name} className="sm:col-span-1">
+                  <label className="block text-sm text-gray-600 mb-1">
+                    {label}
+                  </label>
+                  <select
+                    name={name}
+                    value={formData[name]}
+                    onChange={handleChange}
+                    className={`${BASE_SELECT} ${
+                      errors[name] ? "border-red-500 hover:border-red-500" : ""
+                    }`}
+                    required
+                  >
+                    <option value="">Seçiniz</option>
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="B1">B1</option>
+                    <option value="B2">B2</option>
+                    <option value="C1">C1</option>
+                    <option value="C2">C2</option>
+                  </select>
+                  {errors[name] && (
+                    <p className="mt-1 text-xs text-red-600">{errors[name]}</p>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* 3 Nasıl Öğrenildi */}
@@ -437,12 +371,12 @@ export default function LanguageAddModal({
             </div>
           </div>
 
-          {/* Sabit alt aksiyon bar */}
+          {/* Alt aksiyon bar (butonlar) */}
           <div className="border-t bg-white px-6 py-3">
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
                 İptal

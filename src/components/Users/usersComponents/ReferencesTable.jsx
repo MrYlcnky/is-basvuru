@@ -38,97 +38,90 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
   useImperativeHandle(ref, () => ({ openCreate }));
 
   return (
-    <div className="space-y-3">
+    <div className="">
       {/* Tablo */}
-      <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600">
-            <tr>
-              <th className="px-4 py-3">Çalıştığı Kurum</th>
-              <th className="px-4 py-3">Ad</th>
-              <th className="px-4 py-3">Soyad</th>
-              <th className="px-4 py-3">İşyeri</th>
-              <th className="px-4 py-3">Görev</th>
-              <th className="px-4 py-3">Telefon</th>
-              <th className="px-4 py-3 text-right" style={{ width: 110 }}>
-                İşlem
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((item) => (
-              <tr key={item.id} className="bg-white border-t table-fixed">
-                <td
-                  className="px-4 py-3 font-medium text-gray-800 max-w-[130px] truncate"
-                  title={item.calistigiKurum}
-                >
-                  {item.calistigiKurum}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                  title={item.referansAdi}
-                >
-                  {item.referansAdi}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                  title={item.referansSoyadi}
-                >
-                  {item.referansSoyadi}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
-                  title={item.referansIsYeri}
-                >
-                  {item.referansIsYeri}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
-                  title={item.referansGorevi}
-                >
-                  {item.referansGorevi}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[140px] truncate"
-                  title={item.referansTelefon}
-                >
-                  {item.referansTelefon}
-                </td>
-
-                <td className="px-4 py-3 text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label="Düzenle"
-                      onClick={() => openEdit(item)}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
-                    >
-                      <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Sil"
-                      onClick={() => handleDelete(item)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {rows.length === 0 && (
+      {rows.length !== 0 && (
+        <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                  Referans bilgisi yok.
-                </td>
+                <th className="px-4 py-3">Çalıştığı Kurum</th>
+                <th className="px-4 py-3">Ad</th>
+                <th className="px-4 py-3">Soyad</th>
+                <th className="px-4 py-3">İşyeri</th>
+                <th className="px-4 py-3">Görev</th>
+                <th className="px-4 py-3">Telefon</th>
+                <th className="px-4 py-3 text-right" style={{ width: 110 }}>
+                  İşlem
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((item) => (
+                <tr key={item.id} className="bg-white border-t table-fixed">
+                  <td
+                    className="px-4 py-3 font-medium text-gray-800 max-w-[130px] truncate"
+                    title={item.calistigiKurum}
+                  >
+                    {item.calistigiKurum}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
+                    title={item.referansAdi}
+                  >
+                    {item.referansAdi}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
+                    title={item.referansSoyadi}
+                  >
+                    {item.referansSoyadi}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
+                    title={item.referansIsYeri}
+                  >
+                    {item.referansIsYeri}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
+                    title={item.referansGorevi}
+                  >
+                    {item.referansGorevi}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[140px] truncate"
+                    title={item.referansTelefon}
+                  >
+                    {item.referansTelefon}
+                  </td>
 
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label="Düzenle"
+                        onClick={() => openEdit(item)}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
+                      >
+                        <FontAwesomeIcon icon={faPen} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Sil"
+                        onClick={() => handleDelete(item)}
+                        className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {/* Modal (controlled) */}
       <ReferenceAddModal
         open={modalOpen}

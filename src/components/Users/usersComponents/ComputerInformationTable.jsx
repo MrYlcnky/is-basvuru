@@ -41,67 +41,62 @@ const ComputerInformationTable = forwardRef(function ComputerInformationTable(
   useImperativeHandle(ref, () => ({ openCreate }));
 
   return (
-    <div className="space-y-3">
+    <div className="">
       {/* Tablo */}
-      <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600">
-            <tr>
-              <th className="px-4 py-3">Program Adı</th>
-              <th className="px-4 py-3">Yetkinlik</th>
-              <th className="px-4 py-3 text-right" style={{ width: 110 }}>
-                İşlem
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((item) => (
-              <tr key={item.id} className="bg-white border-t table-fixed">
-                <td
-                  className="px-4 py-3 font-medium text-gray-800 max-w-[100px] truncate"
-                  title={item.programAdi}
-                >
-                  {item.programAdi}
-                </td>
-                <td
-                  className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                  title={item.yetkinlik}
-                >
-                  {item.yetkinlik}
-                </td>
-
-                <td className="px-4 py-3 text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label="Düzenle"
-                      onClick={() => openEdit(item)}
-                      className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
-                    >
-                      <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Sil"
-                      onClick={() => handleDelete(item)}
-                      className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
+      {rows.length !== 0 && (
+        <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
-                  Bilgisayar Bilgisi Yok.
-                </td>
+                <th className="px-4 py-3">Program Adı</th>
+                <th className="px-4 py-3">Yetkinlik</th>
+                <th className="px-4 py-3 text-right" style={{ width: 110 }}>
+                  İşlem
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((item) => (
+                <tr key={item.id} className="bg-white border-t table-fixed">
+                  <td
+                    className="px-4 py-3 font-medium text-gray-800 max-w-[100px] truncate"
+                    title={item.programAdi}
+                  >
+                    {item.programAdi}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
+                    title={item.yetkinlik}
+                  >
+                    {item.yetkinlik}
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label="Düzenle"
+                        onClick={() => openEdit(item)}
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
+                      >
+                        <FontAwesomeIcon icon={faPen} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Sil"
+                        onClick={() => handleDelete(item)}
+                        className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Modal (controlled) */}
       <ComputerInformationAddModal

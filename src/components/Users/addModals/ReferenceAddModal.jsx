@@ -1,16 +1,13 @@
-// components/Users/addModals/ReferenceAddModal.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
+import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 
 /* -------------------- REGEX -------------------- */
-// Ad/Soyad: sadece harf (TR) + boşluk
 const NAME_STRICT_RE = /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/u;
-// İşyeri/Görev: harf (TR), rakam, boşluk, apostrof (' veya ’) ve tire (-)
 const ORG_JOB_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s'’]+$/u;
-// Telefon: + opsiyonel; rakam, boşluk, parantez ve tire; 8–20 karakter
 const PHONE_RE = /^\+?[0-9\s()-]{8,20}$/;
 
 /* -------------------- ZOD ŞEMASI -------------------- */
@@ -54,11 +51,10 @@ const refSchema = z.object({
 const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black focus:border-black";
 
-/* -------------------- COMPONENT -------------------- */
 export default function ReferenceAddModal({
   open,
   mode = "create",
-  initialData = null, // { id, calistigiKurum, referansAdi, referansSoyadi, referansIsYeri, referansGorevi, referansTelefon }
+  initialData = null,
   onClose,
   onSave,
   onUpdate,
@@ -75,10 +71,20 @@ export default function ReferenceAddModal({
   });
 
   const [errors, setErrors] = useState({});
-  const [isValid, setIsValid] = useState(true);
-  const [disabledTip, setDisabledTip] = useState("");
 
-  // Modal açıldığında formu doldur / temizle
+  /* ---------- SCROLL LOCK ---------- */
+  useEffect(() => {
+    if (open) lockScroll();
+    else unlockScroll();
+    return () => unlockScroll();
+  }, [open]);
+
+  const handleClose = () => {
+    unlockScroll();
+    onClose?.();
+  };
+
+  // Modal açıldığında formu doldur / temizle (HATA GÖSTERME)
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -104,37 +110,33 @@ export default function ReferenceAddModal({
     }
   }, [open, mode, initialData]);
 
-  const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
+  const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
-  // Sade onChange (input/select)
-  const onInput = (e) => {
+  /* -------------------- Change bazlı doğrulama (Education ile aynı mantık) -------------------- */
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
+    const next = { ...formData, [name]: value };
+    setFormData(next);
+
+    const parsed = refSchema.safeParse(next);
+    if (!parsed.success) {
+      // Değiştirilen alanın hatasını çek
+      const issue = parsed.error.issues.find((i) => i.path[0] === name);
+      setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
+    } else {
+      // Alan hatasızsa temizle
+      setErrors((p) => ({ ...p, [name]: "" }));
+    }
   };
 
-  // Debounced toplu doğrulama
-  useEffect(() => {
-    const id = setTimeout(() => {
-      const parsed = refSchema.safeParse(formData);
-      if (!parsed.success) {
-        const next = {};
-        parsed.error.issues.forEach((i) => {
-          const key = i.path[0];
-          if (key) next[key] = i.message;
-        });
-        setErrors(next);
-        setIsValid(false);
-        setDisabledTip(parsed.error.issues.map((i) => i.message).join(" • "));
-      } else {
-        setErrors({});
-        setIsValid(true);
-        setDisabledTip("");
-      }
-    }, 150);
-    return () => clearTimeout(id);
-  }, [formData]);
+  /* -------------------- Geçerlilik ve ipucu -------------------- */
+  const isValid = useMemo(
+    () => refSchema.safeParse(formData).success,
+    [formData]
+  );
+  const disabledTip = !isValid ? "Tüm zorunlu alanları doğru doldurunuz." : "";
 
-  // Submit
+  /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
     e.preventDefault();
     const parsed = refSchema.safeParse(formData);
@@ -145,8 +147,6 @@ export default function ReferenceAddModal({
         if (key) next[key] = i.message;
       });
       setErrors(next);
-      setIsValid(false);
-      setDisabledTip(parsed.error.issues.map((i) => i.message).join(" • "));
       return;
     }
 
@@ -163,14 +163,14 @@ export default function ReferenceAddModal({
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
-    onClose?.();
+    handleClose();
   };
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30  p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -189,7 +189,7 @@ export default function ReferenceAddModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Kapat"
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 cursor-pointer"
           >
@@ -209,7 +209,7 @@ export default function ReferenceAddModal({
                 <select
                   name="calistigiKurum"
                   value={formData.calistigiKurum}
-                  onChange={onInput}
+                  onChange={handleChange}
                   className={`${FIELD_BASE} h-[43px]`}
                   required
                 >
@@ -220,7 +220,7 @@ export default function ReferenceAddModal({
                   <option value="Harici">Harici</option>
                 </select>
                 {errors.calistigiKurum && (
-                  <p className="mt-1 text-xs text-red-600">
+                  <p className="mt-1 text-xs text-red-700">
                     {errors.calistigiKurum}
                   </p>
                 )}
@@ -233,7 +233,7 @@ export default function ReferenceAddModal({
                   type="text"
                   name="referansAdi"
                   value={formData.referansAdi}
-                  onChange={onInput}
+                  onChange={handleChange}
                   maxLength={50}
                   className={FIELD_BASE}
                   placeholder="Örn: Mehmet"
@@ -268,7 +268,7 @@ export default function ReferenceAddModal({
                   type="text"
                   name="referansSoyadi"
                   value={formData.referansSoyadi}
-                  onChange={onInput}
+                  onChange={handleChange}
                   maxLength={50}
                   className={FIELD_BASE}
                   placeholder="Örn: Yalçınkaya"
@@ -303,7 +303,7 @@ export default function ReferenceAddModal({
                   type="text"
                   name="referansIsYeri"
                   value={formData.referansIsYeri}
-                  onChange={onInput}
+                  onChange={handleChange}
                   maxLength={100}
                   className={FIELD_BASE}
                   placeholder="Örn: O'Brien Hotels - IT"
@@ -338,7 +338,7 @@ export default function ReferenceAddModal({
                   type="text"
                   name="referansGorevi"
                   value={formData.referansGorevi}
-                  onChange={onInput}
+                  onChange={handleChange}
                   maxLength={100}
                   className={FIELD_BASE}
                   placeholder="Örn: Senior DevOps Engineer"
@@ -373,7 +373,7 @@ export default function ReferenceAddModal({
                   type="tel"
                   name="referansTelefon"
                   value={formData.referansTelefon}
-                  onChange={onInput}
+                  onChange={handleChange}
                   maxLength={20}
                   className={FIELD_BASE}
                   placeholder="+90 5XX XXX XX XX"
@@ -401,43 +401,45 @@ export default function ReferenceAddModal({
             </div>
           </div>
 
-          {/* Sabit alt aksiyon bar */}
-          <div className="border-t bg-white px-6 py-3 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
-            >
-              İptal
-            </button>
+          {/* Alt aksiyon bar (butonlar) */}
+          <div className="border-t bg-white px-6 py-3">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
+              >
+                İptal
+              </button>
 
-            {mode === "create" ? (
-              <button
-                type="submit"
-                disabled={!isValid}
-                title={disabledTip}
-                className={`px-4 py-2 rounded-lg text-white transition ${
-                  isValid
-                    ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                    : "bg-blue-300 opacity-90 cursor-not-allowed"
-                }`}
-              >
-                Kaydet
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!isValid}
-                title={disabledTip}
-                className={`px-4 py-2 rounded-lg text-white transition ${
-                  isValid
-                    ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                    : "bg-green-300 opacity-90 cursor-not-allowed"
-                }`}
-              >
-                Güncelle
-              </button>
-            )}
+              {mode === "create" ? (
+                <button
+                  type="submit"
+                  disabled={!isValid}
+                  title={disabledTip}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                    isValid
+                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
+                      : "bg-blue-300 opacity-90 cursor-not-allowed"
+                  }`}
+                >
+                  Kaydet
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!isValid}
+                  title={disabledTip}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                    isValid
+                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
+                      : "bg-green-300 opacity-90 cursor-not-allowed"
+                  }`}
+                >
+                  Güncelle
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>

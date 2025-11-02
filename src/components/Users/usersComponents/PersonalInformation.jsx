@@ -277,7 +277,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
     (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }));
 
   return (
-    <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none">
+    <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none overscroll-contain">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* --- Foto --- */}
         <div className="flex flex-col sm:flex-row items-start gap-6">
@@ -754,11 +754,8 @@ function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`block w-full h-[43px] rounded-lg border mt-0.5 px-3 py-2 bg-white text-gray-900 focus:outline-none transition ${
-          error
-            ? "border-red-500 hover:border-red-500"
-            : "border-gray-300 hover:border-black"
-        }`}
+        // ❗ Hata olsa da kırmızı border yok: sabit gri kenarlık kullanıyoruz
+        className="block w-full h-[43px] rounded-lg border mt-0.5 px-3 py-2 bg-white text-gray-900 focus:outline-none transition border-gray-300 hover:border-black"
       />
       {typeof max === "number" ? (
         <div className="mt-1 flex items-center justify-between">

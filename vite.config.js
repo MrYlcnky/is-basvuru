@@ -8,5 +8,5 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
-   base:"/is-basvuru2/",
+   base:"/is-basvuru/",
 })

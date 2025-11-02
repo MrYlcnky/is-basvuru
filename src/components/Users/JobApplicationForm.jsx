@@ -1,4 +1,5 @@
-import { useRef } from "react";
+// components/Users/JobApplicationForm.jsx
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -11,6 +12,10 @@ import {
   faPhoneVolume,
   faUserCog,
   faFileSignature,
+  faCheckCircle,
+  faCircleXmark,
+  faCircleMinus,
+  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 import PersonalInformation from "./usersComponents/PersonalInformation";
@@ -23,6 +28,7 @@ import ReferencesTable from "./usersComponents/ReferencesTable";
 import OtherPersonalInformationTable from "./usersComponents/OtherPersonalInformationTable";
 import JobApplicationDetails from "./usersComponents/JobApplicationDetails";
 import ApplicationConfirmSection from "./usersComponents/ApplicationConfirmSection";
+import { lockScroll } from "./modalHooks/scrollLock";
 
 export default function JobApplicationForm() {
   const personalInfoRef = useRef(null);
@@ -34,6 +40,49 @@ export default function JobApplicationForm() {
   const referencesTableRef = useRef(null);
   const otherPersonalInformationTableRef = useRef(null);
   const jobApplicationDetailsRef = useRef(null);
+
+  // Tüm "Ekle" butonları için ortak handler:
+  const onAddWithScrollLock = (fn) => () => {
+    lockScroll(); // Arka sayfa kaydırmasını kilitle
+    fn?.(); // İlgili tablonun create modalını aç
+  };
+
+  /* ---------- Zorunlu Bölümler durumları ---------- */
+  const computeStatuses = useCallback(() => {
+    const personalOk = personalInfoRef.current?.isValid?.() ?? false;
+    const educationOk = educationTableRef.current?.hasAnyRow?.() ?? false; // örnek kural: en az bir eğitim satırı
+    const otherOk =
+      otherPersonalInformationTableRef.current?.isValid?.() ?? false;
+    const jobDetailsOk = jobApplicationDetailsRef.current?.isValid?.() ?? false;
+
+    return { personalOk, educationOk, otherOk, jobDetailsOk };
+  }, []);
+
+  const [statuses, setStatuses] = useState(() => computeStatuses());
+
+  // setInterval yerine zincirli setTimeout + shallow compare
+  useEffect(() => {
+    let timer;
+    const TICK_MS = 1500;
+
+    const tick = () => {
+      const next = computeStatuses();
+      setStatuses((prev) => (shallowEqualStatuses(prev, next) ? prev : next));
+      timer = setTimeout(tick, TICK_MS);
+    };
+
+    timer = setTimeout(tick, TICK_MS);
+    return () => clearTimeout(timer);
+  }, [computeStatuses]);
+
+  const allRequiredOk = useMemo(
+    () =>
+      statuses.personalOk &&
+      statuses.educationOk &&
+      statuses.otherOk &&
+      statuses.jobDetailsOk,
+    [statuses]
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-500 via-gray-500 to-gray-600 pb-10 rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)] border border-gray-400/20">
@@ -49,9 +98,14 @@ export default function JobApplicationForm() {
             </span>
           </h1>
 
-          <p className="mt-5 text-base sm:text-lg text-gray-300">
-            <span className="text-amber-300 font-semibold">Lütfen</span> tüm
-            bilgilerinizi dikkatli ve eksiksiz doldurunuz.
+          <p className="mt-5 text-base sm:text-lg text-gray-300 flex items-center justify-center gap-2">
+            <FontAwesomeIcon icon={faInfoCircle} className="text-amber-300" />
+            <span className="text-center">
+              <span className="font-semibold text-amber-300">Lütfen</span> tüm
+              bilgilerinizi dikkatli ve eksiksiz doldurunuz.{" "}
+              <span className="font-semibold text-amber-300">*</span> işaretli
+              alanlar zorunludur.
+            </span>
           </p>
 
           <div className="mt-6 mx-auto w-24 sm:w-32 h-[3px] bg-gradient-to-r from-gray-200 via-amber-300 to-gray-200 rounded-full" />
@@ -61,32 +115,64 @@ export default function JobApplicationForm() {
         <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] bg-amber-100/10 blur-3xl rounded-full" />
       </div>
 
+      {/* === Zorunlu Bölümler (Sticky Status Bar) === */}
+      <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-4">
+        <div className="bg-white/90 rounded-lg border border-gray-200 shadow-md px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
+          <span className="text-sm text-gray-700 font-medium mr-1">
+            Zorunlu Bölümler:
+          </span>
+          <StatusPill ok={statuses.personalOk} label="Kişisel Bilgiler" />
+          <StatusPill ok={statuses.educationOk} label="Eğitim Bilgileri" />
+          <StatusPill ok={statuses.otherOk} label="Diğer Kişisel Bilgiler" />
+          <StatusPill ok={statuses.jobDetailsOk} label="İş Başvuru Detayları" />
+          <span className="ml-auto text-sm">
+            {allRequiredOk ? (
+              <span className="text-green-700 font-medium">
+                Tüm zorunlu bölümler hazır
+              </span>
+            ) : (
+              <span className="text-gray-600">
+                Lütfen tüm zorunlu bölümleri tamamlayın
+              </span>
+            )}
+          </span>
+        </div>
+      </div>
+
       {/* === CONTENT SECTIONS === */}
-      <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-8">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-6">
         <Section
           icon={faUser}
           title="Kişisel Bilgiler"
+          required
           content={<PersonalInformation ref={personalInfoRef} />}
         />
 
         <Section
           icon={faGraduationCap}
           title="Eğitim Bilgileri"
-          onAdd={() => educationTableRef.current?.openCreate()}
+          required
+          onAdd={onAddWithScrollLock(() =>
+            educationTableRef.current?.openCreate()
+          )}
           content={<EducationTable ref={educationTableRef} />}
         />
 
         <Section
           icon={faAward}
           title="Sertifika ve Eğitimler"
-          onAdd={() => certificatesTableRef.current?.openCreate()}
+          onAdd={onAddWithScrollLock(() =>
+            certificatesTableRef.current?.openCreate()
+          )}
           content={<CertificateTable ref={certificatesTableRef} />}
         />
 
         <Section
           icon={faLaptopCode}
           title="Bilgisayar Bilgileri"
-          onAdd={() => computerInformationTableRef.current?.openCreate()}
+          onAdd={onAddWithScrollLock(() =>
+            computerInformationTableRef.current?.openCreate()
+          )}
           content={
             <ComputerInformationTable ref={computerInformationTableRef} />
           }
@@ -95,27 +181,34 @@ export default function JobApplicationForm() {
         <Section
           icon={faLanguage}
           title="Yabancı Dil Bilgisi"
-          onAdd={() => languageTableRef.current?.openCreate()}
+          onAdd={onAddWithScrollLock(() =>
+            languageTableRef.current?.openCreate()
+          )}
           content={<LanguageTable ref={languageTableRef} />}
         />
 
         <Section
           icon={faBriefcase}
           title="İş Deneyimleri"
-          onAdd={() => jobExperiencesTableRef.current?.openCreate()}
+          onAdd={onAddWithScrollLock(() =>
+            jobExperiencesTableRef.current?.openCreate()
+          )}
           content={<JobExperiencesTable ref={jobExperiencesTableRef} />}
         />
 
         <Section
           icon={faPhoneVolume}
           title="Referanslar"
-          onAdd={() => referencesTableRef.current?.openCreate()}
+          onAdd={onAddWithScrollLock(() =>
+            referencesTableRef.current?.openCreate()
+          )}
           content={<ReferencesTable ref={referencesTableRef} />}
         />
 
         <Section
           icon={faUserCog}
           title="Diğer Kişisel Bilgiler"
+          required
           content={
             <OtherPersonalInformationTable
               ref={otherPersonalInformationTableRef}
@@ -126,27 +219,57 @@ export default function JobApplicationForm() {
         <Section
           icon={faFileSignature}
           title="İş Başvuru Detayları"
+          required
           content={<JobApplicationDetails ref={jobApplicationDetailsRef} />}
         />
 
-        {/* ✅ Onay Kartları ve Başvur Butonu */}
+        {/*  Onay Kartları ve Başvur Butonu (mevcut akış) */}
         <ApplicationConfirmSection
           validatePersonalInfo={() =>
             personalInfoRef.current?.isValid?.() ?? false
-          } // örnek olarak: PersonalInformation bileşeninden validasyon dönecek
+          }
           educationRef={educationTableRef}
           otherInfoRef={otherPersonalInformationTableRef}
           validateJobDetails={() =>
             jobApplicationDetailsRef.current?.isValid?.() ?? false
-          } // JobApplicationDetails doğrulaması
+          }
         />
       </div>
     </div>
   );
 }
 
+/* ---------- Yardımcılar ---------- */
+const shallowEqualStatuses = (a, b) =>
+  a.personalOk === b.personalOk &&
+  a.educationOk === b.educationOk &&
+  a.otherOk === b.otherOk &&
+  a.jobDetailsOk === b.jobDetailsOk;
+
+function StatusPill({ ok, label }) {
+  let icon = faCircleMinus;
+  let cls =
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border";
+  if (ok === true) {
+    icon = faCheckCircle;
+    cls += " bg-green-50 text-green-700 border-green-200";
+  } else if (ok === false) {
+    icon = faCircleXmark;
+    cls += " bg-red-50 text-red-700 border-red-200";
+  } else {
+    // unknown / not checked
+    cls += " bg-gray-50 text-gray-600 border-gray-200";
+  }
+  return (
+    <span className={cls}>
+      <FontAwesomeIcon icon={icon} />
+      {label}
+    </span>
+  );
+}
+
 /* --- Section Template --- */
-function Section({ icon, title, onAdd, content }) {
+function Section({ icon, title, required = false, onAdd, content }) {
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-md overflow-hidden">
       {/* Header */}
@@ -156,8 +279,9 @@ function Section({ icon, title, onAdd, content }) {
             icon={icon}
             className="text-amber-50 text-2xl sm:text-3xl shrink-0"
           />
-          <h4 className="text-base sm:text-lg md:text-xl font-semibold text-amber-50 truncate">
+          <h4 className="text-base sm:text-lg md:text-xl font-semibold text-amber-50 truncate flex items-center gap-2">
             {title}
+            {required && <span className="text-red-500">*</span>}
           </h4>
         </div>
 

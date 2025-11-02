@@ -36,7 +36,7 @@ createRoot(document.getElementById("root")).render(
             fieldDayPlaceholder: () => "GG",
           }}
         >
-          <BrowserRouter basename="/is-basvuru2">
+          <BrowserRouter basename="/is-basvuru">
             <App />
           </BrowserRouter>
         </LocalizationProvider>

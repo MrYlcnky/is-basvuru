@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
+import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 
 // Zod şeması
 const schema = z.object({
@@ -36,6 +37,22 @@ export default function ComputerInformationAddModal({
 
   const [errors, setErrors] = useState({}); // { programAdi?: string, yetkinlik?: string }
 
+  /* ---------- SCROLL LOCK ---------- */
+  useEffect(() => {
+    if (open) {
+      lockScroll();
+    } else {
+      unlockScroll();
+    }
+    return () => unlockScroll();
+  }, [open]);
+
+  // onClose'u unlock ile saran tek kapatma fonksiyonu
+  const handleClose = () => {
+    unlockScroll();
+    onClose?.();
+  };
+
   // Modal her açıldığında formu doldur/temizle
   useEffect(() => {
     if (!open) return;
@@ -52,7 +69,7 @@ export default function ComputerInformationAddModal({
   }, [open, mode, initialData]);
 
   // Dış alan tıklamasıyla kapatma
-  const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
+  const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
   // Tek alan anlık doğrulama
   const validateField = (name, value) => {
@@ -100,7 +117,7 @@ export default function ComputerInformationAddModal({
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
-    onClose?.();
+    handleClose(); // kapatırken scroll’u geri getir
   };
 
   // Modal Açık Değilse Render Etme
@@ -127,7 +144,7 @@ export default function ComputerInformationAddModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Kapat"
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
@@ -213,7 +230,7 @@ export default function ComputerInformationAddModal({
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
                 İptal

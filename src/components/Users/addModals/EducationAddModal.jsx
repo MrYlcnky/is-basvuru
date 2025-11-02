@@ -6,6 +6,7 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils"; // yolunu kendi projene göre düzelt
 import MuiDateStringField from "../Date/MuiDateStringField";
+import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 
 /* -------------------- Yardımcı -------------------- */
 const isValidISODate = (s) => {
@@ -56,7 +57,7 @@ const eduSchema = z
         message: "Geçerli bir sayı giriniz",
       }),
     baslangic: z.string().min(1, "Başlangıç tarihi zorunlu."),
-    bitis: z.string().optional().default(""), // zorunluluk diplomaDurum’a göre superRefine’de
+    bitis: z.string().optional().default(""),
     diplomaDurum: z
       .string()
       .min(1, "Diploma durumu zorunlu.")
@@ -191,6 +192,22 @@ export default function EducationAddModal({
   }, []);
   const todayISO = toISODate(today);
 
+  /* ---------- SCROLL LOCK ---------- */
+  useEffect(() => {
+    if (open) {
+      lockScroll();
+    } else {
+      unlockScroll();
+    }
+    return () => unlockScroll();
+  }, [open]);
+
+  // Tüm kapatma yollarını tek yerden geçir: unlock + onClose
+  const handleClose = () => {
+    unlockScroll();
+    onClose?.();
+  };
+
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -227,7 +244,7 @@ export default function EducationAddModal({
     }
   }, [open, mode, initialData]);
 
-  const onBackdropClick = useModalDismiss(open, onClose, dialogRef);
+  const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -291,7 +308,7 @@ export default function EducationAddModal({
 
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
-    onClose?.();
+    handleClose(); // kapatırken scroll’u geri getir
   };
 
   if (!open) return null;
@@ -316,7 +333,7 @@ export default function EducationAddModal({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Kapat"
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
@@ -517,25 +534,38 @@ export default function EducationAddModal({
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={onClose}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition"
+                onClick={handleClose}
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
                 İptal
               </button>
-              <button
-                type="submit"
-                disabled={!isValid}
-                title={disabledTip}
-                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                  isValid
-                    ? mode === "edit"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-300 cursor-not-allowed"
-                }`}
-              >
-                {mode === "edit" ? "Güncelle" : "Kaydet"}
-              </button>
+              {mode === "edit" ? (
+                <button
+                  type="submit"
+                  disabled={!isValid}
+                  title={disabledTip}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                    isValid
+                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
+                      : "bg-green-300 opacity-90 cursor-not-allowed"
+                  }`}
+                >
+                  Güncelle
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!isValid}
+                  title={disabledTip}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                    isValid
+                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
+                      : "bg-blue-300 opacity-90 cursor-not-allowed"
+                  }`}
+                >
+                  Kaydet
+                </button>
+              )}
             </div>
           </div>
         </form>
