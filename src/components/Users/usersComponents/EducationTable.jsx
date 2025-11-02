@@ -1,5 +1,5 @@
 // components/Users/tables/EducationTable.jsx
-import React, { forwardRef, useImperativeHandle } from "react";
+import React, { forwardRef, useImperativeHandle, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import EducationAddModal from "../addModals/EducationAddModal";
@@ -18,11 +18,14 @@ const notSistemaText = (val) =>
     ? "4’lük Sistem"
     : String(val ?? "-");
 
-const EducationTable = forwardRef(function EducationTable(_, ref) {
+const EducationTable = forwardRef(function EducationTable(
+  { onValidChange }, // <-- parent'tan geçilecek (Status Bar için)
+  ref
+) {
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
       title: "Emin misin?",
-      text: `“${row.okul} - ${row.bolum}  ” kaydını silmek istiyor musun?`,
+      text: `“${row.okul} - ${row.bolum}” kaydını silmek istiyor musun?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
@@ -45,12 +48,17 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
     handleUpdate,
     handleDelete,
   } = useCrudTable(staticEducationDB, { confirmDelete, notify });
+
+  // ✅ Satır sayısı değiştikçe parent’a “valid” sinyali gönder
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
+
+  // ✅ Dışarıya tek bir useImperativeHandle ile API ver
   useImperativeHandle(ref, () => ({
     openCreate,
-  }));
-  useImperativeHandle(ref, () => ({
-    openCreate,
-    getData: () => rows, // <--- 🔥 tablo verilerini dışarı aktarır
+    getData: () => rows, // tablo verileri
+    hasAnyRow: () => rows.length > 0, // geriye uyumluluk
   }));
 
   return (
@@ -101,14 +109,7 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
                   >
                     {notSistemaText(r.notSistemi)}
                   </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    item={
-                      r.gano !== null && r.gano !== undefined
-                        ? Number(r.gano).toFixed(2)
-                        : "-"
-                    }
-                  >
+                  <td className="px-4 py-3 text-gray-800 max-w-[100px] truncate">
                     {r.gano !== null && r.gano !== undefined
                       ? Number(r.gano).toFixed(2)
                       : "-"}
@@ -157,6 +158,7 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
           </table>
         </div>
       )}
+
       {/* Modal (controlled) */}
       <EducationAddModal
         open={modalOpen}
@@ -173,17 +175,7 @@ const EducationTable = forwardRef(function EducationTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticEducationDB() {
   const rows = [
-    /*{
-      id: 1,
-      seviye: "Lise",
-      okul: "Eti Anadolu",
-      bolum: "Sayısal",
-      notSistemi: "100",
-      gano: 77.42,
-      baslangic: "2014-09-15", // tam tarih
-      bitis: "2018-06-10",
-      diplomaDurum: "Mezun",
-    },*/
+    /* örnek başlangıç verisi eklemek istersen burayı aç */
   ];
   return rows;
 }

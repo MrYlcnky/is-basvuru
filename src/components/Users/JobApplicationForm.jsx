@@ -1,5 +1,5 @@
 // components/Users/JobApplicationForm.jsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -43,37 +43,31 @@ export default function JobApplicationForm() {
 
   // Tüm "Ekle" butonları için ortak handler:
   const onAddWithScrollLock = (fn) => () => {
-    lockScroll(); // Arka sayfa kaydırmasını kilitle
-    fn?.(); // İlgili tablonun create modalını aç
+    lockScroll();
+    fn?.();
   };
 
-  /* ---------- Zorunlu Bölümler durumları ---------- */
-  const computeStatuses = useCallback(() => {
-    const personalOk = personalInfoRef.current?.isValid?.() ?? false;
-    const educationOk = educationTableRef.current?.hasAnyRow?.() ?? false; // örnek kural: en az bir eğitim satırı
-    const otherOk =
-      otherPersonalInformationTableRef.current?.isValid?.() ?? false;
-    const jobDetailsOk = jobApplicationDetailsRef.current?.isValid?.() ?? false;
+  /* ---------- Zorunlu Bölümler (event-driven) ---------- */
+  const [statuses, setStatuses] = useState({
+    personalOk: false,
+    educationOk: false,
+    otherOk: false,
+    jobDetailsOk: false,
+  });
 
-    return { personalOk, educationOk, otherOk, jobDetailsOk };
-  }, []);
+  const onPersonalValidChange = (ok) =>
+    setStatuses((s) => (s.personalOk === ok ? s : { ...s, personalOk: ok }));
 
-  const [statuses, setStatuses] = useState(() => computeStatuses());
+  const onEducationHasRowChange = (ok) =>
+    setStatuses((s) => (s.educationOk === ok ? s : { ...s, educationOk: ok }));
 
-  // setInterval yerine zincirli setTimeout + shallow compare
-  useEffect(() => {
-    let timer;
-    const TICK_MS = 1500;
+  const onOtherValidChange = (ok) =>
+    setStatuses((s) => (s.otherOk === ok ? s : { ...s, otherOk: ok }));
 
-    const tick = () => {
-      const next = computeStatuses();
-      setStatuses((prev) => (shallowEqualStatuses(prev, next) ? prev : next));
-      timer = setTimeout(tick, TICK_MS);
-    };
-
-    timer = setTimeout(tick, TICK_MS);
-    return () => clearTimeout(timer);
-  }, [computeStatuses]);
+  const onJobDetailsValidChange = (ok) =>
+    setStatuses((s) =>
+      s.jobDetailsOk === ok ? s : { ...s, jobDetailsOk: ok }
+    );
 
   const allRequiredOk = useMemo(
     () =>
@@ -145,7 +139,12 @@ export default function JobApplicationForm() {
           icon={faUser}
           title="Kişisel Bilgiler"
           required
-          content={<PersonalInformation ref={personalInfoRef} />}
+          content={
+            <PersonalInformation
+              ref={personalInfoRef}
+              onValidChange={onPersonalValidChange}
+            />
+          }
         />
 
         <Section
@@ -155,7 +154,13 @@ export default function JobApplicationForm() {
           onAdd={onAddWithScrollLock(() =>
             educationTableRef.current?.openCreate()
           )}
-          content={<EducationTable ref={educationTableRef} />}
+          content={
+            <EducationTable
+              ref={educationTableRef}
+              //onHasAnyRowChange={onEducationHasRowChange}
+              onValidChange={onEducationHasRowChange}
+            />
+          }
         />
 
         <Section
@@ -212,6 +217,7 @@ export default function JobApplicationForm() {
           content={
             <OtherPersonalInformationTable
               ref={otherPersonalInformationTableRef}
+              onValidChange={onOtherValidChange}
             />
           }
         />
@@ -220,10 +226,15 @@ export default function JobApplicationForm() {
           icon={faFileSignature}
           title="İş Başvuru Detayları"
           required
-          content={<JobApplicationDetails ref={jobApplicationDetailsRef} />}
+          content={
+            <JobApplicationDetails
+              ref={jobApplicationDetailsRef}
+              onValidChange={onJobDetailsValidChange}
+            />
+          }
         />
 
-        {/*  Onay Kartları ve Başvur Butonu (mevcut akış) */}
+        {/* Başvuru onay akışı (butona basıldığında yine tam doğrulama yapacağız) */}
         <ApplicationConfirmSection
           validatePersonalInfo={() =>
             personalInfoRef.current?.isValid?.() ?? false
@@ -239,13 +250,7 @@ export default function JobApplicationForm() {
   );
 }
 
-/* ---------- Yardımcılar ---------- */
-const shallowEqualStatuses = (a, b) =>
-  a.personalOk === b.personalOk &&
-  a.educationOk === b.educationOk &&
-  a.otherOk === b.otherOk &&
-  a.jobDetailsOk === b.jobDetailsOk;
-
+/* ---------- Status Pill ---------- */
 function StatusPill({ ok, label }) {
   let icon = faCircleMinus;
   let cls =
@@ -257,7 +262,6 @@ function StatusPill({ ok, label }) {
     icon = faCircleXmark;
     cls += " bg-red-50 text-red-700 border-red-200";
   } else {
-    // unknown / not checked
     cls += " bg-gray-50 text-gray-600 border-gray-200";
   }
   return (
@@ -272,7 +276,6 @@ function StatusPill({ ok, label }) {
 function Section({ icon, title, required = false, onAdd, content }) {
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-md overflow-hidden">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-b border-gray-700">
         <div className="flex items-center gap-3 sm:gap-4">
           <FontAwesomeIcon
@@ -297,7 +300,6 @@ function Section({ icon, title, required = false, onAdd, content }) {
         )}
       </div>
 
-      {/* İçerik */}
       <div className="overflow-x-auto bg-gray-50 text-gray-900">{content}</div>
     </div>
   );

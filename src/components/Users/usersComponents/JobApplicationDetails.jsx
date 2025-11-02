@@ -21,7 +21,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const JobApplicationDetails = forwardRef(function JobApplicationDetails(
-  _,
+  { onValidChange }, // ✅ canlı validasyon callback
   ref
 ) {
   // --- Sabit veri kümeleri ---
@@ -137,7 +137,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
       border: "1px solid #d1d5db",
       boxShadow: "none",
       cursor: state.isDisabled ? "not-allowed" : "pointer",
-      "&:hover": { borderColor: "#9ca3af" },
+      "&:hover": { borderColor: "#000000" }, // hover siyah
       opacity: state.isDisabled ? 0.8 : 1,
     }),
     dropdownIndicator: (base) => ({ ...base, cursor: "pointer" }),
@@ -212,19 +212,26 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     });
 
   /* -------------------- Doğrulama Mantığı -------------------- */
-  const validateAll = (nextData = formData) => {
+  const validateAll = (nextData = formData, { silent = false } = {}) => {
     const res = schema.safeParse(nextData);
-    if (!res.success) {
-      const newErrors = {};
-      res.error.issues.forEach((i) => {
-        const key = i.path[0];
-        if (key && !newErrors[key]) newErrors[key] = i.message;
-      });
-      setErrors(newErrors);
-      return false;
+    const ok = res.success;
+
+    if (!silent) {
+      if (!ok) {
+        const newErrors = {};
+        res.error.issues.forEach((i) => {
+          const key = i.path[0];
+          if (key && !newErrors[key]) newErrors[key] = i.message;
+        });
+        setErrors(newErrors);
+      } else {
+        setErrors({});
+      }
     }
-    setErrors({});
-    return true;
+
+    // ✅ Parent’a canlı validasyon sinyali
+    onValidChange?.(ok);
+    return ok;
   };
 
   const validateField = (name, value) => {
@@ -233,8 +240,14 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   };
 
   useImperativeHandle(ref, () => ({
-    isValid: () => validateAll(),
+    isValid: () => validateAll(undefined, { silent: false }),
   }));
+
+  /* Her form değişiminde sessiz validasyon: status bar anında güncellenir */
+  useEffect(() => {
+    validateAll(formData, { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData]);
 
   // --- Handlers ---
   const handleMultiChange = (key, value) => {
@@ -263,8 +276,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     validateAll(next);
   };
 
-  useEffect(() => {}, [formData]);
-
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8">
       {/* Bilgilendirme Alanı */}
@@ -278,7 +289,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           </span>{" "}
           Eğer <strong>Casino Canlı Oyun</strong> seçerseniz,{" "}
           <strong>Kağıt Oyun Bilgisi</strong> de zorunlu hale gelir.
-          {needsRoles && (
+          {availableRoles.length > 0 && (
             <span className="ml-1">
               Seçtiğiniz departmanlar için <strong>pozisyon(lar)</strong> da
               seçmelisiniz.
@@ -430,7 +441,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
             className={`w-full rounded-lg px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none resize-none shadow-none border ${
               errors.tercihNedeni
                 ? "border-red-500 focus:border-red-500"
-                : "border-gray-300 focus:border-gray-400"
+                : "border-gray-300 focus:border-black"
             }`}
           />
 
@@ -511,7 +522,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
                 className="mt-0.5 text-gray-400 text-sm sm:text-base"
               />
               <strong className="shrink-0">{label}:</strong>
-              {/* Çok satırlı kesme + hover'da tam metin */}
               <ClampText text={value || "—"} lines={2} />
             </p>
           ))}
@@ -530,7 +540,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
 function ClampText({ text, lines = 2 }) {
   return (
     <span
-      title={text} // hover'da orijinal tam metin
+      title={text}
       style={{
         display: "-webkit-box",
         WebkitLineClamp: lines,
@@ -538,7 +548,7 @@ function ClampText({ text, lines = 2 }) {
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "normal",
-        lineHeight: "1.25rem", // ~20px, Tailwind text-sm ile uyumlu
+        lineHeight: "1.25rem",
       }}
       className="text-gray-800"
     >

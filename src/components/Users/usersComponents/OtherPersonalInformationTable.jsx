@@ -1,5 +1,5 @@
 // components/Users/tables/OtherPersonalInformationTable.jsx
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
 import { z } from "zod";
 import Select from "react-select";
 
@@ -125,7 +125,7 @@ const otherInfoSchema = z
 
 /* -------------------- COMPONENT -------------------- */
 const OtherPersonalInformationTable = forwardRef(
-  function OtherPersonalInformationTable(_, ref) {
+  function OtherPersonalInformationTable({ onValidChange }, ref) {
     const [formData, setFormData] = useState({
       kktcGecerliBelge: [],
       davaDurumu: "",
@@ -142,6 +142,12 @@ const OtherPersonalInformationTable = forwardRef(
 
     const [errors, setErrors] = useState({});
 
+    // 🔔 Form her değiştiğinde toplam geçerliliği parent’a bildir
+    useEffect(() => {
+      const ok = otherInfoSchema.safeParse(formData).success;
+      onValidChange?.(ok);
+    }, [formData, onValidChange]);
+
     const validateField = (name, value) => {
       const next = { ...formData, [name]: value };
       const result = otherInfoSchema.safeParse(next);
@@ -153,6 +159,7 @@ const OtherPersonalInformationTable = forwardRef(
         setErrors((prev) => ({ ...prev, [name]: "" }));
       }
 
+      // Koşullu alanlar için detay kontrol
       if (name === "davaDurumu" || name === "davaNedeni") {
         const r = otherInfoSchema.safeParse(next);
         const msg = !r.success
@@ -224,10 +231,10 @@ const OtherPersonalInformationTable = forwardRef(
     };
 
     /* -------- react-select class'ları --------
-     Sabit yükseklik: h-[43px]
-     İçerik taşarsa: valueContainer h-[39px] + overflow-y-auto (iç scroll)
-     Dış çerçeve büyümez, hover/focus: border siyah
-  */
+       Sabit yükseklik: h-[43px]
+       İçerik taşarsa: valueContainer h-[39px] + overflow-y-auto (iç scroll)
+       Dış çerçeve büyümez, hover/focus: border siyah
+    */
     const rsBaseControl =
       "w-full h-[43px] overflow-hidden rounded-lg border border-gray-300 px-3 bg-white " +
       "shadow-none focus:outline-none transition-none hover:border-black focus-within:border-black " +
@@ -236,7 +243,6 @@ const OtherPersonalInformationTable = forwardRef(
     const rsClassNames = {
       container: () => "w-full",
       control: () => rsBaseControl,
-      // 43px total -> içeride ~39px alan bırakıp içe scroll veriyoruz
       valueContainer: () =>
         "h-[39px] overflow-y-auto flex flex-wrap items-start gap-1 py-0 pr-1",
       placeholder: () => "text-gray-400",

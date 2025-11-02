@@ -1,5 +1,5 @@
 // components/Users/PersonalInformation.jsx
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
 import { z } from "zod";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import ScrollSelect from "../Selected/ScrollSelect";
@@ -28,7 +28,7 @@ const COUNTRY_OPTIONS = [
   "Diğer",
 ];
 
-// Ülke -> Uyruk eşleşmesi (select’te göstereceğiz)
+// Ülke -> Uyruk eşleşmesi
 const NATIONALITY_MAP = {
   Türkiye: "Türk",
   Türkmenistan: "Türkmen",
@@ -109,7 +109,10 @@ const schema = z.object({
 });
 
 /* -------------------- Bileşen -------------------- */
-const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
+const PersonalInformation = forwardRef(function PersonalInformation(
+  { onValidChange }, // <-- EKLENDİ
+  ref
+) {
   const [formData, setFormData] = useState({
     ad: "",
     soyad: "",
@@ -230,6 +233,12 @@ const PersonalInformation = forwardRef(function PersonalInformation(_, ref) {
       return result.success && fotoValid;
     },
   }));
+
+  /* -------------------- Event-driven valid state bildirimi -------------------- */
+  useEffect(() => {
+    const ok = schema.safeParse(formData).success && !!formData.foto;
+    onValidChange?.(ok);
+  }, [formData, onValidChange]);
 
   /* -------------------- Generic change -------------------- */
   const handleChange = (e) => {
@@ -754,7 +763,6 @@ function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        // ❗ Hata olsa da kırmızı border yok: sabit gri kenarlık kullanıyoruz
         className="block w-full h-[43px] rounded-lg border mt-0.5 px-3 py-2 bg-white text-gray-900 focus:outline-none transition border-gray-300 hover:border-black"
       />
       {typeof max === "number" ? (
