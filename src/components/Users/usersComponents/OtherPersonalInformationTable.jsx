@@ -29,21 +29,13 @@ const EHLIYET_TURLERI = [
 
 const otherInfoSchema = z
   .object({
+    // ❗ Single select: string oldu
     kktcGecerliBelge: z
-      .array(
-        z
-          .string()
-          .refine(
-            oneOf([
-              "Vatandaşlık",
-              "Çalışma İzni",
-              "Öğrenci Belgesi",
-              "Belge Yok",
-            ]),
-            "KKTC Geçerli Belge seçiniz"
-          )
-      )
-      .min(1, "KKTC Geçerli Belge seçiniz"),
+      .string()
+      .refine(
+        oneOf(["Vatandaşlık", "Çalışma İzni", "Öğrenci Belgesi", "Belge Yok"]),
+        "KKTC Geçerli Belge seçiniz"
+      ),
     davaDurumu: z.string().refine(oneOf(["Yok", "Var"]), "Dava durumu seçiniz"),
     davaNedeni: z
       .string()
@@ -127,7 +119,8 @@ const otherInfoSchema = z
 const OtherPersonalInformationTable = forwardRef(
   function OtherPersonalInformationTable({ onValidChange }, ref) {
     const [formData, setFormData] = useState({
-      kktcGecerliBelge: [],
+      // ❗ Başlangıç boş string (single select)
+      kktcGecerliBelge: "",
       davaDurumu: "",
       davaNedeni: "",
       sigara: "",
@@ -218,10 +211,11 @@ const OtherPersonalInformationTable = forwardRef(
       }
     };
 
-    const handleMultiSelect = (selected) => {
-      const values = selected ? selected.map((opt) => opt.value) : [];
-      setFormData((prev) => ({ ...prev, kktcGecerliBelge: values }));
-      validateField("kktcGecerliBelge", values);
+    // ❗ SINGLE Select (react-select) handler
+    const handleSingleSelect = (selected) => {
+      const value = selected?.value || "";
+      setFormData((prev) => ({ ...prev, kktcGecerliBelge: value }));
+      validateField("kktcGecerliBelge", value);
     };
 
     const handleEhliyetTurleri = (selected) => {
@@ -230,11 +224,7 @@ const OtherPersonalInformationTable = forwardRef(
       validateField("ehliyetTurleri", values);
     };
 
-    /* -------- react-select class'ları --------
-       Sabit yükseklik: h-[43px]
-       İçerik taşarsa: valueContainer h-[39px] + overflow-y-auto (iç scroll)
-       Dış çerçeve büyümez, hover/focus: border siyah
-    */
+    /* -------- react-select class'ları -------- */
     const rsBaseControl =
       "w-full h-[43px] overflow-hidden rounded-lg border border-gray-300 px-3 bg-white " +
       "shadow-none focus:outline-none transition-none hover:border-black focus-within:border-black " +
@@ -281,24 +271,28 @@ const OtherPersonalInformationTable = forwardRef(
     return (
       <div className="bg-white p-6 rounded-b-lg border border-gray-200">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* KKTC Geçerli Belge (multi) */}
+          {/* KKTC Geçerli Belge (SINGLE) */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               KKTC Geçerli Belge <span className="text-red-500">*</span>
             </label>
             <Select
               options={[
-                { value: "disabled", label: "Seçiniz", isDisabled: true },
+                { value: "", label: "Seçiniz", isDisabled: true },
                 ...belgeOptions,
               ]}
-              isMulti
-              closeMenuOnSelect={false}
+              isMulti={false}
+              closeMenuOnSelect
               placeholder="Seçiniz"
-              value={formData.kktcGecerliBelge.map((v) => ({
-                value: v,
-                label: v,
-              }))}
-              onChange={handleMultiSelect}
+              value={
+                formData.kktcGecerliBelge
+                  ? {
+                      value: formData.kktcGecerliBelge,
+                      label: formData.kktcGecerliBelge,
+                    }
+                  : { value: "", label: "Seçiniz", isDisabled: true }
+              }
+              onChange={handleSingleSelect}
               unstyled
               classNames={rsClassNames}
               menuPortalTarget={

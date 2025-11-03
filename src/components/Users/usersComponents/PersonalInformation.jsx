@@ -2,7 +2,7 @@
 import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
 import { z } from "zod";
 import MuiDateStringField from "../Date/MuiDateStringField";
-import ScrollSelect from "../Selected/ScrollSelect";
+import SearchSelect from "../Selected/SearchSelect";
 
 /* -------------------- Sabit Veriler -------------------- */
 const TR_IL_ILCE = {
@@ -95,22 +95,19 @@ const schema = z.object({
       const yBirth = d.getFullYear();
       const now = new Date();
       const yNow = now.getFullYear();
-      const yearDiff = yNow - yBirth;
-      return yearDiff >= 15;
+      return yNow - yBirth >= 15;
     }, "En az 15 yaşında olmalısınız."),
   cocukSayisi: z.string().optional(),
-
   dogumUlke: z.string().min(1, "Doğum ülkesi zorunlu"),
   dogumSehir: z.string().min(1, "Doğum yeri (İl/İlçe) zorunlu"),
   ikametUlke: z.string().min(1, "Yaşadığı ülke zorunlu"),
   ikametSehir: z.string().min(1, "Yaşadığı şehir (İl/İlçe) zorunlu"),
-
   uyruk: z.string().min(1, "Uyruğu seçiniz"),
 });
 
 /* -------------------- Bileşen -------------------- */
 const PersonalInformation = forwardRef(function PersonalInformation(
-  { onValidChange }, // <-- EKLENDİ
+  { onValidChange },
   ref
 ) {
   const [formData, setFormData] = useState({
@@ -127,9 +124,9 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     cocukSayisi: "",
     foto: null,
 
-    dogumUlke: "Türkiye",
+    dogumUlke: "",
     dogumSehir: "",
-    ikametUlke: "Türkiye",
+    ikametUlke: "",
     ikametSehir: "",
   });
 
@@ -137,22 +134,26 @@ const PersonalInformation = forwardRef(function PersonalInformation(
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoError, setFotoError] = useState("");
 
+  const countryOptions = [
+    { value: "", label: "Seçiniz" },
+    ...COUNTRY_OPTIONS.map((c) => ({ value: c, label: c })),
+  ];
+
   /* ---------- Doğum ---------- */
-  const [birthCountry, setBirthCountry] = useState("Türkiye");
+  const [birthCountry, setBirthCountry] = useState(""); // <-- artık "Seçiniz"
   const [birthCountryOther, setBirthCountryOther] = useState("");
   const [birthProvince, setBirthProvince] = useState("");
   const [birthDistrict, setBirthDistrict] = useState("");
   const [birthPlaceOther, setBirthPlaceOther] = useState("");
 
   /* ---------- İkamet ---------- */
-  const [resCountry, setResCountry] = useState("Türkiye");
+  const [resCountry, setResCountry] = useState(""); // <-- artık "Seçiniz"
   const [resCountryOther, setResCountryOther] = useState("");
   const [resProvince, setResProvince] = useState("");
   const [resDistrict, setResDistrict] = useState("");
   const [resPlaceOther, setResPlaceOther] = useState("");
 
   /* ---------- Uyruk ---------- */
-  const NATIONALITY_OPTIONS = Object.values(NATIONALITY_MAP);
   const [nationalitySel, setNationalitySel] = useState("");
   const [nationalityOther, setNationalityOther] = useState("");
 
@@ -261,7 +262,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(
   };
 
   /* -------------------- Options Helpers -------------------- */
-  const countryOptions = COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }));
   const genderOptions = [
     { value: "", label: "Seçiniz" },
     { value: "Kadın", label: "Kadın" },
@@ -274,16 +274,20 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     { value: "Boşanmış", label: "Boşanmış" },
     { value: "Dul", label: "Dul" },
   ];
-  const childOptions = [...Array(8)].map((_, i) => ({
-    value: i === 7 ? "7+" : String(i),
-    label: i === 7 ? "Daha Fazla" : String(i),
-  }));
-  const ilOptions = Object.keys(TR_IL_ILCE).map((il) => ({
-    value: il,
-    label: il,
-  }));
+  const childOptions = [
+    { value: "", label: "Seçiniz" },
+    ...[...Array(7)].map((_, i) => ({ value: String(i), label: String(i) })),
+    { value: "7+", label: "Daha Fazla" },
+  ];
+  const ilOptions = [{ value: "", label: "İl Seçiniz" }].concat(
+    Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
+  );
   const ilceOptions = (il) =>
-    (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }));
+    [{ value: "", label: il ? "İlçe Seçiniz" : "Önce il seçiniz" }].concat(
+      (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }))
+    );
+
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none overscroll-contain">
@@ -373,7 +377,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           name="telefon"
           type="tel"
           value={formData.telefon}
-          placeholder="+XX XXXXXXXX"
+          placeholder="+90 5XXXXXXXXX"
           onChange={handleChange}
           error={errors.telefon}
         />
@@ -382,7 +386,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           name="whatsapp"
           type="tel"
           value={formData.whatsapp}
-          placeholder="+XX XXXXXXXX"
+          placeholder="+90 5XXXXXXXXX"
           onChange={handleChange}
           error={errors.whatsapp}
         />
@@ -397,6 +401,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           error={errors.adres}
           max={90}
         />
+
         {/* Doğum Tarihi (MUI) */}
         <div className="shadow-none outline-none">
           <MuiDateStringField
@@ -412,42 +417,44 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           />
         </div>
 
-        {/* Cinsiyet / Medeni Durum (ScrollSelect) */}
-        <ScrollSelect
+        {/* Cinsiyet / Medeni Durum / Çocuk Sayısı */}
+        <SearchSelect
           label="Cinsiyet"
           name="cinsiyet"
           value={formData.cinsiyet}
           options={genderOptions}
           onChange={handleChange}
-          error={errors.cinsiyet}
+          placeholder="Cinsiyet"
+          menuPortalTarget={portalTarget}
         />
-        <ScrollSelect
+
+        <SearchSelect
           label="Medeni Durum"
           name="medeniDurum"
           value={formData.medeniDurum}
           options={maritalOptions}
           onChange={handleChange}
-          error={errors.medeniDurum}
+          placeholder="Medeni Durum"
+          menuPortalTarget={portalTarget}
         />
 
-        {/* Çocuk Sayısı (ScrollSelect) */}
-        <ScrollSelect
+        <SearchSelect
           label="Çocuk Sayısı"
           name="cocukSayisi"
           value={formData.cocukSayisi}
-          onChange={handleChange}
           options={childOptions}
-          error={errors.cocukSayisi}
+          onChange={handleChange}
+          placeholder="Çocuk Sayısı"
+          menuPortalTarget={portalTarget}
         />
 
-        {/* -------------------- UYRUĞU (ScrollSelect + Diğer input) -------------------- */}
+        {/* -------------------- UYRUĞU -------------------- */}
         <div className="lg:col-span-1 mt-1">
           <label className="block text-sm font-bold text-gray-700 ">
             Uyruğu <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Sol: ScrollSelect */}
-            <ScrollSelect
+            <SearchSelect
               name="uyrukSelect"
               value={nationalitySel}
               onChange={(e) => {
@@ -463,10 +470,9 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   label: n,
                 })),
               ]}
-              placeholder="Seçiniz"
+              placeholder="Uyruğu seçiniz"
+              menuPortalTarget={portalTarget}
             />
-
-            {/* Sağ: “Diğer” input (sadece Diğer seçiliyse aktif) */}
             <input
               type="text"
               placeholder="Uyruğu (Diğer)"
@@ -497,9 +503,10 @@ const PersonalInformation = forwardRef(function PersonalInformation(
             Ülke (Doğum) <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ScrollSelect
+            <SearchSelect
               name="dogumUlke"
               value={birthCountry}
+              options={countryOptions}
               onChange={(e) => {
                 const v = e.target.value;
                 setBirthCountry(v);
@@ -512,10 +519,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   dogumSehir: "",
                 });
               }}
-              options={[{ value: "", label: "Seçiniz" }, ...countryOptions]}
-              placeholder="Seçiniz"
-              error={errors.dogumUlke}
-              showError={false}
+              placeholder="Ülke ara veya seç…"
+              menuPortalTarget={portalTarget}
             />
 
             <input
@@ -550,7 +555,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {birthCountry === "Türkiye" ? (
               <>
-                <ScrollSelect
+                <SearchSelect
                   name="dogumIl"
                   value={birthProvince}
                   onChange={(e) => {
@@ -558,28 +563,22 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                     setBirthDistrict("");
                     syncBirthToForm();
                   }}
-                  options={[{ value: "", label: "İl Seçiniz" }, ...ilOptions]}
+                  options={ilOptions}
                   placeholder="İl Seçiniz"
+                  menuPortalTarget={portalTarget}
                 />
-
-                <ScrollSelect
+                <SearchSelect
                   name="dogumIlce"
                   value={birthDistrict}
                   onChange={(e) => {
                     setBirthDistrict(e.target.value);
                     syncBirthToForm();
                   }}
-                  options={[
-                    {
-                      value: "",
-                      label: birthProvince ? "İlçe Seçiniz" : "Önce il seçiniz",
-                    },
-                    ...(birthProvince ? ilceOptions(birthProvince) : []),
-                  ]}
+                  options={ilceOptions(birthProvince)}
                   placeholder={
                     birthProvince ? "İlçe Seçiniz" : "Önce il seçiniz"
                   }
-                  disabled={!birthProvince}
+                  menuPortalTarget={portalTarget}
                 />
               </>
             ) : (
@@ -621,9 +620,10 @@ const PersonalInformation = forwardRef(function PersonalInformation(
             Yaşadığı Ülke <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ScrollSelect
+            <SearchSelect
               name="ikametUlke"
               value={resCountry}
+              options={countryOptions}
               onChange={(e) => {
                 const v = e.target.value;
                 setResCountry(v);
@@ -636,10 +636,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   ikametSehir: "",
                 });
               }}
-              options={[{ value: "", label: "Seçiniz" }, ...countryOptions]}
-              placeholder="Seçiniz"
-              error={errors.ikametUlke}
-              showError={false}
+              placeholder="Ülke ara veya seç…"
+              menuPortalTarget={portalTarget}
             />
 
             <input
@@ -674,7 +672,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {resCountry === "Türkiye" ? (
               <>
-                <ScrollSelect
+                <SearchSelect
                   name="ikametIl"
                   value={resProvince}
                   onChange={(e) => {
@@ -682,26 +680,20 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                     setResDistrict("");
                     syncResToForm();
                   }}
-                  options={[{ value: "", label: "İl Seçiniz" }, ...ilOptions]}
+                  options={ilOptions}
                   placeholder="İl Seçiniz"
+                  menuPortalTarget={portalTarget}
                 />
-
-                <ScrollSelect
+                <SearchSelect
                   name="ikametIlce"
                   value={resDistrict}
                   onChange={(e) => {
                     setResDistrict(e.target.value);
                     syncResToForm();
                   }}
-                  options={[
-                    {
-                      value: "",
-                      label: resProvince ? "İlçe Seçiniz" : "Önce il seçiniz",
-                    },
-                    ...(resProvince ? ilceOptions(resProvince) : []),
-                  ]}
+                  options={ilceOptions(resProvince)}
                   placeholder={resProvince ? "İlçe Seçiniz" : "Önce il seçiniz"}
-                  disabled={!resProvince}
+                  menuPortalTarget={portalTarget}
                 />
               </>
             ) : (

@@ -1,5 +1,5 @@
 // components/Users/JobApplicationForm.jsx
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -14,7 +14,6 @@ import {
   faFileSignature,
   faCheckCircle,
   faCircleXmark,
-  faCircleMinus,
   faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -78,6 +77,48 @@ export default function JobApplicationForm() {
     [statuses]
   );
 
+  /* ---------- Scroll-to-Section & Highlight ---------- */
+  // Hangi section’ı vurgu yapacağımızı tutuyoruz
+  const [, setHighlightId] = useState(null);
+
+  const scrollToSection = useCallback((targetId, offset = 100) => {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    const y =
+      el.getBoundingClientRect().top + window.scrollY - Math.max(offset, 0);
+
+    window.scrollTo({ top: y, behavior: "smooth" });
+
+    // Kısa süreli highlight
+    setHighlightId(targetId);
+    el.classList.add(
+      "ring-2",
+      "ring-green-400",
+      "ring-offset-2",
+      "ring-offset-gray-800"
+    );
+
+    // Biraz gecikmeyle class’ları kaldır
+    setTimeout(() => {
+      el.classList.remove(
+        "ring-2",
+        "ring-amber-400",
+        "ring-offset-2",
+        "ring-offset-gray-800"
+      );
+      setHighlightId(null);
+    }, 1600);
+  }, []);
+
+  // Section id sabitleri
+  const SECTION_IDS = {
+    personal: "section-personal", // istersen "1" yapabilirsin
+    education: "section-education",
+    other: "section-other",
+    jobDetails: "section-jobdetails",
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-500 via-gray-500 to-gray-600 pb-10 rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)] border border-gray-400/20">
       {/* === HERO HEADER === */}
@@ -109,33 +150,55 @@ export default function JobApplicationForm() {
         <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] bg-amber-100/10 blur-3xl rounded-full" />
       </div>
 
-      {/* === Zorunlu Bölümler (Sticky Status Bar) === */}
+      {/* === Zorunlu Bilgiler (Sticky Status Bar) === */}
       <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-4">
-        <div className="bg-white/90 rounded-lg border border-gray-200 shadow-md px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
-          <span className="text-sm text-gray-700 font-medium mr-1">
-            Zorunlu Bölümler:
-          </span>
-          <StatusPill ok={statuses.personalOk} label="Kişisel Bilgiler" />
-          <StatusPill ok={statuses.educationOk} label="Eğitim Bilgileri" />
-          <StatusPill ok={statuses.otherOk} label="Diğer Kişisel Bilgiler" />
-          <StatusPill ok={statuses.jobDetailsOk} label="İş Başvuru Detayları" />
-          <span className="ml-auto text-sm">
-            {allRequiredOk ? (
-              <span className="text-green-700 font-medium">
-                Tüm zorunlu bölümler hazır
-              </span>
-            ) : (
-              <span className="text-gray-600">
-                Lütfen tüm zorunlu bölümleri tamamlayın
-              </span>
-            )}
-          </span>
+        <div className="bg-gray-300/85 rounded-lg border border-gray-300 shadow-md px-4 py-4 flex flex-col items-center gap-3">
+          {/* Başlık + Durum ikonu */}
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-sm sm:text-base text-gray-800 font-semibold">
+              Zorunlu Bilgiler
+            </span>
+            <FontAwesomeIcon
+              icon={allRequiredOk ? faCheckCircle : faCircleXmark}
+              className={allRequiredOk ? "text-green-600" : "text-red-600"}
+              title={allRequiredOk ? "Tamamlandı" : "Eksik"}
+              aria-label={allRequiredOk ? "Tamamlandı" : "Eksik"}
+            />
+          </div>
+          {/* Rozetler */}
+          <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 place-items-center">
+            <StatusPill
+              ok={statuses.personalOk}
+              label="Kişisel Bilgiler"
+              icon={faUser}
+              onClick={() => scrollToSection(SECTION_IDS.personal)}
+            />
+            <StatusPill
+              ok={statuses.educationOk}
+              label="Eğitim Bilgileri"
+              icon={faGraduationCap}
+              onClick={() => scrollToSection(SECTION_IDS.education)}
+            />
+            <StatusPill
+              ok={statuses.otherOk}
+              label="Diğer Kişisel Bilgiler"
+              icon={faUserCog}
+              onClick={() => scrollToSection(SECTION_IDS.other)}
+            />
+            <StatusPill
+              ok={statuses.jobDetailsOk}
+              label="İş Başvuru Detayları"
+              icon={faFileSignature}
+              onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
+            />
+          </div>
         </div>
       </div>
 
       {/* === CONTENT SECTIONS === */}
       <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-6">
         <Section
+          id={SECTION_IDS.personal} // istersen "1" yap
           icon={faUser}
           title="Kişisel Bilgiler"
           required
@@ -148,6 +211,7 @@ export default function JobApplicationForm() {
         />
 
         <Section
+          id={SECTION_IDS.education}
           icon={faGraduationCap}
           title="Eğitim Bilgileri"
           required
@@ -157,7 +221,6 @@ export default function JobApplicationForm() {
           content={
             <EducationTable
               ref={educationTableRef}
-              //onHasAnyRowChange={onEducationHasRowChange}
               onValidChange={onEducationHasRowChange}
             />
           }
@@ -211,6 +274,7 @@ export default function JobApplicationForm() {
         />
 
         <Section
+          id={SECTION_IDS.other}
           icon={faUserCog}
           title="Diğer Kişisel Bilgiler"
           required
@@ -223,6 +287,7 @@ export default function JobApplicationForm() {
         />
 
         <Section
+          id={SECTION_IDS.jobDetails}
           icon={faFileSignature}
           title="İş Başvuru Detayları"
           required
@@ -250,32 +315,41 @@ export default function JobApplicationForm() {
   );
 }
 
-/* ---------- Status Pill ---------- */
-function StatusPill({ ok, label }) {
-  let icon = faCircleMinus;
+/* ---------- Status Pill (clickable) ---------- */
+function StatusPill({ ok, label, icon, onClick }) {
   let cls =
-    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border";
+    "inline-flex items-center gap-1.5 sm:px-2.5 px-1.5 sm:py-1 py-1 rounded-full text-xs border select-none transition focus:outline-none cursor-pointer";
   if (ok === true) {
-    icon = faCheckCircle;
     cls += " bg-green-50 text-green-700 border-green-200";
   } else if (ok === false) {
-    icon = faCircleXmark;
     cls += " bg-red-50 text-red-700 border-red-200";
   } else {
     cls += " bg-gray-50 text-gray-600 border-gray-200";
   }
+
   return (
-    <span className={cls}>
-      <FontAwesomeIcon icon={icon} />
-      {label}
-    </span>
+    <button
+      type="button"
+      className={`${cls} hover:brightness-95 active:scale-95`}
+      title={`${label} bölümüne git`}
+      aria-label={`${label} bölümüne git`}
+      onClick={onClick}
+    >
+      <FontAwesomeIcon icon={icon} className="text-sm sm:text-base" />
+      {/* Mobilde metni gizle, sm+’da göster */}
+      <span className="hidden sm:inline">{label}</span>
+      <span className="sr-only">{label}</span>
+    </button>
   );
 }
 
 /* --- Section Template --- */
-function Section({ icon, title, required = false, onAdd, content }) {
+function Section({ id, icon, title, required = false, onAdd, content }) {
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-md overflow-hidden">
+    <div
+      id={id}
+      className="bg-gray-800 rounded-lg border border-gray-700 shadow-md overflow-hidden transition"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-b border-gray-700">
         <div className="flex items-center gap-3 sm:gap-4">
           <FontAwesomeIcon

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
-import ScrollSelect from "../Selected/ScrollSelect";
+import SearchSelect from "../Selected/SearchSelect";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 import {
@@ -198,11 +198,12 @@ export default function JobExperiencesAddModal({
   const [jobProvince, setJobProvince] = useState("");
   const [jobPlaceOther, setJobPlaceOther] = useState("");
 
-  const countryOptions = COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }));
-  const ilOptions = Object.keys(TR_IL_ILCE).map((il) => ({
-    value: il,
-    label: il,
-  }));
+  const countryOptions = [{ value: "", label: "Seçiniz" }].concat(
+    COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }))
+  );
+  const ilOptions = [{ value: "", label: "İl Seçiniz" }].concat(
+    Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
+  );
 
   const [errors, setErrors] = useState({});
   const [disabledTip, setDisabledTip] = useState("");
@@ -340,7 +341,7 @@ export default function JobExperiencesAddModal({
     setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
   };
 
-  // ------- handlers
+  // ------- handlers (SearchSelect, event.target.value imzasını kullanır)
   const onInput = (e) => {
     const { name, value } = e.target;
     const next = { ...formData, [name]: value };
@@ -384,7 +385,7 @@ export default function JobExperiencesAddModal({
   const handleCityChangeTR = (e) => {
     const val = e.target.value;
     setJobProvince(val);
-    const next = { ...formData, isSehir: val }; // fd.isSehir öncelikli -> yarış yok
+    const next = { ...formData, isSehir: val };
     setFormData(next);
     if (!touched.isSehir) touch("isSehir");
     validateField("isSehir", next);
@@ -394,7 +395,7 @@ export default function JobExperiencesAddModal({
     const v = onlyLettersTR(e.target.value);
     setJobPlaceOther(v);
     if (jobCountry && (jobCountry !== "Diğer" || jobCountryOther)) {
-      const next = { ...formData, isSehir: v }; // fd.isSehir öncelikli
+      const next = { ...formData, isSehir: v };
       setFormData(next);
       if (!touched.isSehir) touch("isSehir");
       validateField("isSehir", next);
@@ -472,6 +473,8 @@ export default function JobExperiencesAddModal({
   if (!open) return null;
 
   /* -------------------- RENDER -------------------- */
+  const portalTarget = typeof document !== "undefined" ? document.body : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
@@ -676,18 +679,15 @@ export default function JobExperiencesAddModal({
                   Ülke (İş) *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <ScrollSelect
+                  <SearchSelect
+                    label={null}
                     name="isUlkeSelect"
                     value={jobCountry}
                     onChange={handleCountryChange}
-                    options={[
-                      { value: "", label: "Seçiniz" },
-                      ...countryOptions,
-                    ]}
-                    placeholder="Seçiniz"
-                    showError={false}
-                    className="transition-none"
-                    menuClassName="transition-none"
+                    options={countryOptions}
+                    placeholder="Ülke ara veya seç…"
+                    isClearable={false}
+                    menuPortalTarget={portalTarget}
                   />
                   <input
                     type="text"
@@ -727,18 +727,16 @@ export default function JobExperiencesAddModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {jobCountry === "Türkiye" ? (
                   <>
-                    <ScrollSelect
+                    <SearchSelect
+                      label={null}
                       name="isIl"
                       value={jobProvince}
                       onChange={handleCityChangeTR}
-                      options={[
-                        { value: "", label: "İl Seçiniz" },
-                        ...ilOptions,
-                      ]}
-                      placeholder="İl Seçiniz"
-                      className="transition-none"
-                      menuClassName="transition-none"
-                      disabled={!jobCountry}
+                      options={ilOptions}
+                      placeholder="İl ara veya seç…"
+                      isClearable={false}
+                      isDisabled={!jobCountry}
+                      menuPortalTarget={portalTarget}
                     />
                     <div className="hidden sm:block" />
                   </>
