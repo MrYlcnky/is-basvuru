@@ -2,6 +2,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { forwardRef, useImperativeHandle } from "react";
+import { useTranslation } from "react-i18next";
 
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
@@ -9,18 +10,32 @@ import "react-toastify/dist/ReactToastify.css";
 
 import useCrudTable from "../modalHooks/useCrudTable";
 import JobExperiencesAddModal from "../addModals/JobExperiencesAddModal";
+import { formatDate } from "../modalHooks/dateUtils";
+
+// Basit para gösterimi: 2500 -> 2.500
+const formatMoney = (val) => {
+  if (val == null || val === "") return "-";
+  const n = Number(String(val).replace(",", "."));
+  if (Number.isNaN(n)) return String(val);
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+};
 
 const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
+  const { t } = useTranslation();
+
   // Silme onayı
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
-      title: "Emin misin?",
-      text: `“${row.isAdi} – ${row.pozisyon}” kaydını silmek istiyor musun?`,
+      title: t("jobExp.confirm.title"),
+      text: t("jobExp.confirm.text", {
+        company: row.isAdi,
+        role: row.pozisyon,
+      }),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
-      cancelButtonText: "İptal",
-      confirmButtonText: "Evet, sil!",
+      cancelButtonText: t("common.cancel"),
+      confirmButtonText: t("common.deleteYes"),
     });
     return res.isConfirmed;
   };
@@ -45,7 +60,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
   // parent'tan butonla modal açmak için
   useImperativeHandle(ref, () => ({ openCreate }));
 
-  // tabloda başka aktif iş var mı? (bitisTarihi boş/null veya explicit halenCalisiyor:true)
+  // tabloda başka aktif iş var mı?
   const anyActive = rows.some(
     (r) => r?.halenCalisiyor === true || !r?.bitisTarihi
   );
@@ -53,8 +68,6 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
     selectedRow &&
     (selectedRow?.halenCalisiyor === true || !selectedRow?.bitisTarihi);
 
-  // create modunda: başka aktif varsa aktif yeni kayıt olmasın
-  // edit modunda: başka aktif varken bu kaydı aktif yapma (sadece kendi aktifliğini koruyabilir)
   const anotherActiveExists =
     modalOpen && modalMode
       ? modalMode === "create"
@@ -70,17 +83,17 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
           <table className="min-w-full text-sm table-fixed">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="px-4 py-3 ">Şirket / İş Adı</th>
-                <th className="px-4 py-3 ">Departman</th>
-                <th className="px-4 py-3 ">Pozisyon</th>
-                <th className="px-4 py-3 ">Görev</th>
-                <th className="px-4 py-3 ">Ücret</th>
-                <th className="px-4 py-3 ">Başlangıç</th>
-                <th className="px-4 py-3 ">Bitiş</th>
-                <th className="px-4 py-3 ">Ayrılış Sebebi</th>
-                <th className="px-4 py-3 ">Ülke</th>
-                <th className="px-4 py-3 ">Şehir</th>
-                <th className="px-4 py-3 text-right ">İşlem</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.company")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.department")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.position")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.duty")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.salary")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.start")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.end")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.leaveReason")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.country")}</th>
+                <th className="px-4 py-3 ">{t("jobExp.cols.city")}</th>
+                <th className="px-4 py-3 text-right ">{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -112,29 +125,33 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
                   </td>
                   <td
                     className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    title={item.ucret}
+                    title={formatMoney(item.ucret)}
                   >
-                    {item.ucret}
+                    {formatMoney(item.ucret)}
                   </td>
                   <td
                     className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    title={item.baslangicTarihi}
+                    title={formatDate(item.baslangicTarihi)}
                   >
-                    {item.baslangicTarihi}
+                    {formatDate(item.baslangicTarihi)}
                   </td>
                   <td
                     className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
                     title={
-                      item.bitisTarihi || (item.halenCalisiyor ? "Devam" : "")
+                      item.halenCalisiyor
+                        ? t("jobExp.badges.ongoing")
+                        : formatDate(item.bitisTarihi) || ""
                     }
                   >
-                    {item.halenCalisiyor ? "Devam" : item.bitisTarihi}
+                    {item.halenCalisiyor
+                      ? t("jobExp.badges.ongoing")
+                      : formatDate(item.bitisTarihi)}
                   </td>
                   <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
+                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
                     title={item.ayrilisSebebi}
                   >
-                    {item.ayrilisSebebi}
+                    {item.ayrilisSebebi || "-"}
                   </td>
                   <td
                     className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
@@ -152,7 +169,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
                     <div className="inline-flex items-center gap-2">
                       <button
                         type="button"
-                        aria-label="Düzenle"
+                        aria-label={t("common.edit")}
                         onClick={() => openEdit(item)}
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -160,7 +177,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
                       </button>
                       <button
                         type="button"
-                        aria-label="Sil"
+                        aria-label={t("common.delete")}
                         onClick={() => handleDelete(item)}
                         className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -174,6 +191,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
           </table>
         </div>
       )}
+
       {/* Modal (controlled) */}
       <JobExperiencesAddModal
         open={modalOpen}
@@ -191,46 +209,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticJobExperiencesTableDB() {
   const rows = [
-    /* {
-      id: 1,
-      isAdi:
-        "Şahin Bilgisayar Yazılım A.Ş. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaa",
-      departman: "Yazılım",
-      pozisyon: "Junior Full Stack Developer",
-      gorev: "Web geliştiricisi",
-      ucret: "2500",
-      baslangicTarihi: "2023-10-19",
-      bitisTarihi: "2024-02-07",
-      ayrilisSebebi: "Ders Yoğunluğu",
-      isUlke: "Turkey",
-      isSehir: "Kayseri",
-    },
-    {
-      id: 2,
-      isAdi: "Şahin Bilgisayar Yazılım A.Ş.",
-      departman: "Yazılım",
-      pozisyon: "Junior Full Stack Developer",
-      gorev: "Web geliştiricisi",
-      ucret: "2500",
-      baslangicTarihi: "2023-10-19",
-      bitisTarihi: "2024-02-07",
-      ayrilisSebebi: "Ders Yoğunluğu",
-      isUlke: "Turkey",
-      isSehir: "Kayseri",
-    },
-    {
-      id: 3,
-      isAdi: "Şahin Bilgisayar Yazılım A.Ş.",
-      departman: "Yazılım",
-      pozisyon: "Junior Full Stack Developer",
-      gorev: "Web geliştiricisi",
-      ucret: "2500",
-      baslangicTarihi: "2023-10-19",
-      bitisTarihi: "2024-02-07",
-      ayrilisSebebi: "Ders Yoğunluğu",
-      isUlke: "Turkey",
-      isSehir: "Kayseri",
-    },*/
+    /* örnek başlangıç verileri */
   ];
   return rows;
 }

@@ -1,4 +1,3 @@
-// components/Users/tables/EducationTable.jsx
 import React, { forwardRef, useImperativeHandle, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -9,32 +8,34 @@ import useCrudTable from "../modalHooks/useCrudTable";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-// Not sistemi metni
-const notSistemaText = (val) =>
-  val === "100"
-    ? "100’lük Sistem"
-    : val === "4"
-    ? "4’lük Sistem"
-    : String(val ?? "-");
+import { useTranslation } from "react-i18next";
 
 const EducationTable = forwardRef(function EducationTable(
-  { onValidChange }, // <-- parent'tan geçilecek (Status Bar için)
+  { onValidChange },
   ref
 ) {
+  const { t } = useTranslation();
+
+  const notSistemaText = (val) =>
+    val === "100"
+      ? t("education.gradeSystem.hundred")
+      : val === "4"
+      ? t("education.gradeSystem.four")
+      : String(val ?? t("common.dash"));
+
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
-      title: "Emin misin?",
-      text: `“${row.okul} - ${row.bolum}” kaydını silmek istiyor musun?`,
+      title: t("education.delete.title"),
+      text: t("education.delete.text", { school: row.okul, dept: row.bolum }),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
-      cancelButtonText: "İptal",
-      confirmButtonText: "Evet, sil!",
+      cancelButtonText: t("actions.cancel"),
+      confirmButtonText: t("actions.delete"),
     });
     return res.isConfirmed;
   };
-  const notify = (msg) => toast.success(msg);
+  const notify = (msg) => toast.success(msg || t("toast.deleted"));
 
   const {
     rows,
@@ -49,36 +50,37 @@ const EducationTable = forwardRef(function EducationTable(
     handleDelete,
   } = useCrudTable(staticEducationDB, { confirmDelete, notify });
 
-  // ✅ Satır sayısı değiştikçe parent’a “valid” sinyali gönder
   useEffect(() => {
     onValidChange?.(rows.length > 0);
   }, [rows, onValidChange]);
 
-  // ✅ Dışarıya tek bir useImperativeHandle ile API ver
   useImperativeHandle(ref, () => ({
     openCreate,
-    getData: () => rows, // tablo verileri
-    hasAnyRow: () => rows.length > 0, // geriye uyumluluk
+    getData: () => rows,
+    hasAnyRow: () => rows.length > 0,
   }));
 
   return (
-    <div className="">
-      {/* Tablo */}
+    <div>
       {rows.length !== 0 && (
         <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
           <table className="min-w-full text-sm table-fixed">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="px-4 py-3">Seviye</th>
-                <th className="px-4 py-3">Okul Adı</th>
-                <th className="px-4 py-3">Bölüm</th>
-                <th className="px-4 py-3">Not Sistemi</th>
-                <th className="px-4 py-3">GANO</th>
-                <th className="px-4 py-3">Başlangıç</th>
-                <th className="px-4 py-3">Bitiş</th>
-                <th className="px-4 py-3">Diploma Durumu</th>
+                <th className="px-4 py-3">{t("education.table.level")}</th>
+                <th className="px-4 py-3">{t("education.table.school")}</th>
+                <th className="px-4 py-3">{t("education.table.department")}</th>
+                <th className="px-4 py-3">
+                  {t("education.table.gradeSystem")}
+                </th>
+                <th className="px-4 py-3">{t("education.table.gpa")}</th>
+                <th className="px-4 py-3">{t("education.table.start")}</th>
+                <th className="px-4 py-3">{t("education.table.end")}</th>
+                <th className="px-4 py-3">
+                  {t("education.table.diplomaStatus")}
+                </th>
                 <th className="px-4 py-3 text-right" style={{ width: 110 }}>
-                  İşlem
+                  {t("education.table.actions")}
                 </th>
               </tr>
             </thead>
@@ -104,7 +106,7 @@ const EducationTable = forwardRef(function EducationTable(
                     {r.bolum}
                   </td>
                   <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
+                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
                     title={notSistemaText(r.notSistemi)}
                   >
                     {notSistemaText(r.notSistemi)}
@@ -112,7 +114,7 @@ const EducationTable = forwardRef(function EducationTable(
                   <td className="px-4 py-3 text-gray-800 max-w-[100px] truncate">
                     {r.gano !== null && r.gano !== undefined
                       ? Number(r.gano).toFixed(2)
-                      : "-"}
+                      : t("common.dash")}
                   </td>
                   <td
                     className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
@@ -136,7 +138,8 @@ const EducationTable = forwardRef(function EducationTable(
                     <div className="inline-flex items-center gap-2">
                       <button
                         type="button"
-                        aria-label="Düzenle"
+                        aria-label={t("actions.update")}
+                        title={t("actions.update")}
                         onClick={() => openEdit(r)}
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -144,7 +147,8 @@ const EducationTable = forwardRef(function EducationTable(
                       </button>
                       <button
                         type="button"
-                        aria-label="Sil"
+                        aria-label={t("actions.delete")}
+                        title={t("actions.delete")}
                         onClick={() => handleDelete(r)}
                         className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -159,7 +163,6 @@ const EducationTable = forwardRef(function EducationTable(
         </div>
       )}
 
-      {/* Modal (controlled) */}
       <EducationAddModal
         open={modalOpen}
         mode={modalMode}
@@ -175,7 +178,7 @@ const EducationTable = forwardRef(function EducationTable(
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticEducationDB() {
   const rows = [
-    /* örnek başlangıç verisi eklemek istersen burayı aç */
+    // başlangıç verisi istersen burayı kullanabilirsin
   ];
   return rows;
 }

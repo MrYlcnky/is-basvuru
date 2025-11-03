@@ -1,6 +1,8 @@
+// components/Users/usersComponents/ReferencesTable.jsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { forwardRef, useImperativeHandle } from "react";
+import { useTranslation } from "react-i18next";
 
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
@@ -9,15 +11,20 @@ import ReferenceAddModal from "../addModals/ReferenceAddModal";
 import useCrudTable from "../modalHooks/useCrudTable";
 
 const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
+  const { t } = useTranslation();
+
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
-      title: "Emin misin?",
-      text: `“${row.referansAdi} - ${row.referansSoyadi}” kaydını silmek istiyor musun?`,
+      title: t("references.delete.title"),
+      text: t("references.delete.text", {
+        first: row.referansAdi,
+        last: row.referansSoyadi,
+      }),
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
-      cancelButtonText: "İptal",
-      confirmButtonText: "Evet, sil!",
+      cancelButtonText: t("actions.cancel"),
+      confirmButtonText: t("common.deleteYes"),
     });
     return res.isConfirmed;
   };
@@ -35,6 +42,7 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
     handleUpdate,
     handleDelete,
   } = useCrudTable(staticReferencesDB, { confirmDelete, notify });
+
   useImperativeHandle(ref, () => ({ openCreate }));
 
   return (
@@ -45,14 +53,14 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="px-4 py-3">Çalıştığı Kurum</th>
-                <th className="px-4 py-3">Ad</th>
-                <th className="px-4 py-3">Soyad</th>
-                <th className="px-4 py-3">İşyeri</th>
-                <th className="px-4 py-3">Görev</th>
-                <th className="px-4 py-3">Telefon</th>
+                <th className="px-4 py-3">{t("references.table.orgType")}</th>
+                <th className="px-4 py-3">{t("references.table.firstName")}</th>
+                <th className="px-4 py-3">{t("references.table.lastName")}</th>
+                <th className="px-4 py-3">{t("references.table.workplace")}</th>
+                <th className="px-4 py-3">{t("references.table.role")}</th>
+                <th className="px-4 py-3">{t("references.table.phone")}</th>
                 <th className="px-4 py-3 text-right" style={{ width: 110 }}>
-                  İşlem
+                  {t("common.actions")}
                 </th>
               </tr>
             </thead>
@@ -100,7 +108,7 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
                     <div className="inline-flex items-center gap-2">
                       <button
                         type="button"
-                        aria-label="Düzenle"
+                        aria-label={t("actions.update")}
                         onClick={() => openEdit(item)}
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -108,7 +116,7 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
                       </button>
                       <button
                         type="button"
-                        aria-label="Sil"
+                        aria-label={t("actions.delete")}
                         onClick={() => handleDelete(item)}
                         className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
                       >
@@ -128,8 +136,14 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
         mode={modalMode}
         initialData={selectedRow}
         onClose={closeModal}
-        onSave={handleSave}
-        onUpdate={handleUpdate}
+        onSave={(p) => {
+          handleSave(p);
+          toast.success(t("toast.saved"));
+        }}
+        onUpdate={(p) => {
+          handleUpdate(p);
+          toast.success(t("toast.updated"));
+        }}
       />
     </div>
   );
@@ -138,33 +152,17 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function staticReferencesDB() {
   const rows = [
-    /* {
+    /* örnek:
+    {
       id: 1,
-      calistigiKurum: "Bünyemizde / Grubumuzda",
+      calistigiKurum: "In-house / Group",
       referansAdi: "Mehmet",
       referansSoyadi: "Yalçınkaya",
       referansIsYeri: "Chamada Girne",
       referansGorevi: "IT",
-      referansTelefon: "+905488583819",
+      referansTelefon: "+90 5XX XXX XX XX",
     },
-    {
-      id: 2,
-      calistigiKurum: "Harici",
-      referansAdi: "Mehmet",
-      referansSoyadi: "Yalçınkaya",
-      referansIsYeri: "Yalçınkaya A.Ş",
-      referansGorevi: "Yazılım Geliştirici",
-      referansTelefon: "+905488583819",
-    },
-    {
-      id: 3,
-      calistigiKurum: "Harici",
-      referansAdi: "Mehmet",
-      referansSoyadi: "Yalçınkaya",
-      referansIsYeri: "Yalçınkaya A.Ş",
-      referansGorevi: "Yazılım Geliştirici",
-      referansTelefon: "+905488583819",
-    },*/
+    */
   ];
   return rows;
 }

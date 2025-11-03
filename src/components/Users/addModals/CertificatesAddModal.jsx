@@ -7,91 +7,15 @@ import useModalDismiss from "../modalHooks/useModalDismiss";
 import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
+import { useTranslation } from "react-i18next";
 
 /* -------------------- Regex -------------------- */
 const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
 
-/* -------------------- Input base (hover: black) -------------------- */
+/* -------------------- Input base -------------------- */
 const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
 
-/* -------------------- ZOD ŞEMASI -------------------- */
-const certSchema = z
-  .object({
-    ad: z
-      .string()
-      .trim()
-      .min(1, "Sertifika / Eğitim adı zorunlu.")
-      .max(100, "En fazla 100 karakter yazabilirsiniz.")
-      .regex(ALNUM_TR, "Yalnızca harf, rakam ve boşluk kullanılabilir."),
-    kurum: z
-      .string()
-      .trim()
-      .min(1, "Kurum / Organizasyon adı zorunlu.")
-      .max(100, "En fazla 100 karakter yazabilirsiniz.")
-      .regex(ALNUM_TR, "Yalnızca harf, rakam ve boşluk kullanılabilir."),
-    sure: z
-      .string()
-      .trim()
-      .min(1, "Süre zorunlu.")
-      .max(50, "En fazla 50 karakter yazabilirsiniz.")
-      .regex(ALNUM_TR, "Yalnızca harf, rakam ve boşluk kullanılabilir."),
-
-    // Veriliş tarihi (zorunlu, null kabul eder ama boşsa uyarı verir)
-    verilisTarihi: z.preprocess(
-      (v) => (v ? new Date(v) : null),
-      z.date({ required_error: "Veriliş tarihi zorunlu." }).nullable()
-    ),
-
-    // Geçerlilik tarihi (opsiyonel)
-    gecerlilikTarihi: z.preprocess(
-      (v) => (v ? new Date(v) : null),
-      z.date().nullable()
-    ),
-  })
-  .superRefine((data, ctx) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (!data.verilisTarihi) {
-      ctx.addIssue({
-        path: ["verilisTarihi"],
-        code: z.ZodIssueCode.custom,
-        message: "Veriliş tarihi zorunlu.",
-      });
-      return;
-    }
-
-    if (data.verilisTarihi > today) {
-      ctx.addIssue({
-        path: ["verilisTarihi"],
-        code: z.ZodIssueCode.custom,
-        message: "Veriliş tarihi bugünden ileri olamaz.",
-      });
-    }
-
-    if (data.verilisTarihi && data.gecerlilikTarihi) {
-      if (data.gecerlilikTarihi < data.verilisTarihi) {
-        ctx.addIssue({
-          path: ["gecerlilikTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: "Geçerlilik tarihi verilişten önce olamaz.",
-        });
-      }
-      if (
-        data.gecerlilikTarihi.toDateString() ===
-        data.verilisTarihi.toDateString()
-      ) {
-        ctx.addIssue({
-          path: ["gecerlilikTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: "Veriliş ve geçerlilik tarihi aynı gün olamaz.",
-        });
-      }
-    }
-  });
-
-/* -------------------- COMPONENT -------------------- */
 export default function CertificatesAddModal({
   open,
   mode = "create",
@@ -100,6 +24,88 @@ export default function CertificatesAddModal({
   onSave,
   onUpdate,
 }) {
+  const { t } = useTranslation();
+
+  /* -------------------- ZOD ŞEMASI -------------------- */
+  const certSchema = useMemo(
+    () =>
+      z
+        .object({
+          ad: z
+            .string()
+            .trim()
+            .min(1, t("certificates.validations.name.required"))
+            .max(100, t("certificates.validations.name.max"))
+            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
+          kurum: z
+            .string()
+            .trim()
+            .min(1, t("certificates.validations.org.required"))
+            .max(100, t("certificates.validations.org.max"))
+            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
+          sure: z
+            .string()
+            .trim()
+            .min(1, t("certificates.validations.duration.required"))
+            .max(50, t("certificates.validations.duration.max"))
+            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
+          verilisTarihi: z.preprocess(
+            (v) => (v ? new Date(v) : null),
+            z
+              .date({
+                required_error: t("certificates.validations.issuedAt.required"),
+              })
+              .nullable()
+          ),
+          gecerlilikTarihi: z.preprocess(
+            (v) => (v ? new Date(v) : null),
+            z.date().nullable()
+          ),
+        })
+        .superRefine((data, ctx) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          if (!data.verilisTarihi) {
+            ctx.addIssue({
+              path: ["verilisTarihi"],
+              code: z.ZodIssueCode.custom,
+              message: t("certificates.validations.issuedAt.required"),
+            });
+            return;
+          }
+
+          if (data.verilisTarihi > today) {
+            ctx.addIssue({
+              path: ["verilisTarihi"],
+              code: z.ZodIssueCode.custom,
+              message: t("certificates.validations.issuedAt.future"),
+            });
+          }
+
+          if (data.verilisTarihi && data.gecerlilikTarihi) {
+            if (data.gecerlilikTarihi < data.verilisTarihi) {
+              ctx.addIssue({
+                path: ["gecerlilikTarihi"],
+                code: z.ZodIssueCode.custom,
+                message: t("certificates.validations.validUntil.beforeIssued"),
+              });
+            }
+            if (
+              data.gecerlilikTarihi.toDateString() ===
+              data.verilisTarihi.toDateString()
+            ) {
+              ctx.addIssue({
+                path: ["gecerlilikTarihi"],
+                code: z.ZodIssueCode.custom,
+                message: t("certificates.validations.validUntil.sameDay"),
+              });
+            }
+          }
+        }),
+    [t]
+  );
+
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -113,15 +119,11 @@ export default function CertificatesAddModal({
 
   /* ---------- SCROLL LOCK ---------- */
   useEffect(() => {
-    if (open) {
-      lockScroll();
-    } else {
-      unlockScroll();
-    }
+    if (open) lockScroll();
+    else unlockScroll();
     return () => unlockScroll();
   }, [open]);
 
-  // onClose'u unlock ile sarmalayan tek kapatma fonksiyonu
   const handleClose = () => {
     unlockScroll();
     onClose?.();
@@ -153,8 +155,16 @@ export default function CertificatesAddModal({
   const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
   const today = useMemo(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
+    const tday = new Date();
+    return new Date(
+      tday.getFullYear(),
+      tday.getMonth(),
+      tday.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
   }, []);
   const todayISO = toISODate(today);
 
@@ -193,7 +203,7 @@ export default function CertificatesAddModal({
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
-    handleClose(); // kapatırken scroll’u geri getir
+    handleClose();
   };
 
   const parsed = certSchema.safeParse(formData);
@@ -217,7 +227,6 @@ export default function CertificatesAddModal({
 
   const toStr = (d) => (typeof d === "string" ? d : d ? toISODate(d) : "");
 
-  // MUI onChange: string (YYYY-MM-DD) gelir → formda saklamak için handleChange'e pasla
   const handleMuiString = ({ target: { name, value } }) =>
     handleChange(name, value || null);
 
@@ -237,13 +246,14 @@ export default function CertificatesAddModal({
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">
             {mode === "edit"
-              ? "Sertifika ve Eğitim Bilgisi Düzenle"
-              : "Sertifika ve Eğitim Bilgisi Ekle"}
+              ? t("certificates.modal.titleEdit")
+              : t("certificates.modal.titleCreate")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("actions.close")}
+            title={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 focus:outline-none"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -258,7 +268,7 @@ export default function CertificatesAddModal({
               {/* Ad */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Sertifika / Eğitim Adı *
+                  {t("certificates.form.name")} *
                 </label>
                 <input
                   type="text"
@@ -266,7 +276,7 @@ export default function CertificatesAddModal({
                   maxLength={100}
                   onChange={(e) => handleChange("ad", e.target.value)}
                   className={FIELD_BASE}
-                  placeholder="Örn: React Bootcamp"
+                  placeholder={t("certificates.placeholders.name")}
                 />
                 <div className="flex justify-between mt-1">
                   {errors.ad ? (
@@ -281,7 +291,7 @@ export default function CertificatesAddModal({
               {/* Kurum */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Kurum / Organizasyon *
+                  {t("certificates.form.org")} *
                 </label>
                 <input
                   type="text"
@@ -289,7 +299,7 @@ export default function CertificatesAddModal({
                   maxLength={100}
                   onChange={(e) => handleChange("kurum", e.target.value)}
                   className={FIELD_BASE}
-                  placeholder="Örn: BTK Akademi"
+                  placeholder={t("certificates.placeholders.org")}
                 />
                 <div className="flex justify-between mt-1">
                   {errors.kurum ? (
@@ -307,7 +317,7 @@ export default function CertificatesAddModal({
               {/* Süre */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Süresi *
+                  {t("certificates.form.duration")} *
                 </label>
                 <input
                   type="text"
@@ -315,7 +325,7 @@ export default function CertificatesAddModal({
                   maxLength={50}
                   onChange={(e) => handleChange("sure", e.target.value)}
                   className={FIELD_BASE}
-                  placeholder="Örn: 3 Ay"
+                  placeholder={t("certificates.placeholders.duration")}
                 />
                 <div className="flex justify-between mt-1">
                   {errors.sure ? (
@@ -330,7 +340,7 @@ export default function CertificatesAddModal({
               {/* Veriliş Tarihi */}
               <div className="sm:col-span-2">
                 <MuiDateStringField
-                  label="Veriliş Tarihi"
+                  label={t("certificates.form.issuedAt")}
                   name="verilisTarihi"
                   value={toStr(formData.verilisTarihi)}
                   onChange={handleMuiString}
@@ -356,7 +366,7 @@ export default function CertificatesAddModal({
             {/* Geçerlilik Tarihi */}
             <div className="sm:col-span-2">
               <MuiDateStringField
-                label="Geçerlilik Tarihi (Opsiyonel)"
+                label={t("certificates.form.validUntilOptional")}
                 name="gecerlilikTarihi"
                 value={toStr(formData.gecerlilikTarihi)}
                 onChange={handleMuiString}
@@ -386,7 +396,7 @@ export default function CertificatesAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("actions.cancel")}
               </button>
               {mode === "edit" ? (
                 <button
@@ -399,7 +409,7 @@ export default function CertificatesAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("actions.update")}
                 </button>
               ) : (
                 <button
@@ -412,7 +422,7 @@ export default function CertificatesAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("actions.save")}
                 </button>
               )}
             </div>

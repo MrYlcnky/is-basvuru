@@ -1,12 +1,12 @@
-// components/Users/addModals/EducationAddModal.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
-import { toDateSafe, toISODate } from "../modalHooks/dateUtils"; // yolunu kendi projene göre düzelt
+import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
+import { useTranslation } from "react-i18next";
 
 /* -------------------- Yardımcı -------------------- */
 const isValidISODate = (s) => {
@@ -22,148 +22,142 @@ const BASE_FIELD =
 const BASE_SELECT =
   "w-full h-[43px] rounded-lg border px-3 py-2 transition border-gray-300 hover:border-black focus:outline-none cursor-pointer";
 
-/* -------------------- ZOD ŞEMASI (tarihler string) -------------------- */
-/* BİTİŞ TARİHİ KURALI:
-   - Mezun veya Ara Verdi => bitiş ZORUNLU
-   - Devam veya Terk       => bitiş İSTENMEZ (UI’de disable, şemada da gereksiz) */
-const eduSchema = z
-  .object({
-    seviye: z.string().min(1, "Seviye zorunlu."),
-    okul: z
-      .string()
-      .trim()
-      .regex(
-        /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-        "Okul yalnızca harflerden ve rakamlardan oluşmalı"
-      )
-      .min(5, "Okul adı zorunlu.")
-      .max(100, "Okul adı 150 karakteri geçemez."),
-    bolum: z
-      .string()
-      .trim()
-      .regex(
-        /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-        "Bölüm yalnızca harf ve rakam içermeli"
-      )
-      .min(5, "Bölüm adı zorunlu.")
-      .max(100, "Bölüm adı 150 karakteri geçemez."),
-    notSistemi: z.enum(["4", "100"], {
-      errorMap: () => ({ message: "Not sistemi seçiniz" }),
-    }),
-    gano: z
-      .string()
-      .optional()
-      .refine((v) => v === "" || (!isNaN(v) && Number(v) >= 0), {
-        message: "Geçerli bir sayı giriniz",
+/* -------------------- ZOD ŞEMASI -------------------- */
+const makeEduSchema = (t) =>
+  z
+    .object({
+      seviye: z.string().min(1, t("education.validations.levelRequired")),
+      okul: z
+        .string()
+        .trim()
+        .regex(
+          /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
+          t("education.validations.schoolFormat")
+        )
+        .min(5, t("education.validations.schoolRequired"))
+        .max(100, t("education.validations.schoolMax")),
+      bolum: z
+        .string()
+        .trim()
+        .regex(
+          /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
+          t("education.validations.deptFormat")
+        )
+        .min(5, t("education.validations.deptRequired"))
+        .max(100, t("education.validations.deptMax")),
+      notSistemi: z.enum(["4", "100"], {
+        errorMap: () => ({ message: t("education.validations.gradeSystem") }),
       }),
-    baslangic: z.string().min(1, "Başlangıç tarihi zorunlu."),
-    bitis: z.string().optional().default(""),
-    diplomaDurum: z
-      .string()
-      .min(1, "Diploma durumu zorunlu.")
-      .refine(
-        (v) => ["Mezun", "Devam", "Ara Verdi", "Terk"].includes(v),
-        "Geçerli diploma durumu seçiniz"
-      ),
-  })
-  .superRefine((data, ctx) => {
-    // Başlangıç kontrolleri
-    if (!isValidISODate(data.baslangic)) {
-      ctx.addIssue({
-        path: ["baslangic"],
-        code: z.ZodIssueCode.custom,
-        message: "Başlangıç tarihi geçersiz.",
-      });
-      return;
-    }
-    const start = toDate(data.baslangic);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (start > today) {
-      ctx.addIssue({
-        path: ["baslangic"],
-        code: z.ZodIssueCode.custom,
-        message: "Başlangıç tarihi bugünden ileri olamaz.",
-      });
-    }
-
-    const requiresEnd = ["Mezun", "Ara Verdi"].includes(data.diplomaDurum);
-
-    // Bitiş gerektiren durumlar
-    if (requiresEnd) {
-      if (!data.bitis || data.bitis.trim() === "") {
+      gano: z
+        .string()
+        .optional()
+        .refine((v) => v === "" || (!isNaN(v) && Number(v) >= 0), {
+          message: t("education.validations.gpaNumber"),
+        }),
+      baslangic: z.string().min(1, t("education.validations.startRequired")),
+      bitis: z.string().optional().default(""),
+      diplomaDurum: z
+        .string()
+        .min(1, t("education.validations.diplomaRequired"))
+        .refine(
+          (v) => ["Mezun", "Devam", "Ara Verdi", "Terk"].includes(v),
+          t("education.validations.diplomaValid")
+        ),
+    })
+    .superRefine((data, ctx) => {
+      if (!isValidISODate(data.baslangic)) {
         ctx.addIssue({
-          path: ["bitis"],
+          path: ["baslangic"],
           code: z.ZodIssueCode.custom,
-          message: "Bitiş tarihi zorunlu.",
+          message: t("education.validations.startInvalid"),
         });
         return;
       }
-      if (!isValidISODate(data.bitis)) {
-        ctx.addIssue({
-          path: ["bitis"],
-          code: z.ZodIssueCode.custom,
-          message: "Bitiş tarihi geçersiz.",
-        });
-        return;
-      }
-      const end = toDate(data.bitis);
+      const start = toDate(data.baslangic);
 
-      if (end > today) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (start > today) {
         ctx.addIssue({
-          path: ["bitis"],
+          path: ["baslangic"],
           code: z.ZodIssueCode.custom,
-          message: "Bitiş tarihi bugünden ileri olamaz.",
+          message: t("education.validations.startFuture"),
         });
       }
-      if (start && end) {
-        if (
-          start.getFullYear() === end.getFullYear() &&
-          start.getMonth() === end.getMonth() &&
-          start.getDate() === end.getDate()
-        ) {
+
+      const requiresEnd = ["Mezun", "Ara Verdi"].includes(data.diplomaDurum);
+
+      if (requiresEnd) {
+        if (!data.bitis || data.bitis.trim() === "") {
           ctx.addIssue({
             path: ["bitis"],
             code: z.ZodIssueCode.custom,
-            message: "Başlangıç ve bitiş aynı gün olamaz.",
+            message: t("education.validations.endRequired"),
           });
+          return;
         }
-        if (end.getTime() < start.getTime()) {
+        if (!isValidISODate(data.bitis)) {
           ctx.addIssue({
             path: ["bitis"],
             code: z.ZodIssueCode.custom,
-            message: "Bitiş, başlangıçtan önce olamaz.",
+            message: t("education.validations.endInvalid"),
+          });
+          return;
+        }
+        const end = toDate(data.bitis);
+
+        if (end > today) {
+          ctx.addIssue({
+            path: ["bitis"],
+            code: z.ZodIssueCode.custom,
+            message: t("education.validations.endFuture"),
           });
         }
+        if (start && end) {
+          if (
+            start.getFullYear() === end.getFullYear() &&
+            start.getMonth() === end.getMonth() &&
+            start.getDate() === end.getDate()
+          ) {
+            ctx.addIssue({
+              path: ["bitis"],
+              code: z.ZodIssueCode.custom,
+              message: t("education.validations.sameDay"),
+            });
+          }
+          if (end.getTime() < start.getTime()) {
+            ctx.addIssue({
+              path: ["bitis"],
+              code: z.ZodIssueCode.custom,
+              message: t("education.validations.endBeforeStart"),
+            });
+          }
+        }
       }
-    }
 
-    // GANO kontrolleri
-    if (data.gano && data.gano !== "") {
-      const n = Number(data.gano);
-      const max = data.notSistemi === "100" ? 100 : 4;
-      if (n > max) {
-        ctx.addIssue({
-          path: ["gano"],
-          code: z.ZodIssueCode.custom,
-          message: `GANO 0 ile ${max} arasında olmalı.`,
-        });
-      }
-      if (data.notSistemi === "4" && String(n).includes(".")) {
-        const decimals = String(n).split(".")[1];
-        if (decimals && decimals.length > 2) {
+      if (data.gano && data.gano !== "") {
+        const n = Number(data.gano);
+        const max = data.notSistemi === "100" ? 100 : 4;
+        if (n > max) {
           ctx.addIssue({
             path: ["gano"],
             code: z.ZodIssueCode.custom,
-            message: "4'lük sistemde en fazla 2 ondalık basamak giriniz.",
+            message: t("education.validations.gpaRange", { max }),
           });
         }
+        if (data.notSistemi === "4" && String(n).includes(".")) {
+          const decimals = String(n).split(".")[1];
+          if (decimals && decimals.length > 2) {
+            ctx.addIssue({
+              path: ["gano"],
+              code: z.ZodIssueCode.custom,
+              message: t("education.validations.gpaDecimals"),
+            });
+          }
+        }
       }
-    }
-  });
+    });
 
-/* -------------------- COMPONENT -------------------- */
 export default function EducationAddModal({
   open,
   mode = "create",
@@ -172,6 +166,8 @@ export default function EducationAddModal({
   onSave,
   onUpdate,
 }) {
+  const { t } = useTranslation();
+  const eduSchema = makeEduSchema(t);
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -187,22 +183,25 @@ export default function EducationAddModal({
   const [errors, setErrors] = useState({});
 
   const today = useMemo(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
+    const tdy = new Date();
+    return new Date(
+      tdy.getFullYear(),
+      tdy.getMonth(),
+      tdy.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
   }, []);
   const todayISO = toISODate(today);
 
-  /* ---------- SCROLL LOCK ---------- */
   useEffect(() => {
-    if (open) {
-      lockScroll();
-    } else {
-      unlockScroll();
-    }
+    if (open) lockScroll();
+    else unlockScroll();
     return () => unlockScroll();
   }, [open]);
 
-  // Tüm kapatma yollarını tek yerden geçir: unlock + onClose
   const handleClose = () => {
     unlockScroll();
     onClose?.();
@@ -250,7 +249,6 @@ export default function EducationAddModal({
     const { name, value } = e.target;
     let next = { ...formData, [name]: value };
 
-    // Diploma durumu Devam/Terk → bitişi temizle ve disable edeceğiz
     if (name === "diplomaDurum") {
       if (value === "Devam" || value === "Terk") {
         next.bitis = "";
@@ -279,7 +277,7 @@ export default function EducationAddModal({
   };
 
   const isValid = eduSchema.safeParse(formData).success;
-  const disabledTip = !isValid ? "Tüm zorunlu alanları doğru doldurunuz." : "";
+  const disabledTip = !isValid ? t("education.validations.formInvalid") : "";
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -308,7 +306,7 @@ export default function EducationAddModal({
 
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
-    handleClose(); // kapatırken scroll’u geri getir
+    handleClose();
   };
 
   if (!open) return null;
@@ -329,12 +327,14 @@ export default function EducationAddModal({
         {/* Başlık */}
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">
-            {mode === "edit" ? "Eğitim Bilgisi Düzenle" : "Eğitim Bilgisi Ekle"}
+            {mode === "edit"
+              ? t("education.modal.titleEdit")
+              : t("education.modal.titleCreate")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -344,11 +344,11 @@ export default function EducationAddModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Seviye */}
+            {/* Seviye & Okul */}
             <div className="grid grid-cols-1  sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Seviye *
+                  {t("education.form.level")} *
                 </label>
                 <select
                   name="seviye"
@@ -356,13 +356,21 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_SELECT}
                 >
-                  <option value="">Seçiniz</option>
-                  <option value="Lise">Lise</option>
-                  <option value="Ön Lisans">Ön Lisans</option>
-                  <option value="Lisans">Lisans</option>
-                  <option value="Yüksek Lisans">Yüksek Lisans</option>
-                  <option value="Doktora">Doktora</option>
-                  <option value="Diğer">Diğer</option>
+                  <option value="">{t("common.select")}</option>
+                  <option value="Lise">
+                    {t("education.levels.highschool")}
+                  </option>
+                  <option value="Ön Lisans">
+                    {t("education.levels.associate")}
+                  </option>
+                  <option value="Lisans">
+                    {t("education.levels.bachelor")}
+                  </option>
+                  <option value="Yüksek Lisans">
+                    {t("education.levels.master")}
+                  </option>
+                  <option value="Doktora">{t("education.levels.phd")}</option>
+                  <option value="Diğer">{t("education.levels.other")}</option>
                 </select>
                 {errors.seviye && (
                   <p className="mt-1 text-xs text-red-600">{errors.seviye}</p>
@@ -370,7 +378,7 @@ export default function EducationAddModal({
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Okul Adı *
+                  {t("education.form.school")} *
                 </label>
                 <input
                   type="text"
@@ -379,7 +387,7 @@ export default function EducationAddModal({
                   value={formData.okul}
                   onChange={handleChange}
                   className={BASE_FIELD}
-                  placeholder="Örn: Erciyes Üniversitesi"
+                  placeholder={t("education.placeholders.school")}
                 />
                 <div className="flex justify-between mt-1">
                   {errors.okul ? (
@@ -406,7 +414,7 @@ export default function EducationAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Bölüm *
+                  {t("education.form.department")} *
                 </label>
                 <input
                   type="text"
@@ -415,7 +423,7 @@ export default function EducationAddModal({
                   value={formData.bolum}
                   onChange={handleChange}
                   className={BASE_FIELD}
-                  placeholder="Örn: Bilgisayar Mühendisliği"
+                  placeholder={t("education.placeholders.department")}
                 />
                 <div className="flex justify-between mt-1">
                   {errors.bolum ? (
@@ -438,7 +446,7 @@ export default function EducationAddModal({
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Diploma Durumu *
+                  {t("education.form.diplomaStatus")} *
                 </label>
                 <select
                   name="diplomaDurum"
@@ -446,11 +454,17 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_SELECT}
                 >
-                  <option value="">Seçiniz</option>
-                  <option value="Mezun">Mezun</option>
-                  <option value="Devam">Devam Ediyor</option>
-                  <option value="Ara Verdi">Ara Verdi</option>
-                  <option value="Terk">Terk</option>
+                  <option value="">{t("common.select")}</option>
+                  <option value="Mezun">
+                    {t("education.diploma.graduated")}
+                  </option>
+                  <option value="Devam">
+                    {t("education.diploma.continuing")}
+                  </option>
+                  <option value="Ara Verdi">
+                    {t("education.diploma.paused")}
+                  </option>
+                  <option value="Terk">{t("education.diploma.dropped")}</option>
                 </select>
                 {errors.diplomaDurum && (
                   <p className="mt-1 text-xs text-red-600">
@@ -464,7 +478,7 @@ export default function EducationAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Not Sistemi *
+                  {t("education.form.gradeSystem")} *
                 </label>
                 <select
                   name="notSistemi"
@@ -472,12 +486,18 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_SELECT}
                 >
-                  <option value="4">4'lük</option>
-                  <option value="100">100'lük</option>
+                  <option value="4">
+                    {t("education.gradeSystem.fourShort")}
+                  </option>
+                  <option value="100">
+                    {t("education.gradeSystem.hundredShort")}
+                  </option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">GANO</label>
+                <label className="block text-sm text-gray-600 mb-1">
+                  {t("education.form.gpa")}
+                </label>
                 <input
                   type="number"
                   name="gano"
@@ -485,7 +505,9 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_FIELD}
                   placeholder={
-                    formData.notSistemi === "100" ? "0 - 100" : "0.00 - 4.00"
+                    formData.notSistemi === "100"
+                      ? t("education.placeholders.gpaHundred")
+                      : t("education.placeholders.gpaFour")
                   }
                 />
                 {errors.gano && (
@@ -494,11 +516,11 @@ export default function EducationAddModal({
               </div>
             </div>
 
-            {/* Tarihler (MUI) */}
+            {/* Tarihler */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="shadow-none outline-none">
                 <MuiDateStringField
-                  label="Başlangıç Tarihi"
+                  label={t("education.form.startDate")}
                   name="baslangic"
                   value={formData.baslangic}
                   onChange={handleChange}
@@ -510,7 +532,7 @@ export default function EducationAddModal({
               </div>
               <div className="shadow-none outline-none">
                 <MuiDateStringField
-                  label="Bitiş Tarihi"
+                  label={t("education.form.endDate")}
                   name="bitis"
                   value={formData.bitis}
                   onChange={handleChange}
@@ -522,7 +544,7 @@ export default function EducationAddModal({
                 />
                 {isEndDisabled && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Devam Ediyor / Terk durumunda bitiş tarihi girilmez.
+                    {t("education.hints.noEndWhenContinuing")}
                   </p>
                 )}
               </div>
@@ -537,7 +559,7 @@ export default function EducationAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("actions.cancel")}
               </button>
               {mode === "edit" ? (
                 <button
@@ -550,7 +572,7 @@ export default function EducationAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("actions.update")}
                 </button>
               ) : (
                 <button
@@ -563,7 +585,7 @@ export default function EducationAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("actions.save")}
                 </button>
               )}
             </div>

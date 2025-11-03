@@ -1,59 +1,50 @@
-// components/Users/addModals/ComputerInformationAddModal.jsx
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
+import { useTranslation } from "react-i18next";
 
-// Zod şeması
-const schema = z.object({
-  programAdi: z
-    .string()
-    .trim()
-    .min(1, "Program adı zorunlu.")
-    .max(60, "Program adı en fazla 60 karakter olabilir."),
-  yetkinlik: z.string().min(1, "Yetkinlik zorunlu."),
-});
+const makeSchema = (t) =>
+  z.object({
+    programAdi: z
+      .string()
+      .trim()
+      .min(1, t("computer.validations.program.required"))
+      .max(60, t("computer.validations.program.max")),
+    yetkinlik: z.string().min(1, t("computer.validations.level.required")),
+  });
 
-// Ortak alan stilleri (hover: siyah, focus: siyah)
 const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black focus:border-black";
 
 export default function ComputerInformationAddModal({
   open,
   mode = "create",
-  initialData = null, // { id, programAdi, yetkinlik }
+  initialData = null,
   onClose,
-  onSave, // (payload) => void
-  onUpdate, // (payload) => void
+  onSave,
+  onUpdate,
 }) {
+  const { t } = useTranslation();
+  const schema = makeSchema(t);
   const dialogRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    programAdi: "",
-    yetkinlik: "",
-  });
+  const [formData, setFormData] = useState({ programAdi: "", yetkinlik: "" });
+  const [errors, setErrors] = useState({});
 
-  const [errors, setErrors] = useState({}); // { programAdi?: string, yetkinlik?: string }
-
-  /* ---------- SCROLL LOCK ---------- */
   useEffect(() => {
-    if (open) {
-      lockScroll();
-    } else {
-      unlockScroll();
-    }
+    if (open) lockScroll();
+    else unlockScroll();
     return () => unlockScroll();
   }, [open]);
 
-  // onClose'u unlock ile saran tek kapatma fonksiyonu
   const handleClose = () => {
     unlockScroll();
     onClose?.();
   };
 
-  // Modal her açıldığında formu doldur/temizle
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -61,33 +52,25 @@ export default function ComputerInformationAddModal({
         programAdi: initialData.programAdi ?? "",
         yetkinlik: initialData.yetkinlik ?? "",
       });
-      setErrors({});
     } else {
       setFormData({ programAdi: "", yetkinlik: "" });
-      setErrors({});
     }
+    setErrors({});
   }, [open, mode, initialData]);
 
-  // Dış alan tıklamasıyla kapatma
   const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
-  // Tek alan anlık doğrulama
   const validateField = (name, value) => {
     const candidate = { ...formData, [name]: value };
     const result = schema.safeParse(candidate);
-
     if (!result.success) {
-      const fieldIssue = result.error.issues.find((i) => i.path[0] === name);
-      setErrors((prev) => ({
-        ...prev,
-        [name]: fieldIssue ? fieldIssue.message : "",
-      }));
+      const issue = result.error.issues.find((i) => i.path[0] === name);
+      setErrors((prev) => ({ ...prev, [name]: issue ? issue.message : "" }));
     } else {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
-  // Form genel geçerliliği
   const isValid = schema.safeParse(formData).success;
   const disabledTip = !isValid
     ? (() => {
@@ -97,13 +80,10 @@ export default function ComputerInformationAddModal({
       })()
     : "";
 
-  // Submit
   const handleSubmit = (e) => {
     e.preventDefault();
-
     const parsed = schema.safeParse(formData);
     if (!parsed.success) {
-      // Tüm hataları state'e yaz
       const next = {};
       parsed.error.issues.forEach((i) => {
         const key = i.path[0];
@@ -112,15 +92,12 @@ export default function ComputerInformationAddModal({
       setErrors(next);
       return;
     }
-
-    const payload = parsed.data; // trim uygulanmış halde
+    const payload = parsed.data;
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
-
-    handleClose(); // kapatırken scroll’u geri getir
+    handleClose();
   };
 
-  // Modal Açık Değilse Render Etme
   if (!open) return null;
 
   return (
@@ -139,13 +116,13 @@ export default function ComputerInformationAddModal({
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">
             {mode === "edit"
-              ? "Bilgisayar Bilgisi Düzenle"
-              : "Bilgisayar Bilgisi Ekle"}
+              ? t("computer.modal.titleEdit")
+              : t("computer.modal.titleCreate")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -154,13 +131,11 @@ export default function ComputerInformationAddModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-          {/* Scroll olan içerik */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Program Adı - Yetkinlik */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Program Adı
+                  {t("computer.form.program")} *
                 </label>
                 <input
                   type="text"
@@ -171,7 +146,7 @@ export default function ComputerInformationAddModal({
                     validateField("programAdi", v);
                   }}
                   className={FIELD_BASE}
-                  placeholder="Örn: Excel Programları, Photoshop"
+                  placeholder={t("computer.placeholders.program")}
                   maxLength={60}
                   required
                 />
@@ -197,7 +172,7 @@ export default function ComputerInformationAddModal({
 
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Yetkinlik
+                  {t("computer.form.level")} *
                 </label>
                 <select
                   value={formData.yetkinlik}
@@ -209,12 +184,22 @@ export default function ComputerInformationAddModal({
                   className={`${FIELD_BASE} h-[42px]`}
                   required
                 >
-                  <option value="">Seçiniz</option>
-                  <option value="Çok Zayıf">Çok Zayıf</option>
-                  <option value="Zayıf">Zayıf</option>
-                  <option value="Orta">Orta</option>
-                  <option value="İyi">İyi</option>
-                  <option value="Çok İyi">Çok İyi</option>
+                  <option value="">{t("common.select")}</option>
+                  <option value={t("computer.levels.veryPoor")}>
+                    {t("computer.levels.veryPoor")}
+                  </option>
+                  <option value={t("computer.levels.poor")}>
+                    {t("computer.levels.poor")}
+                  </option>
+                  <option value={t("computer.levels.medium")}>
+                    {t("computer.levels.medium")}
+                  </option>
+                  <option value={t("computer.levels.good")}>
+                    {t("computer.levels.good")}
+                  </option>
+                  <option value={t("computer.levels.veryGood")}>
+                    {t("computer.levels.veryGood")}
+                  </option>
                 </select>
                 {errors.yetkinlik && (
                   <p className="mt-1 text-xs text-red-600">
@@ -225,7 +210,7 @@ export default function ComputerInformationAddModal({
             </div>
           </div>
 
-          {/* Sabit alt aksiyon bar */}
+          {/* Alt aksiyonlar */}
           <div className="border-t bg-white px-6 py-3">
             <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
               <button
@@ -233,7 +218,7 @@ export default function ComputerInformationAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("actions.cancel")}
               </button>
 
               {mode === "create" ? (
@@ -247,7 +232,7 @@ export default function ComputerInformationAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("actions.save")}
                 </button>
               ) : (
                 <button
@@ -260,7 +245,7 @@ export default function ComputerInformationAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("actions.update")}
                 </button>
               )}
             </div>

@@ -1,5 +1,6 @@
 // components/Users/JobApplicationForm.jsx
 import { useMemo, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -28,8 +29,11 @@ import OtherPersonalInformationTable from "./usersComponents/OtherPersonalInform
 import JobApplicationDetails from "./usersComponents/JobApplicationDetails";
 import ApplicationConfirmSection from "./usersComponents/ApplicationConfirmSection";
 import { lockScroll } from "./modalHooks/scrollLock";
+import LanguageSwitcher from "../LanguageSwitcher";
 
 export default function JobApplicationForm() {
+  const { t } = useTranslation();
+
   const personalInfoRef = useRef(null);
   const educationTableRef = useRef(null);
   const certificatesTableRef = useRef(null);
@@ -78,7 +82,6 @@ export default function JobApplicationForm() {
   );
 
   /* ---------- Scroll-to-Section & Highlight ---------- */
-  // Hangi section’ı vurgu yapacağımızı tutuyoruz
   const [, setHighlightId] = useState(null);
 
   const scrollToSection = useCallback((targetId, offset = 100) => {
@@ -99,11 +102,10 @@ export default function JobApplicationForm() {
       "ring-offset-gray-800"
     );
 
-    // Biraz gecikmeyle class’ları kaldır
     setTimeout(() => {
       el.classList.remove(
         "ring-2",
-        "ring-amber-400",
+        "ring-green-400",
         "ring-offset-2",
         "ring-offset-gray-800"
       );
@@ -113,7 +115,7 @@ export default function JobApplicationForm() {
 
   // Section id sabitleri
   const SECTION_IDS = {
-    personal: "section-personal", // istersen "1" yapabilirsin
+    personal: "section-personal",
     education: "section-education",
     other: "section-other",
     jobDetails: "section-jobdetails",
@@ -123,23 +125,35 @@ export default function JobApplicationForm() {
     <div className="min-h-screen bg-gradient-to-br from-gray-500 via-gray-500 to-gray-600 pb-10 rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)] border border-gray-400/20">
       {/* === HERO HEADER === */}
       <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 py-12 sm:py-16 md:py-20 shadow-2xl rounded-2xl text-center">
+        {/* Sağ üst dil seçici */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
+          <LanguageSwitcher />
+        </div>
+
         <div className="relative z-10 container mx-auto px-4 sm:px-6">
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.3)] leading-tight">
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-amber-200">
-              CHAMADA GROUP
+              {t("hero.brand")}
             </span>
             <span className="block mt-2 text-gray-300 font-light text-lg sm:text-2xl">
-              İŞ BAŞVURU FORMU
+              {t("hero.formTitle")}
             </span>
           </h1>
 
           <p className="mt-5 text-base sm:text-lg text-gray-300 flex items-center justify-center gap-2">
             <FontAwesomeIcon icon={faInfoCircle} className="text-amber-300" />
             <span className="text-center">
-              <span className="font-semibold text-amber-300">Lütfen</span> tüm
-              bilgilerinizi dikkatli ve eksiksiz doldurunuz.{" "}
-              <span className="font-semibold text-amber-300">*</span> işaretli
-              alanlar zorunludur.
+              <span className="font-semibold text-amber-300">
+                {t("hero.please")}
+              </span>{" "}
+              {t("hero.notice")}{" "}
+              <span
+                className="font-semibold text-amber-300"
+                aria-label={t("hero.required")}
+              >
+                *
+              </span>{" "}
+              {t("hero.requiredSuffix")}
             </span>
           </p>
 
@@ -156,38 +170,46 @@ export default function JobApplicationForm() {
           {/* Başlık + Durum ikonu */}
           <div className="flex items-center justify-center gap-2">
             <span className="text-sm sm:text-base text-gray-800 font-semibold">
-              Zorunlu Bilgiler
+              {t("statusBar.title")}
             </span>
             <FontAwesomeIcon
               icon={allRequiredOk ? faCheckCircle : faCircleXmark}
               className={allRequiredOk ? "text-green-600" : "text-red-600"}
-              title={allRequiredOk ? "Tamamlandı" : "Eksik"}
-              aria-label={allRequiredOk ? "Tamamlandı" : "Eksik"}
+              title={
+                allRequiredOk
+                  ? t("statusBar.completed")
+                  : t("statusBar.missing")
+              }
+              aria-label={
+                allRequiredOk
+                  ? t("statusBar.completed")
+                  : t("statusBar.missing")
+              }
             />
           </div>
           {/* Rozetler */}
           <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 place-items-center">
             <StatusPill
               ok={statuses.personalOk}
-              label="Kişisel Bilgiler"
+              label={t("sections.personal")}
               icon={faUser}
               onClick={() => scrollToSection(SECTION_IDS.personal)}
             />
             <StatusPill
               ok={statuses.educationOk}
-              label="Eğitim Bilgileri"
+              label={t("sections.education")}
               icon={faGraduationCap}
               onClick={() => scrollToSection(SECTION_IDS.education)}
             />
             <StatusPill
               ok={statuses.otherOk}
-              label="Diğer Kişisel Bilgiler"
+              label={t("sections.other")}
               icon={faUserCog}
               onClick={() => scrollToSection(SECTION_IDS.other)}
             />
             <StatusPill
               ok={statuses.jobDetailsOk}
-              label="İş Başvuru Detayları"
+              label={t("sections.jobDetails")}
               icon={faFileSignature}
               onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
             />
@@ -198,9 +220,9 @@ export default function JobApplicationForm() {
       {/* === CONTENT SECTIONS === */}
       <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-6">
         <Section
-          id={SECTION_IDS.personal} // istersen "1" yap
+          id={SECTION_IDS.personal}
           icon={faUser}
-          title="Kişisel Bilgiler"
+          title={t("sections.personal")}
           required
           content={
             <PersonalInformation
@@ -213,7 +235,7 @@ export default function JobApplicationForm() {
         <Section
           id={SECTION_IDS.education}
           icon={faGraduationCap}
-          title="Eğitim Bilgileri"
+          title={t("sections.education")}
           required
           onAdd={onAddWithScrollLock(() =>
             educationTableRef.current?.openCreate()
@@ -228,7 +250,7 @@ export default function JobApplicationForm() {
 
         <Section
           icon={faAward}
-          title="Sertifika ve Eğitimler"
+          title={t("sections.certificates")}
           onAdd={onAddWithScrollLock(() =>
             certificatesTableRef.current?.openCreate()
           )}
@@ -237,7 +259,7 @@ export default function JobApplicationForm() {
 
         <Section
           icon={faLaptopCode}
-          title="Bilgisayar Bilgileri"
+          title={t("sections.computer")}
           onAdd={onAddWithScrollLock(() =>
             computerInformationTableRef.current?.openCreate()
           )}
@@ -248,7 +270,7 @@ export default function JobApplicationForm() {
 
         <Section
           icon={faLanguage}
-          title="Yabancı Dil Bilgisi"
+          title={t("sections.languages")}
           onAdd={onAddWithScrollLock(() =>
             languageTableRef.current?.openCreate()
           )}
@@ -257,7 +279,7 @@ export default function JobApplicationForm() {
 
         <Section
           icon={faBriefcase}
-          title="İş Deneyimleri"
+          title={t("sections.experience")}
           onAdd={onAddWithScrollLock(() =>
             jobExperiencesTableRef.current?.openCreate()
           )}
@@ -266,7 +288,7 @@ export default function JobApplicationForm() {
 
         <Section
           icon={faPhoneVolume}
-          title="Referanslar"
+          title={t("sections.references")}
           onAdd={onAddWithScrollLock(() =>
             referencesTableRef.current?.openCreate()
           )}
@@ -276,7 +298,7 @@ export default function JobApplicationForm() {
         <Section
           id={SECTION_IDS.other}
           icon={faUserCog}
-          title="Diğer Kişisel Bilgiler"
+          title={t("sections.other")}
           required
           content={
             <OtherPersonalInformationTable
@@ -289,7 +311,7 @@ export default function JobApplicationForm() {
         <Section
           id={SECTION_IDS.jobDetails}
           icon={faFileSignature}
-          title="İş Başvuru Detayları"
+          title={t("sections.jobDetails")}
           required
           content={
             <JobApplicationDetails
@@ -299,7 +321,7 @@ export default function JobApplicationForm() {
           }
         />
 
-        {/* Başvuru onay akışı (butona basıldığında yine tam doğrulama yapacağız) */}
+        {/* Başvuru onay akışı */}
         <ApplicationConfirmSection
           validatePersonalInfo={() =>
             personalInfoRef.current?.isValid?.() ?? false
@@ -345,6 +367,7 @@ function StatusPill({ ok, label, icon, onClick }) {
 
 /* --- Section Template --- */
 function Section({ id, icon, title, required = false, onAdd, content }) {
+  const { t } = useTranslation();
   return (
     <div
       id={id}
@@ -369,7 +392,7 @@ function Section({ id, icon, title, required = false, onAdd, content }) {
             className="inline-flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium rounded-md transition duration-150 ease-in-out focus:outline-none text-sm sm:text-base active:scale-95"
           >
             <FontAwesomeIcon icon={faPlus} />
-            <span>Ekle</span>
+            <span>{t("actions.add")}</span>
           </button>
         )}
       </div>

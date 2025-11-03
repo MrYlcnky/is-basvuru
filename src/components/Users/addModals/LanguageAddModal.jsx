@@ -1,9 +1,11 @@
+// components/Users/addModals/LanguageAddModal.jsx
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
+import { useTranslation } from "react-i18next";
 
 /* -------------------- Ortak Sınıflar -------------------- */
 const BASE_SELECT =
@@ -11,31 +13,32 @@ const BASE_SELECT =
 const BASE_INPUT =
   "w-full h-[43px] border rounded-lg px-3 py-2 focus:outline-none transition border-gray-300 hover:border-black";
 
-/* -------------------- ZOD ŞEMASI -------------------- */
-const schema = z.object({
-  dil: z
-    .string()
-    .trim()
-    .min(1, "Dil Adı zorunlu.")
-    .max(40, "Dil adı en fazla 40 karakter olabilir.")
-    .regex(
-      /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
-      "Dil adı yalnızca harf, boşluk, nokta ve tire içerebilir."
-    ),
-  konusma: z.string().min(1, "Konuşma seviyesi zorunlu."),
-  yazma: z.string().min(1, "Yazma seviyesi zorunlu."),
-  okuma: z.string().min(1, "Okuma seviyesi zorunlu."),
-  dinleme: z.string().min(1, "Dinleme seviyesi zorunlu."),
-  ogrenilenKurum: z
-    .string()
-    .trim()
-    .min(1, "Nasıl öğrenildiği zorunlu.")
-    .max(80, "Bu alan en fazla 80 karakter olabilir.")
-    .regex(
-      /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
-      "Yalnızca harf, boşluk, nokta ve tire içerebilir."
-    ),
-});
+/* -------------------- ZOD ŞEMASI (i18n) -------------------- */
+const makeSchema = (t) =>
+  z.object({
+    dil: z
+      .string()
+      .trim()
+      .min(1, t("languages.validations.languageRequired"))
+      .max(40, t("languages.validations.languageMax"))
+      .regex(
+        /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
+        t("languages.validations.languageRegex")
+      ),
+    konusma: z.string().min(1, t("languages.validations.speakingRequired")),
+    yazma: z.string().min(1, t("languages.validations.writingRequired")),
+    okuma: z.string().min(1, t("languages.validations.readingRequired")),
+    dinleme: z.string().min(1, t("languages.validations.listeningRequired")),
+    ogrenilenKurum: z
+      .string()
+      .trim()
+      .min(1, t("languages.validations.learnedHowRequired"))
+      .max(80, t("languages.validations.learnedHowMax"))
+      .regex(
+        /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
+        t("languages.validations.learnedHowRegex")
+      ),
+  });
 
 export default function LanguageAddModal({
   open,
@@ -45,6 +48,9 @@ export default function LanguageAddModal({
   onSave,
   onUpdate,
 }) {
+  const { t } = useTranslation();
+  const schema = makeSchema(t);
+
   const dialogRef = useRef(null);
 
   // "Dil" alanını iki parçaya ayırıyoruz: select + diğer metin
@@ -88,9 +94,15 @@ export default function LanguageAddModal({
     if (!open) return;
 
     if (mode === "edit" && initialData) {
-      const incomingDil = initialData.dil ?? "";
-      const isKnown = ["İngilizce", "Almanca"].includes(incomingDil);
-      setDilSelect(isKnown ? incomingDil : incomingDil ? "Diğer" : "");
+      const incomingDil = (initialData.dil ?? "").trim();
+      const knownValues = [
+        t("languages.options.english"),
+        t("languages.options.german"),
+      ];
+      const isKnown = knownValues.includes(incomingDil);
+      setDilSelect(
+        isKnown ? incomingDil : incomingDil ? t("languages.options.other") : ""
+      );
       setDilOther(isKnown ? "" : incomingDil);
 
       setFormData({
@@ -99,7 +111,7 @@ export default function LanguageAddModal({
         yazma: initialData.yazma ?? "",
         okuma: initialData.okuma ?? "",
         dinleme: initialData.dinleme ?? "",
-        ogrenilenKurum: initialData.ogrenilenKurum ?? "",
+        ogrenilenKurum: (initialData.ogrenilenKurum ?? "").trim(),
       });
     } else {
       setDilSelect("");
@@ -122,7 +134,8 @@ export default function LanguageAddModal({
       dinleme: "",
       ogrenilenKurum: "",
     });
-  }, [open, mode, initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, initialData, t]);
 
   // backdrop click ile kapat
   const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
@@ -155,7 +168,12 @@ export default function LanguageAddModal({
   // Submit
   const handleSubmit = (e) => {
     e.preventDefault();
-    const final = schema.safeParse(formData);
+    const sanitized = {
+      ...formData,
+      dil: formData.dil.trim(),
+      ogrenilenKurum: formData.ogrenilenKurum.trim(),
+    };
+    const final = schema.safeParse(sanitized);
     if (!final.success) {
       const next = { ...errors };
       final.error.issues.forEach((i) => {
@@ -178,6 +196,12 @@ export default function LanguageAddModal({
   const dilCounterColor =
     dilOther.length >= 36 ? "text-red-500" : "text-gray-400";
 
+  // Seçenekler (i18n)
+  const CHOOSE = t("languages.select.choose");
+  const OPT_EN = t("languages.options.english");
+  const OPT_DE = t("languages.options.german");
+  const OPT_OTHER = t("languages.options.other");
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
@@ -194,13 +218,13 @@ export default function LanguageAddModal({
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">
             {mode === "edit"
-              ? "Yabancı Dil Bilgisi Düzenle"
-              : "Yabancı Dil Bilgisi Ekle"}
+              ? t("languages.modal.titleEdit")
+              : t("languages.modal.titleCreate")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -215,7 +239,7 @@ export default function LanguageAddModal({
               {/* Dil Adı */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Dil Adı
+                  {t("languages.form.language")}
                 </label>
 
                 <select
@@ -223,12 +247,12 @@ export default function LanguageAddModal({
                   onChange={(e) => {
                     const v = e.target.value;
                     setDilSelect(v);
-                    if (v !== "Diğer") setDilOther("");
+                    if (v !== OPT_OTHER) setDilOther("");
 
-                    const effective = v === "Diğer" ? "" : v;
+                    const effective = v === OPT_OTHER ? "" : v;
                     handleChange({ target: { name: "dil", value: effective } });
 
-                    if (v === "Diğer")
+                    if (v === OPT_OTHER)
                       setTimeout(() => otherRef.current?.focus(), 0);
                   }}
                   className={`${BASE_SELECT} ${
@@ -238,10 +262,10 @@ export default function LanguageAddModal({
                   aria-invalid={Boolean(errors.dil)}
                   aria-describedby="err-dil"
                 >
-                  <option value="">Seçiniz</option>
-                  <option value="İngilizce">İngilizce</option>
-                  <option value="Almanca">Almanca</option>
-                  <option value="Diğer">Diğer</option>
+                  <option value="">{CHOOSE}</option>
+                  <option value={OPT_EN}>{OPT_EN}</option>
+                  <option value={OPT_DE}>{OPT_DE}</option>
+                  <option value={OPT_OTHER}>{OPT_OTHER}</option>
                 </select>
 
                 <div className="mt-1 min-h-[1rem]">
@@ -259,7 +283,7 @@ export default function LanguageAddModal({
               {/* Diğer Dil Adı */}
               <div className="sm:col-span-2 relative">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Diğer Dil Adı
+                  {t("languages.form.otherLanguage")}
                 </label>
 
                 <input
@@ -269,18 +293,18 @@ export default function LanguageAddModal({
                   onChange={(e) => {
                     const v = e.target.value;
                     setDilOther(v);
-                    if (dilSelect === "Diğer") {
+                    if (dilSelect === OPT_OTHER) {
                       handleChange({ target: { name: "dil", value: v } });
                     }
                   }}
-                  disabled={dilSelect !== "Diğer"}
+                  disabled={dilSelect !== OPT_OTHER}
                   placeholder={
-                    dilSelect === "Diğer"
-                      ? "Örn: Fransızca"
-                      : "Önce 'Diğer'i seçin"
+                    dilSelect === OPT_OTHER
+                      ? t("languages.placeholders.otherLanguage")
+                      : t("languages.select.choose")
                   }
                   className={
-                    dilSelect === "Diğer"
+                    dilSelect === OPT_OTHER
                       ? `${BASE_INPUT} pr-14 bg-white text-gray-900`
                       : "w-full h-[43px] border rounded-lg px-3 py-2 pr-14 bg-gray-200 text-gray-500 border-gray-300 disabled:cursor-not-allowed focus:outline-none"
                   }
@@ -300,10 +324,10 @@ export default function LanguageAddModal({
             {/* 2 Konuşma - Yazma - Okuma - Dinleme */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               {[
-                ["konusma", "Konuşma Seviyesi"],
-                ["yazma", "Yazma Seviyesi"],
-                ["okuma", "Okuma Seviyesi"],
-                ["dinleme", "Dinleme Seviyesi"],
+                ["konusma", t("languages.form.speaking")],
+                ["yazma", t("languages.form.writing")],
+                ["okuma", t("languages.form.reading")],
+                ["dinleme", t("languages.form.listening")],
               ].map(([name, label]) => (
                 <div key={name} className="sm:col-span-1">
                   <label className="block text-sm text-gray-600 mb-1">
@@ -318,13 +342,13 @@ export default function LanguageAddModal({
                     }`}
                     required
                   >
-                    <option value="">Seçiniz</option>
-                    <option value="A1">A1</option>
-                    <option value="A2">A2</option>
-                    <option value="B1">B1</option>
-                    <option value="B2">B2</option>
-                    <option value="C1">C1</option>
-                    <option value="C2">C2</option>
+                    <option value="">{CHOOSE}</option>
+                    <option value="A1">{t("languages.levels.A1")}</option>
+                    <option value="A2">{t("languages.levels.A2")}</option>
+                    <option value="B1">{t("languages.levels.B1")}</option>
+                    <option value="B2">{t("languages.levels.B2")}</option>
+                    <option value="C1">{t("languages.levels.C1")}</option>
+                    <option value="C2">{t("languages.levels.C2")}</option>
                   </select>
                   {errors[name] && (
                     <p className="mt-1 text-xs text-red-600">{errors[name]}</p>
@@ -337,7 +361,7 @@ export default function LanguageAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="sm:col-span-4">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Nasıl Öğrenildi
+                  {t("languages.form.learnedHow")}
                 </label>
                 <input
                   type="text"
@@ -345,7 +369,7 @@ export default function LanguageAddModal({
                   value={formData.ogrenilenKurum}
                   onChange={handleChange}
                   className={`${BASE_INPUT}`}
-                  placeholder="Örn: Kurs, okul, kendi kendine..."
+                  placeholder={t("languages.placeholders.learnedHow")}
                   maxLength={80}
                   required
                 />
@@ -379,7 +403,7 @@ export default function LanguageAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("actions.cancel")}
               </button>
 
               {mode === "create" ? (
@@ -393,7 +417,7 @@ export default function LanguageAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("actions.save")}
                 </button>
               ) : (
                 <button
@@ -406,7 +430,7 @@ export default function LanguageAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("actions.update")}
                 </button>
               )}
             </div>

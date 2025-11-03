@@ -1,51 +1,53 @@
+// components/Users/addModals/ReferenceAddModal.jsx
 import { useEffect, useRef, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
 import { z } from "zod";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
+import { useTranslation } from "react-i18next";
 
 /* -------------------- REGEX -------------------- */
 const NAME_STRICT_RE = /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/u;
 const ORG_JOB_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s'’]+$/u;
 const PHONE_RE = /^\+?[0-9\s()-]{8,20}$/;
 
-/* -------------------- ZOD ŞEMASI -------------------- */
-const refSchema = z.object({
-  calistigiKurum: z.string().min(1, "Çalıştığı kurum seçimi zorunlu."),
-  referansAdi: z
-    .string()
-    .trim()
-    .regex(NAME_STRICT_RE, "Ad yalnızca harf ve boşluk içerebilir.")
-    .min(2, "Ad en az 2 karakter olmalı.")
-    .max(50, "Ad en fazla 50 karakter olabilir."),
-  referansSoyadi: z
-    .string()
-    .trim()
-    .regex(NAME_STRICT_RE, "Soyad yalnızca harf ve boşluk içerebilir.")
-    .min(2, "Soyad en az 2 karakter olmalı.")
-    .max(50, "Soyad en fazla 50 karakter olabilir."),
-  referansIsYeri: z
-    .string()
-    .trim()
-    .regex(
-      ORG_JOB_RE,
-      "İşyeri yalnızca harf, rakam, boşluk, ' ve - içerebilir."
-    )
-    .min(2, "İşyeri zorunlu.")
-    .max(100, "İşyeri en fazla 100 karakter olabilir."),
-  referansGorevi: z
-    .string()
-    .trim()
-    .regex(ORG_JOB_RE, "Görev yalnızca harf, rakam, boşluk, ' ve - içerebilir.")
-    .min(2, "Görev zorunlu.")
-    .max(100, "Görev en fazla 100 karakter olabilir."),
-  referansTelefon: z
-    .string()
-    .trim()
-    .min(1, "Telefon zorunlu.")
-    .regex(PHONE_RE, "Telefon numarası geçersiz. Örn: +90 5XX XXX XX XX"),
-});
+/* -------------------- ZOD ŞEMASI (i18n) -------------------- */
+const makeRefSchema = (t) =>
+  z.object({
+    calistigiKurum: z
+      .string()
+      .min(1, t("references.validations.orgTypeRequired")),
+    referansAdi: z
+      .string()
+      .trim()
+      .regex(NAME_STRICT_RE, t("references.validations.firstNameAlpha"))
+      .min(2, t("references.validations.firstNameMin"))
+      .max(50, t("references.validations.firstNameMax")),
+    referansSoyadi: z
+      .string()
+      .trim()
+      .regex(NAME_STRICT_RE, t("references.validations.lastNameAlpha"))
+      .min(2, t("references.validations.lastNameMin"))
+      .max(50, t("references.validations.lastNameMax")),
+    referansIsYeri: z
+      .string()
+      .trim()
+      .regex(ORG_JOB_RE, t("references.validations.workplaceFormat"))
+      .min(2, t("references.validations.workplaceRequired"))
+      .max(100, t("references.validations.workplaceMax")),
+    referansGorevi: z
+      .string()
+      .trim()
+      .regex(ORG_JOB_RE, t("references.validations.roleFormat"))
+      .min(2, t("references.validations.roleRequired"))
+      .max(100, t("references.validations.roleMax")),
+    referansTelefon: z
+      .string()
+      .trim()
+      .min(1, t("references.validations.phoneRequired"))
+      .regex(PHONE_RE, t("references.validations.phoneInvalid")),
+  });
 
 /* -------------------- Ortak Alan Sınıfı -------------------- */
 const FIELD_BASE =
@@ -59,6 +61,8 @@ export default function ReferenceAddModal({
   onSave,
   onUpdate,
 }) {
+  const { t } = useTranslation();
+  const refSchema = makeRefSchema(t);
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -84,7 +88,7 @@ export default function ReferenceAddModal({
     onClose?.();
   };
 
-  // Modal açıldığında formu doldur / temizle (HATA GÖSTERME)
+  // Modal açıldığında formu doldur / temizle
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -112,7 +116,7 @@ export default function ReferenceAddModal({
 
   const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
-  /* -------------------- Change bazlı doğrulama (Education ile aynı mantık) -------------------- */
+  /* -------------------- Change bazlı doğrulama -------------------- */
   const handleChange = (e) => {
     const { name, value } = e.target;
     const next = { ...formData, [name]: value };
@@ -120,11 +124,9 @@ export default function ReferenceAddModal({
 
     const parsed = refSchema.safeParse(next);
     if (!parsed.success) {
-      // Değiştirilen alanın hatasını çek
       const issue = parsed.error.issues.find((i) => i.path[0] === name);
       setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
     } else {
-      // Alan hatasızsa temizle
       setErrors((p) => ({ ...p, [name]: "" }));
     }
   };
@@ -132,9 +134,10 @@ export default function ReferenceAddModal({
   /* -------------------- Geçerlilik ve ipucu -------------------- */
   const isValid = useMemo(
     () => refSchema.safeParse(formData).success,
-    [formData]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [formData, t]
   );
-  const disabledTip = !isValid ? "Tüm zorunlu alanları doğru doldurunuz." : "";
+  const disabledTip = !isValid ? t("common.fillAllProperly") : "";
 
   /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
@@ -168,6 +171,11 @@ export default function ReferenceAddModal({
 
   if (!open) return null;
 
+  // i18n options
+  const SELECT = t("common.pleaseSelect");
+  const IN_HOUSE = t("references.options.inHouse");
+  const EXTERNAL = t("references.options.external");
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
@@ -184,13 +192,13 @@ export default function ReferenceAddModal({
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-6 py-4">
           <h2 className="text-lg font-semibold truncate">
             {mode === "edit"
-              ? "Referans Bilgisi Düzenle"
-              : "Referans Bilgisi Ekle"}
+              ? t("references.modal.titleEdit")
+              : t("references.modal.titleCreate")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -204,7 +212,7 @@ export default function ReferenceAddModal({
               {/* Çalıştığı Kurum */}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Çalıştığı Kurum
+                  {t("references.form.orgType")}
                 </label>
                 <select
                   name="calistigiKurum"
@@ -213,11 +221,9 @@ export default function ReferenceAddModal({
                   className={`${FIELD_BASE} h-[43px]`}
                   required
                 >
-                  <option value="">Seçiniz</option>
-                  <option value="Bünyemizde / Grubumuzda">
-                    Bünyemizde / Grubumuzda
-                  </option>
-                  <option value="Harici">Harici</option>
+                  <option value="">{SELECT}</option>
+                  <option value={IN_HOUSE}>{IN_HOUSE}</option>
+                  <option value={EXTERNAL}>{EXTERNAL}</option>
                 </select>
                 {errors.calistigiKurum && (
                   <p className="mt-1 text-xs text-red-700">
@@ -226,9 +232,11 @@ export default function ReferenceAddModal({
                 )}
               </div>
 
-              {/* Referans Adı */}
+              {/* Ad */}
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Adı</label>
+                <label className="block text-sm text-gray-600 mb-1">
+                  {t("references.form.firstName")}
+                </label>
                 <input
                   type="text"
                   name="referansAdi"
@@ -236,7 +244,7 @@ export default function ReferenceAddModal({
                   onChange={handleChange}
                   maxLength={50}
                   className={FIELD_BASE}
-                  placeholder="Örn: Mehmet"
+                  placeholder={t("references.placeholders.firstName")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -259,10 +267,10 @@ export default function ReferenceAddModal({
                 </div>
               </div>
 
-              {/* Referans Soyadı */}
+              {/* Soyad */}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Soyadı
+                  {t("references.form.lastName")}
                 </label>
                 <input
                   type="text"
@@ -271,7 +279,7 @@ export default function ReferenceAddModal({
                   onChange={handleChange}
                   maxLength={50}
                   className={FIELD_BASE}
-                  placeholder="Örn: Yalçınkaya"
+                  placeholder={t("references.placeholders.lastName")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -297,7 +305,7 @@ export default function ReferenceAddModal({
               {/* İşyeri */}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  İşyeri
+                  {t("references.form.workplace")}
                 </label>
                 <input
                   type="text"
@@ -306,7 +314,7 @@ export default function ReferenceAddModal({
                   onChange={handleChange}
                   maxLength={100}
                   className={FIELD_BASE}
-                  placeholder="Örn: O'Brien Hotels - IT"
+                  placeholder={t("references.placeholders.workplace")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -332,7 +340,7 @@ export default function ReferenceAddModal({
               {/* Görev */}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Görevi
+                  {t("references.form.role")}
                 </label>
                 <input
                   type="text"
@@ -341,7 +349,7 @@ export default function ReferenceAddModal({
                   onChange={handleChange}
                   maxLength={100}
                   className={FIELD_BASE}
-                  placeholder="Örn: Senior DevOps Engineer"
+                  placeholder={t("references.placeholders.role")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -367,7 +375,7 @@ export default function ReferenceAddModal({
               {/* Telefon */}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Telefon
+                  {t("references.form.phone")}
                 </label>
                 <input
                   type="tel"
@@ -376,7 +384,7 @@ export default function ReferenceAddModal({
                   onChange={handleChange}
                   maxLength={20}
                   className={FIELD_BASE}
-                  placeholder="+90 5XX XXX XX XX"
+                  placeholder={t("references.placeholders.phone")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -409,7 +417,7 @@ export default function ReferenceAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("actions.cancel")}
               </button>
 
               {mode === "create" ? (
@@ -423,7 +431,7 @@ export default function ReferenceAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("actions.save")}
                 </button>
               ) : (
                 <button
@@ -436,7 +444,7 @@ export default function ReferenceAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("actions.update")}
                 </button>
               )}
             </div>

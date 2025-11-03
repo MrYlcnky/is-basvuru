@@ -1,4 +1,6 @@
+// components/Users/usersComponents/ApplicationConfirmSection.jsx (veya mevcut yolun)
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
@@ -16,6 +18,8 @@ const ApplicationConfirmSection = ({
   otherInfoRef,
   validateJobDetails,
 }) => {
+  const { t } = useTranslation();
+
   const [checks, setChecks] = useState({
     dogruluk: false,
     kvkk: false,
@@ -27,51 +31,44 @@ const ApplicationConfirmSection = ({
     setChecks((prev) => ({ ...prev, [id]: checked }));
   };
 
-  // 🔹 Başvuru butonuna tıklanınca
+  // Başvuru
   const handleSubmit = () => {
     const missingSections = [];
 
-    //  1. Kişisel Bilgiler
     const personalValid = validatePersonalInfo?.() ?? false;
-    if (!personalValid) missingSections.push("Kişisel Bilgiler");
+    if (!personalValid) missingSections.push(t("sections.personal"));
 
-    //  2. Eğitim Bilgileri
     const educationValid = (educationRef.current?.getData?.() ?? []).length > 0;
-    if (!educationValid) missingSections.push("Eğitim Bilgileri");
+    if (!educationValid) missingSections.push(t("sections.education"));
 
-    //  3. Diğer Kişisel Bilgiler
     const otherValid = (otherInfoRef.current?.getData?.() ?? []).length > 0;
-    if (!otherValid) missingSections.push("Diğer Kişisel Bilgiler");
+    if (!otherValid) missingSections.push(t("sections.other"));
 
-    //  4. İş Başvuru Detayları
     const jobValid = validateJobDetails?.() ?? false;
-    if (!jobValid) missingSections.push("İş Başvuru Detayları");
+    if (!jobValid) missingSections.push(t("sections.jobDetails"));
 
-    //  5. Onay Kutuları
     const allChecked = Object.values(checks).every(Boolean);
-    if (!allChecked) missingSections.push("Onay Kutuları");
+    if (!allChecked) missingSections.push(t("confirm.checks"));
 
-    //  Eksik varsa SweetAlert2 ile bildir
     if (missingSections.length > 0) {
       Swal.fire({
         icon: "error",
-        title: "Eksik Bilgi!",
+        title: t("confirm.missing.title"),
         html: `
           <div style="text-align:left">
-            <p>Lütfen aşağıdaki bölümleri doldurunuz:</p>
-            <ul style="margin-top:8px; line-height:1.6; font-weight:500; color:#d33">
+            <p>${t("confirm.missing.bodyIntro")}</p>
+            <ul style="margin-top:8px; line-height:1.6; font-weight:600; color:#d33">
               ${missingSections.map((s) => `<li>• ${s}</li>`).join("")}
             </ul>
           </div>
         `,
         confirmButtonColor: "#d33",
-        confirmButtonText: "Tamam",
+        confirmButtonText: t("actions.close"),
       });
       return;
     }
 
-    //  Her şey tamamsa başarı mesajı
-    toast.success("Başvurunuz başarıyla gönderildi!", {
+    toast.success(t("confirm.toast.success"), {
       position: "top-center",
       autoClose: 3000,
     });
@@ -84,8 +81,8 @@ const ApplicationConfirmSection = ({
         <ConfirmCard
           id="dogruluk"
           icon={faCheckCircle}
-          title="Doğruluk Beyanı"
-          text="Bu başvuru formunu imzalarken belirtilen her şeyin doğru ve eksiksiz olduğunu kabul ediyorum."
+          title={t("confirm.cards.truth.title")}
+          text={t("confirm.cards.truth.text")}
           checked={checks.dogruluk}
           onChange={handleCheck}
         />
@@ -93,8 +90,8 @@ const ApplicationConfirmSection = ({
         <ConfirmCard
           id="kvkk"
           icon={faUserShield}
-          title="Kişisel Verilerin İşlenmesi"
-          text="Başvurumu kabul ederek, kişisel verilerimin işlenmesini ve saklanmasını onaylıyorum."
+          title={t("confirm.cards.kvkk.title")}
+          text={t("confirm.cards.kvkk.text")}
           checked={checks.kvkk}
           onChange={handleCheck}
         />
@@ -102,8 +99,8 @@ const ApplicationConfirmSection = ({
         <ConfirmCard
           id="referans"
           icon={faPhoneVolume}
-          title="Referans Kontrolü İzni"
-          text="Referanslarımla iletişime geçilmesine onay veriyorum."
+          title={t("confirm.cards.reference.title")}
+          text={t("confirm.cards.reference.text")}
           checked={checks.referans}
           onChange={handleCheck}
         />
@@ -115,9 +112,11 @@ const ApplicationConfirmSection = ({
           type="button"
           onClick={handleSubmit}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-white font-semibold rounded-lg shadow-md transition duration-200 ease-in-out"
+          aria-label={t("confirm.submit")}
+          title={t("confirm.submit")}
         >
           <FontAwesomeIcon icon={faPaperPlane} />
-          <span>BAŞVUR</span>
+          <span>{t("confirm.submit")}</span>
         </button>
       </div>
     </div>
@@ -142,6 +141,8 @@ function ConfirmCard({ id, icon, title, text, checked, onChange }) {
               checked={checked}
               onChange={onChange}
               required
+              aria-checked={checked}
+              aria-describedby={`${id}-desc`}
             />
             <label
               htmlFor={id}
@@ -149,7 +150,10 @@ function ConfirmCard({ id, icon, title, text, checked, onChange }) {
             >
               <strong>{title}:</strong>
               <br />
-              <span className="text-gray-700">{`“${text}”`}</span>
+              <span
+                id={`${id}-desc`}
+                className="text-gray-700"
+              >{`“${text}”`}</span>
             </label>
           </div>
         </div>

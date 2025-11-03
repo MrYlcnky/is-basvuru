@@ -1,12 +1,15 @@
-// components/Users/tables/OtherPersonalInformationTable.jsx
-import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import { z } from "zod";
 import Select from "react-select";
+import { useTranslation } from "react-i18next";
 
-/* -------------------- ZOD ŞEMASI -------------------- */
-const oneOf = (vals) => (v) => vals.includes(v);
-const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
-
+/* -------------------- Ehliyet Tipleri -------------------- */
 const EHLIYET_TURLERI = [
   "M",
   "A1",
@@ -26,100 +29,13 @@ const EHLIYET_TURLERI = [
   "F",
   "G",
 ];
+const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
 
-const otherInfoSchema = z
-  .object({
-    // ❗ Single select: string oldu
-    kktcGecerliBelge: z
-      .string()
-      .refine(
-        oneOf(["Vatandaşlık", "Çalışma İzni", "Öğrenci Belgesi", "Belge Yok"]),
-        "KKTC Geçerli Belge seçiniz"
-      ),
-    davaDurumu: z.string().refine(oneOf(["Yok", "Var"]), "Dava durumu seçiniz"),
-    davaNedeni: z
-      .string()
-      .trim()
-      .max(250, "En fazla 250 karakter yazabilirsiniz")
-      .refine((v) => !v || ALNUM_TR.test(v), {
-        message: "Sadece harf ve rakam kullanabilirsiniz",
-      }),
-    sigara: z
-      .string()
-      .refine(oneOf(["Evet", "Hayır"]), "Sigara için Evet veya Hayır seçiniz"),
-    kaliciRahatsizlik: z
-      .string()
-      .refine(
-        oneOf(["Evet", "Hayır"]),
-        "Kalıcı rahatsızlık için Evet veya Hayır seçiniz"
-      ),
-    rahatsizlikAciklama: z
-      .string()
-      .trim()
-      .max(250, "En fazla 250 karakter yazabilirsiniz")
-      .refine((v) => !v || ALNUM_TR.test(v), {
-        message: "Sadece harf ve rakam kullanabilirsiniz",
-      }),
-    ehliyet: z.string().refine(oneOf(["Var", "Yok"]), "Ehliyet durumu seçiniz"),
-    ehliyetTurleri: z
-      .array(z.string().refine(oneOf(EHLIYET_TURLERI), "Geçersiz ehliyet türü"))
-      .optional()
-      .default([]),
-    askerlik: z
-      .string()
-      .refine(
-        oneOf(["Yapıldı", "Yapılmadı", "Tecilli", "Muaf"]),
-        "Askerlik durumu seçiniz"
-      ),
-    boy: z.coerce
-      .number({ invalid_type_error: "Boy sayı olmalıdır" })
-      .int("Boy tam sayı olmalıdır")
-      .min(120, "Boy en az 120 cm olmalıdır")
-      .max(230, "Boy en fazla 230 cm olabilir"),
-    kilo: z.coerce
-      .number({ invalid_type_error: "Kilo sayı olmalıdır" })
-      .int("Kilo tam sayı olmalıdır")
-      .min(30, "Kilo en az 30 kg olmalıdır")
-      .max(250, "Kilo en fazla 250 kg olabilir"),
-  })
-  .superRefine((data, ctx) => {
-    if (data.davaDurumu === "Var") {
-      if (!data.davaNedeni || data.davaNedeni.trim().length < 3) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["davaNedeni"],
-          message: "Dava nedeni en az 3 karakter olmalıdır",
-        });
-      }
-    }
-    if (data.kaliciRahatsizlik === "Evet") {
-      if (
-        !data.rahatsizlikAciklama ||
-        data.rahatsizlikAciklama.trim().length < 10
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["rahatsizlikAciklama"],
-          message: "Rahatsızlık açıklaması en az 10 karakter olmalıdır",
-        });
-      }
-    }
-    if (data.ehliyet === "Var") {
-      if (!data.ehliyetTurleri || data.ehliyetTurleri.length < 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["ehliyetTurleri"],
-          message: "En az bir ehliyet türü seçiniz",
-        });
-      }
-    }
-  });
-
-/* -------------------- COMPONENT -------------------- */
 const OtherPersonalInformationTable = forwardRef(
   function OtherPersonalInformationTable({ onValidChange }, ref) {
+    const { t, i18n } = useTranslation();
+
     const [formData, setFormData] = useState({
-      // ❗ Başlangıç boş string (single select)
       kktcGecerliBelge: "",
       davaDurumu: "",
       davaNedeni: "",
@@ -132,104 +48,47 @@ const OtherPersonalInformationTable = forwardRef(
       boy: "",
       kilo: "",
     });
-
     const [errors, setErrors] = useState({});
 
-    // 🔔 Form her değiştiğinde toplam geçerliliği parent’a bildir
-    useEffect(() => {
-      const ok = otherInfoSchema.safeParse(formData).success;
-      onValidChange?.(ok);
-    }, [formData, onValidChange]);
+    /* ---------- i18n options ---------- */
+    const belgeOptions = useMemo(() => {
+      const arr = t("otherInfo.options.kktcDoc", { returnObjects: true });
+      return (arr || []).map((v) => ({ value: v, label: v }));
+    }, [i18n.language]);
 
-    const validateField = (name, value) => {
-      const next = { ...formData, [name]: value };
-      const result = otherInfoSchema.safeParse(next);
+    const yesNo = useMemo(
+      () => ({
+        yes: t("otherInfo.options.yesNo.yes"),
+        no: t("otherInfo.options.yesNo.no"),
+      }),
+      [i18n.language]
+    );
+    const licenseOpts = useMemo(
+      () => ({
+        have: t("otherInfo.options.license.have"),
+        none: t("otherInfo.options.license.none"),
+      }),
+      [i18n.language]
+    );
+    const lawsuitOpts = useMemo(
+      () => ({
+        have: t("otherInfo.options.lawsuit.have"),
+        none: t("otherInfo.options.lawsuit.none"),
+      }),
+      [i18n.language]
+    );
+    const militaryOpts = useMemo(
+      () => ({
+        done: t("otherInfo.options.military.done"),
+        notDone: t("otherInfo.options.military.notDone"),
+        postponed: t("otherInfo.options.military.postponed"),
+        exempt: t("otherInfo.options.military.exempt"),
+      }),
+      [i18n.language]
+    );
 
-      if (!result.success) {
-        const issue = result.error.issues.find((i) => i.path[0] === name);
-        setErrors((prev) => ({ ...prev, [name]: issue ? issue.message : "" }));
-      } else {
-        setErrors((prev) => ({ ...prev, [name]: "" }));
-      }
-
-      // Koşullu alanlar için detay kontrol
-      if (name === "davaDurumu" || name === "davaNedeni") {
-        const r = otherInfoSchema.safeParse(next);
-        const msg = !r.success
-          ? r.error.issues.find((i) => i.path[0] === "davaNedeni")?.message ||
-            ""
-          : "";
-        setErrors((prev) => ({ ...prev, davaNedeni: msg }));
-      }
-      if (name === "kaliciRahatsizlik" || name === "rahatsizlikAciklama") {
-        const r = otherInfoSchema.safeParse(next);
-        const msg = !r.success
-          ? r.error.issues.find((i) => i.path[0] === "rahatsizlikAciklama")
-              ?.message || ""
-          : "";
-        setErrors((prev) => ({ ...prev, rahatsizlikAciklama: msg }));
-      }
-      if (name === "ehliyet" || name === "ehliyetTurleri") {
-        const r = otherInfoSchema.safeParse(next);
-        const msg = !r.success
-          ? r.error.issues.find((i) => i.path[0] === "ehliyetTurleri")
-              ?.message || ""
-          : "";
-        setErrors((prev) => ({ ...prev, ehliyetTurleri: msg }));
-      }
-    };
-
-    useImperativeHandle(ref, () => ({
-      getData: () =>
-        [formData].filter((d) =>
-          Object.values(d).some((v) =>
-            Array.isArray(v) ? v.length > 0 : v && v.toString().trim() !== ""
-          )
-        ),
-      isValid: () => {
-        const res = otherInfoSchema.safeParse(formData);
-        const newErrors = {};
-        if (!res.success) {
-          res.error.issues.forEach((i) => {
-            newErrors[i.path[0]] = i.message;
-          });
-          setErrors(newErrors);
-        } else {
-          setErrors({});
-        }
-        return res.success;
-      },
-    }));
-
-    const handleChange = (e) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      validateField(name, value);
-      if (name === "ehliyet" && value !== "Var") {
-        setFormData((prev) => ({ ...prev, ehliyetTurleri: [] }));
-        validateField("ehliyetTurleri", []);
-      }
-    };
-
-    // ❗ SINGLE Select (react-select) handler
-    const handleSingleSelect = (selected) => {
-      const value = selected?.value || "";
-      setFormData((prev) => ({ ...prev, kktcGecerliBelge: value }));
-      validateField("kktcGecerliBelge", value);
-    };
-
-    const handleEhliyetTurleri = (selected) => {
-      const values = selected ? selected.map((opt) => opt.value) : [];
-      setFormData((prev) => ({ ...prev, ehliyetTurleri: values }));
-      validateField("ehliyetTurleri", values);
-    };
-
-    /* -------- react-select class'ları -------- */
     const rsBaseControl =
-      "w-full h-[43px] overflow-hidden rounded-lg border border-gray-300 px-3 bg-white " +
-      "shadow-none focus:outline-none transition-none hover:border-black focus-within:border-black " +
-      "flex items-start ";
-
+      "w-full h-[43px] overflow-hidden rounded-lg border border-gray-300 px-3 bg-white shadow-none focus:outline-none transition-none hover:border-black focus-within:border-black flex items-start ";
     const rsClassNames = {
       container: () => "w-full",
       control: () => rsBaseControl,
@@ -256,41 +115,230 @@ const OtherPersonalInformationTable = forwardRef(
         ].join(" "),
     };
 
-    const belgeOptions = [
-      { value: "Vatandaşlık", label: "Vatandaşlık" },
-      { value: "Çalışma İzni", label: "Çalışma İzni" },
-      { value: "Öğrenci Belgesi", label: "Öğrenci Belgesi" },
-      { value: "Belge Yok", label: "Belge Yok" },
-    ];
-
-    const ehliyetTurOptions = EHLIYET_TURLERI.map((t) => ({
-      value: t,
-      label: t,
+    const ehliyetTurOptions = EHLIYET_TURLERI.map((t_) => ({
+      value: t_,
+      label: t_,
     }));
+
+    /* ---------- Zod Schema (i18n) ---------- */
+    const otherInfoSchema = useMemo(() => {
+      const oneOf = (vals) => (v) => vals.includes(v);
+
+      return z
+        .object({
+          kktcGecerliBelge: z
+            .string()
+            .refine(
+              oneOf(belgeOptions.map((b) => b.value)),
+              t("otherInfo.errors.kktcDoc")
+            ),
+          davaDurumu: z
+            .string()
+            .refine(
+              oneOf([lawsuitOpts.none, lawsuitOpts.have]),
+              t("otherInfo.errors.lawsuit")
+            ),
+          davaNedeni: z
+            .string()
+            .trim()
+            .max(250, t("otherInfo.errors.lawsuitReason"))
+            .refine((v) => !v || ALNUM_TR.test(v), {
+              message: t("otherInfo.errors.lawsuitReason"),
+            }),
+          sigara: z
+            .string()
+            .refine(oneOf([yesNo.yes, yesNo.no]), t("otherInfo.errors.smoke")),
+          kaliciRahatsizlik: z
+            .string()
+            .refine(
+              oneOf([yesNo.yes, yesNo.no]),
+              t("otherInfo.errors.permanentDisease")
+            ),
+          rahatsizlikAciklama: z
+            .string()
+            .trim()
+            .max(250, t("otherInfo.errors.diseaseDesc"))
+            .refine((v) => !v || ALNUM_TR.test(v), {
+              message: t("otherInfo.errors.diseaseDesc"),
+            }),
+          ehliyet: z
+            .string()
+            .refine(
+              oneOf([licenseOpts.have, licenseOpts.none]),
+              t("otherInfo.errors.license")
+            ),
+          ehliyetTurleri: z.array(z.string()).optional().default([]),
+          askerlik: z
+            .string()
+            .refine(
+              oneOf([
+                militaryOpts.done,
+                militaryOpts.notDone,
+                militaryOpts.postponed,
+                militaryOpts.exempt,
+              ]),
+              t("otherInfo.errors.military")
+            ),
+          boy: z.coerce
+            .number({ invalid_type_error: t("otherInfo.errors.heightNum") })
+            .int(t("otherInfo.errors.heightInt"))
+            .min(120, t("otherInfo.errors.heightMinMax"))
+            .max(230, t("otherInfo.errors.heightMinMax")),
+          kilo: z.coerce
+            .number({ invalid_type_error: t("otherInfo.errors.weightNum") })
+            .int(t("otherInfo.errors.weightInt"))
+            .min(30, t("otherInfo.errors.weightMinMax"))
+            .max(250, t("otherInfo.errors.weightMinMax")),
+        })
+        .superRefine((data, ctx) => {
+          if (data.davaDurumu === lawsuitOpts.have) {
+            if (!data.davaNedeni || data.davaNedeni.trim().length < 3) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["davaNedeni"],
+                message: t("otherInfo.errors.lawsuitReason"),
+              });
+            }
+          }
+          if (data.kaliciRahatsizlik === yesNo.yes) {
+            if (
+              !data.rahatsizlikAciklama ||
+              data.rahatsizlikAciklama.trim().length < 10
+            ) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["rahatsizlikAciklama"],
+                message: t("otherInfo.errors.diseaseDesc"),
+              });
+            }
+          }
+          if (data.ehliyet === licenseOpts.have) {
+            if (!data.ehliyetTurleri || data.ehliyetTurleri.length < 1) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["ehliyetTurleri"],
+                message: t("otherInfo.errors.licenseTypes"),
+              });
+            }
+          }
+        });
+    }, [
+      i18n.language,
+      belgeOptions,
+      yesNo,
+      licenseOpts,
+      lawsuitOpts,
+      militaryOpts,
+    ]);
+
+    useEffect(() => {
+      const ok = otherInfoSchema.safeParse(formData).success;
+      onValidChange?.(ok);
+    }, [formData, otherInfoSchema, onValidChange]);
+
+    useImperativeHandle(ref, () => ({
+      getData: () =>
+        [formData].filter((d) =>
+          Object.values(d).some((v) =>
+            Array.isArray(v) ? v.length > 0 : v && v.toString().trim() !== ""
+          )
+        ),
+      isValid: () => {
+        const res = otherInfoSchema.safeParse(formData);
+        const newErrors = {};
+        if (!res.success) {
+          res.error.issues.forEach((i) => {
+            newErrors[i.path[0]] = i.message;
+          });
+          setErrors(newErrors);
+        } else {
+          setErrors({});
+        }
+        return res.success;
+      },
+    }));
+
+    const setAndValidate = (name, value) => {
+      const next = { ...formData, [name]: value };
+      setFormData(next);
+
+      const r = otherInfoSchema.safeParse(next);
+      if (!r.success) {
+        const issue = r.error.issues.find((i) => i.path[0] === name);
+        setErrors((prev) => ({ ...prev, [name]: issue ? issue.message : "" }));
+      } else {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+
+      // ilişkili alanlar
+      if (name === "davaDurumu" || name === "davaNedeni") {
+        const issue = !r.success
+          ? r.error.issues.find((i) => i.path[0] === "davaNedeni")?.message ||
+            ""
+          : "";
+        setErrors((prev) => ({ ...prev, davaNedeni: issue }));
+      }
+      if (name === "kaliciRahatsizlik" || name === "rahatsizlikAciklama") {
+        const issue = !r.success
+          ? r.error.issues.find((i) => i.path[0] === "rahatsizlikAciklama")
+              ?.message || ""
+          : "";
+        setErrors((prev) => ({ ...prev, rahatsizlikAciklama: issue }));
+      }
+      if (name === "ehliyet" || name === "ehliyetTurleri") {
+        const issue = !r.success
+          ? r.error.issues.find((i) => i.path[0] === "ehliyetTurleri")
+              ?.message || ""
+          : "";
+        setErrors((prev) => ({ ...prev, ehliyetTurleri: issue }));
+      }
+    };
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setAndValidate(name, value);
+      if (name === "ehliyet" && value !== licenseOpts.have) {
+        setAndValidate("ehliyetTurleri", []);
+      }
+    };
+
+    const handleSingleSelect = (selected) => {
+      const value = selected?.value || "";
+      setAndValidate("kktcGecerliBelge", value);
+    };
+
+    const handleEhliyetTurleri = (selected) => {
+      const values = selected ? selected.map((opt) => opt.value) : [];
+      setAndValidate("ehliyetTurleri", values);
+    };
+
+    const placeholderSelect = {
+      value: "",
+      label: t("personal.placeholders.select"),
+      isDisabled: true,
+    };
 
     return (
       <div className="bg-white p-6 rounded-b-lg border border-gray-200">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* KKTC Geçerli Belge (SINGLE) */}
+          {/* KKTC Geçerli Belge */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">
-              KKTC Geçerli Belge <span className="text-red-500">*</span>
+              {t("otherInfo.labels.kktcDoc")}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <Select
-              options={[
-                { value: "", label: "Seçiniz", isDisabled: true },
-                ...belgeOptions,
-              ]}
+              options={[placeholderSelect, ...belgeOptions]}
               isMulti={false}
               closeMenuOnSelect
-              placeholder="Seçiniz"
+              placeholder={t("personal.placeholders.select")}
               value={
                 formData.kktcGecerliBelge
                   ? {
                       value: formData.kktcGecerliBelge,
                       label: formData.kktcGecerliBelge,
                     }
-                  : { value: "", label: "Seçiniz", isDisabled: true }
+                  : placeholderSelect
               }
               onChange={handleSingleSelect}
               unstyled
@@ -308,111 +356,108 @@ const OtherPersonalInformationTable = forwardRef(
 
           {/* Dava Durumu */}
           <SelectField
-            label="Dava Durumu"
+            label={t("otherInfo.labels.lawsuit")}
             name="davaDurumu"
             value={formData.davaDurumu}
             onChange={handleChange}
             options={[
-              { value: "", label: "Seçiniz" },
-              { value: "Yok", label: "Yok" },
-              { value: "Var", label: "Var" },
+              { value: "", label: t("personal.placeholders.select") },
+              { value: lawsuitOpts.none, label: lawsuitOpts.none },
+              { value: lawsuitOpts.have, label: lawsuitOpts.have },
             ]}
             error={errors.davaDurumu}
           />
 
           {/* Dava Nedeni */}
           <InputField
-            label="Dava Nedeni"
+            label={t("otherInfo.labels.lawsuitReason")}
             name="davaNedeni"
             maxLength={250}
             value={formData.davaNedeni}
             onChange={handleChange}
-            placeholder="Dava nedenini yazınız"
-            disabled={formData.davaDurumu !== "Var"}
+            placeholder={t("otherInfo.placeholders.lawsuitReason")}
+            disabled={formData.davaDurumu !== lawsuitOpts.have}
             error={errors.davaNedeni}
           />
 
-          {/* Sigara & Askerlik aynı satır */}
+          {/* Sigara & Askerlik */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <SelectField
-                label="Sigara Kullanımı"
-                name="sigara"
-                value={formData.sigara}
-                onChange={handleChange}
-                options={[
-                  { value: "", label: "Seçiniz" },
-                  { value: "Evet", label: "Evet" },
-                  { value: "Hayır", label: "Hayır" },
-                ]}
-                error={errors.sigara}
-              />
-            </div>
-            <div>
-              <SelectField
-                label="Askerlik Durumu"
-                name="askerlik"
-                value={formData.askerlik}
-                onChange={handleChange}
-                options={[
-                  { value: "", label: "Seçiniz" },
-                  { value: "Yapıldı", label: "Yapıldı" },
-                  { value: "Yapılmadı", label: "Yapılmadı" },
-                  { value: "Tecilli", label: "Tecilli" },
-                  { value: "Muaf", label: "Muaf" },
-                ]}
-                error={errors.askerlik}
-              />
-            </div>
+            <SelectField
+              label={t("otherInfo.labels.smoke")}
+              name="sigara"
+              value={formData.sigara}
+              onChange={handleChange}
+              options={[
+                { value: "", label: t("personal.placeholders.select") },
+                { value: yesNo.yes, label: yesNo.yes },
+                { value: yesNo.no, label: yesNo.no },
+              ]}
+              error={errors.sigara}
+            />
+            <SelectField
+              label={t("otherInfo.labels.military")}
+              name="askerlik"
+              value={formData.askerlik}
+              onChange={handleChange}
+              options={[
+                { value: "", label: t("personal.placeholders.select") },
+                { value: militaryOpts.done, label: militaryOpts.done },
+                { value: militaryOpts.notDone, label: militaryOpts.notDone },
+                {
+                  value: militaryOpts.postponed,
+                  label: militaryOpts.postponed,
+                },
+                { value: militaryOpts.exempt, label: militaryOpts.exempt },
+              ]}
+              error={errors.askerlik}
+            />
           </div>
 
           {/* Kalıcı Rahatsızlık */}
           <SelectField
-            label="Kalıcı Rahatsızlık"
+            label={t("otherInfo.labels.permanentDisease")}
             name="kaliciRahatsizlik"
             value={formData.kaliciRahatsizlik}
             onChange={handleChange}
             options={[
-              { value: "", label: "Seçiniz" },
-              { value: "Evet", label: "Evet" },
-              { value: "Hayır", label: "Hayır" },
+              { value: "", label: t("personal.placeholders.select") },
+              { value: yesNo.yes, label: yesNo.yes },
+              { value: yesNo.no, label: yesNo.no },
             ]}
             error={errors.kaliciRahatsizlik}
           />
 
           {/* Rahatsızlık Açıklama */}
           <InputField
-            label="Rahatsızlık Açıklaması"
+            label={t("otherInfo.labels.diseaseDesc")}
             name="rahatsizlikAciklama"
             maxLength={250}
             value={formData.rahatsizlikAciklama}
             onChange={handleChange}
-            placeholder="Rahatsızlığınızı açıklayınız"
-            disabled={formData.kaliciRahatsizlik !== "Evet"}
+            placeholder={t("otherInfo.placeholders.diseaseDesc")}
+            disabled={formData.kaliciRahatsizlik !== yesNo.yes}
             error={errors.rahatsizlikAciklama}
           />
 
           {/* Ehliyet */}
-          <div>
-            <SelectField
-              label="Ehliyet Durumu"
-              name="ehliyet"
-              value={formData.ehliyet}
-              onChange={handleChange}
-              options={[
-                { value: "", label: "Seçiniz" },
-                { value: "Var", label: "Var" },
-                { value: "Yok", label: "Yok" },
-              ]}
-              error={errors.ehliyet}
-            />
-          </div>
+          <SelectField
+            label={t("otherInfo.labels.license")}
+            name="ehliyet"
+            value={formData.ehliyet}
+            onChange={handleChange}
+            options={[
+              { value: "", label: t("personal.placeholders.select") },
+              { value: licenseOpts.have, label: licenseOpts.have },
+              { value: licenseOpts.none, label: licenseOpts.none },
+            ]}
+            error={errors.ehliyet}
+          />
 
-          {/* Ehliyet Türleri (multi) */}
+          {/* Ehliyet Türleri */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">
-              Ehliyet Türü{" "}
-              {formData.ehliyet === "Var" ? (
+              {t("otherInfo.labels.licenseTypes")}{" "}
+              {formData.ehliyet === licenseOpts.have ? (
                 <span className="text-red-500">*</span>
               ) : null}
             </label>
@@ -431,12 +476,12 @@ const OtherPersonalInformationTable = forwardRef(
                 ...rsClassNames,
                 control: () =>
                   `${rsBaseControl} ${
-                    formData.ehliyet !== "Var"
+                    formData.ehliyet !== licenseOpts.have
                       ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                       : ""
                   }`,
               }}
-              isDisabled={formData.ehliyet !== "Var"}
+              isDisabled={formData.ehliyet !== licenseOpts.have}
               menuPortalTarget={
                 typeof document !== "undefined" ? document.body : null
               }
@@ -450,28 +495,24 @@ const OtherPersonalInformationTable = forwardRef(
 
           {/* Boy / Kilo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <InputField
-                label="Boy (cm)"
-                name="boy"
-                type="number"
-                value={formData.boy}
-                onChange={handleChange}
-                placeholder="Örn. 173"
-                error={errors.boy}
-              />
-            </div>
-            <div>
-              <InputField
-                label="Kilo (kg)"
-                name="kilo"
-                type="number"
-                value={formData.kilo}
-                onChange={handleChange}
-                placeholder="Örn. 82"
-                error={errors.kilo}
-              />
-            </div>
+            <InputField
+              label={t("otherInfo.labels.height")}
+              name="boy"
+              type="number"
+              value={formData.boy}
+              onChange={handleChange}
+              placeholder={t("otherInfo.placeholders.height")}
+              error={errors.boy}
+            />
+            <InputField
+              label={t("otherInfo.labels.weight")}
+              name="kilo"
+              type="number"
+              value={formData.kilo}
+              onChange={handleChange}
+              placeholder={t("otherInfo.placeholders.weight")}
+              error={errors.kilo}
+            />
           </div>
         </div>
       </div>
@@ -479,7 +520,6 @@ const OtherPersonalInformationTable = forwardRef(
   }
 );
 
-/* --- InputField --- */
 function InputField({
   label,
   name,
@@ -539,7 +579,6 @@ function InputField({
   );
 }
 
-/* --- SelectField (native) --- */
 function SelectField({ label, name, value, onChange, options, error }) {
   return (
     <div>

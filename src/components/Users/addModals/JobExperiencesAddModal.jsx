@@ -13,6 +13,7 @@ import {
   todayISO,
   yesterdayISO,
 } from "../modalHooks/dateUtils";
+import { useTranslation } from "react-i18next";
 
 /* -------------------- REGEX -------------------- */
 const NAME_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.&()'/]+$/u;
@@ -49,52 +50,52 @@ const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
 
 /* -------------------- ŞEMA -------------------- */
-const makeSchema = (anotherActiveExists) =>
+const makeSchema = (anotherActiveExists, t) =>
   z
     .object({
       isAdi: z
         .string()
         .trim()
-        .regex(NAME_RE, "Geçersiz karakter.")
-        .min(2, "En az 2 karakter.")
-        .max(100, "En fazla 100 karakter."),
+        .regex(NAME_RE, t("jobExp.err.invalid"))
+        .min(2, t("jobExp.err.min2"))
+        .max(100, t("jobExp.err.max100")),
       departman: z
         .string()
         .trim()
-        .regex(NAME_RE, "Geçersiz karakter.")
-        .min(2, "En az 2 karakter.")
-        .max(100, "En fazla 100 karakter."),
+        .regex(NAME_RE, t("jobExp.err.invalid"))
+        .min(2, t("jobExp.err.min2"))
+        .max(100, t("jobExp.err.max100")),
       pozisyon: z
         .string()
         .trim()
-        .regex(NAME_RE, "Geçersiz karakter.")
-        .min(2, "En az 2 karakter.")
-        .max(100, "En fazla 100 karakter."),
+        .regex(NAME_RE, t("jobExp.err.invalid"))
+        .min(2, t("jobExp.err.min2"))
+        .max(100, t("jobExp.err.max100")),
       gorev: z
         .string()
         .trim()
-        .regex(NAME_RE, "Geçersiz karakter.")
-        .min(2, "En az 2 karakter.")
-        .max(120, "En fazla 120 karakter."),
+        .regex(NAME_RE, t("jobExp.err.invalid"))
+        .min(2, t("jobExp.err.min2"))
+        .max(120, t("jobExp.err.max120")),
       ayrilisSebebi: z
         .string()
         .trim()
-        .max(150, "En fazla 150 karakter.")
-        .regex(TEXT_RE, "Geçersiz karakter.")
+        .max(150, t("jobExp.err.max150"))
+        .regex(TEXT_RE, t("jobExp.err.invalid"))
         .optional()
         .or(z.literal("")),
       ucret: z
         .string()
         .trim()
-        .min(1, "Ücret zorunlu.")
+        .min(1, t("jobExp.err.salaryReq"))
         .refine(
           (v) => !isNaN(Number(String(v).replace(",", "."))),
-          "Ücret sayısal olmalıdır."
+          t("jobExp.err.salaryNum")
         ),
-      baslangicTarihi: z.string().min(1, "Başlangıç tarihi zorunlu."),
+      baslangicTarihi: z.string().min(1, t("jobExp.err.startReq")),
       bitisTarihi: z.string().optional().default(""),
-      isUlke: z.string().trim().min(1, "İş ülkesi zorunlu."),
-      isSehir: z.string().trim().min(1, "İş şehri zorunlu."),
+      isUlke: z.string().trim().min(1, t("jobExp.err.countryReq")),
+      isSehir: z.string().trim().min(1, t("jobExp.err.cityReq")),
       halenCalisiyor: z.boolean(),
     })
     .superRefine((data, ctx) => {
@@ -104,13 +105,13 @@ const makeSchema = (anotherActiveExists) =>
         ctx.addIssue({
           path: ["baslangicTarihi"],
           code: z.ZodIssueCode.custom,
-          message: "Başlangıç tarihi geçersiz.",
+          message: t("jobExp.err.startInvalid"),
         });
       } else if (data.baslangicTarihi >= TODAY) {
         ctx.addIssue({
           path: ["baslangicTarihi"],
           code: z.ZodIssueCode.custom,
-          message: "Başlangıç tarihi bugün veya gelecekte olamaz.",
+          message: t("jobExp.err.startInFuture"),
         });
       }
 
@@ -118,7 +119,7 @@ const makeSchema = (anotherActiveExists) =>
         ctx.addIssue({
           path: ["halenCalisiyor"],
           code: z.ZodIssueCode.custom,
-          message: "Zaten aktif bir iş var. Bu kaydı aktif yapamazsınız.",
+          message: t("jobExp.err.alreadyActive"),
         });
       }
 
@@ -129,13 +130,13 @@ const makeSchema = (anotherActiveExists) =>
           ctx.addIssue({
             path: ["bitisTarihi"],
             code: z.ZodIssueCode.custom,
-            message: "Bitiş tarihi zorunlu.",
+            message: t("jobExp.err.endReq"),
           });
         } else if (data.bitisTarihi > TODAY) {
           ctx.addIssue({
             path: ["bitisTarihi"],
             code: z.ZodIssueCode.custom,
-            message: "Bitiş tarihi bugünden ileri olamaz.",
+            message: t("jobExp.err.endInFuture"),
           });
         }
       }
@@ -146,7 +147,7 @@ const makeSchema = (anotherActiveExists) =>
         ctx.addIssue({
           path: ["bitisTarihi"],
           code: z.ZodIssueCode.custom,
-          message: "Bitiş, başlangıçtan küçük olamaz.",
+          message: t("jobExp.err.endBeforeStart"),
         });
       }
 
@@ -155,7 +156,7 @@ const makeSchema = (anotherActiveExists) =>
           ctx.addIssue({
             path: ["ayrilisSebebi"],
             code: z.ZodIssueCode.custom,
-            message: "Ayrılış sebebi zorunlu.",
+            message: t("jobExp.err.leaveReq"),
           });
         }
       }
@@ -171,6 +172,7 @@ export default function JobExperiencesAddModal({
   onUpdate,
   anotherActiveExists = false,
 }) {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -193,17 +195,17 @@ export default function JobExperiencesAddModal({
     setTouched((p) => (p[name] ? p : { ...p, [name]: true }));
 
   /* --------- Ülke/Şehir --------- */
-  const [jobCountry, setJobCountry] = useState(""); // "Seçiniz"
+  const [jobCountry, setJobCountry] = useState("");
   const [jobCountryOther, setJobCountryOther] = useState("");
   const [jobProvince, setJobProvince] = useState("");
   const [jobPlaceOther, setJobPlaceOther] = useState("");
 
-  const countryOptions = [{ value: "", label: "Seçiniz" }].concat(
-    COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }))
-  );
-  const ilOptions = [{ value: "", label: "İl Seçiniz" }].concat(
-    Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
-  );
+  const countryOptions = [
+    { value: "", label: t("common.pleaseSelect") },
+  ].concat(COUNTRY_OPTIONS.map((c) => ({ value: c, label: c })));
+  const ilOptions = [
+    { value: "", label: t("jobExp.labels.selectProvince") },
+  ].concat(Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il })));
 
   const [errors, setErrors] = useState({});
   const [disabledTip, setDisabledTip] = useState("");
@@ -212,7 +214,7 @@ export default function JobExperiencesAddModal({
   const todayStr = useMemo(() => todayISO(), []);
   const yesterdayStr = useMemo(() => yesterdayISO(), []);
 
-  // 🔧 ÖNEMLİ: fd’deki isUlke/isSehir varsa ÖNCELİKLE onları kullan!
+  // fd’deki isUlke/isSehir varsa öncelikle onları kullan
   const buildCandidate = (fd = formData) => {
     let countryFallback = jobCountry === "Diğer" ? jobCountryOther : jobCountry;
     let cityFallback =
@@ -226,10 +228,10 @@ export default function JobExperiencesAddModal({
 
   // buton enable/disable
   const isValid = useMemo(() => {
-    const parsed = makeSchema(anotherActiveExists).safeParse(buildCandidate());
-    setDisabledTip(
-      parsed.success ? "" : "Tüm zorunlu alanları doğru doldurunuz."
+    const parsed = makeSchema(anotherActiveExists, t).safeParse(
+      buildCandidate()
     );
+    setDisabledTip(parsed.success ? "" : t("common.fillAllProperly"));
     return parsed.success;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -239,6 +241,7 @@ export default function JobExperiencesAddModal({
     jobProvince,
     jobPlaceOther,
     anotherActiveExists,
+    t,
   ]);
 
   const parseInitialCountryCity = (ulkeVal, sehirVal) => {
@@ -332,7 +335,7 @@ export default function JobExperiencesAddModal({
 
   /* -------------------- Alan-bazlı doğrulama -------------------- */
   const validateField = (name, next) => {
-    const parsed = makeSchema(anotherActiveExists).safeParse(
+    const parsed = makeSchema(anotherActiveExists, t).safeParse(
       buildCandidate(next)
     );
     const issue = !parsed.success
@@ -341,10 +344,17 @@ export default function JobExperiencesAddModal({
     setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
   };
 
-  // ------- handlers (SearchSelect, event.target.value imzasını kullanır)
+  // Ücret input filter: sadece rakam, nokta, virgül
+  const normalizeSalaryInput = (raw) =>
+    raw
+      .replace(/[^\d.,]/g, "")
+      .replace(/,+/g, (m) => (m.length > 1 ? "," : ","));
+
+  // ------- handlers
   const onInput = (e) => {
     const { name, value } = e.target;
-    const next = { ...formData, [name]: value };
+    const v = name === "ucret" ? normalizeSalaryInput(value) : value;
+    const next = { ...formData, [name]: v };
     setFormData(next);
     if (!touched[name]) touch(name);
     validateField(name, next);
@@ -368,7 +378,7 @@ export default function JobExperiencesAddModal({
   };
 
   const handleCountryChange = (e) => {
-    const v = e.target.value; // "" olabilir
+    const v = e.target.value;
     setJobCountry(v);
     setJobCountryOther("");
     setJobProvince("");
@@ -379,7 +389,7 @@ export default function JobExperiencesAddModal({
 
     if (!touched.isUlke) touch("isUlke");
     validateField("isUlke", next);
-    setErrors((p) => ({ ...p, isSehir: "" })); // şehir hatasını temizle
+    setErrors((p) => ({ ...p, isSehir: "" }));
   };
 
   const handleCityChangeTR = (e) => {
@@ -440,7 +450,7 @@ export default function JobExperiencesAddModal({
     setTouched(Object.fromEntries(allKeys.map((k) => [k, true])));
 
     const candidate = buildCandidate();
-    const parsed = makeSchema(anotherActiveExists).safeParse(candidate);
+    const parsed = makeSchema(anotherActiveExists, t).safeParse(candidate);
     if (!parsed.success) {
       const newErrs = {};
       parsed.error.issues.forEach((i) => {
@@ -472,7 +482,6 @@ export default function JobExperiencesAddModal({
 
   if (!open) return null;
 
-  /* -------------------- RENDER -------------------- */
   const portalTarget = typeof document !== "undefined" ? document.body : null;
 
   return (
@@ -490,12 +499,12 @@ export default function JobExperiencesAddModal({
         {/* Başlık */}
         <div className="flex items-center justify-between bg-gradient-to-r from-gray-700 via-gray-600 to-gray-500 text-white px-4 sm:px-6 py-3 sm:py-4">
           <h2 className="text-base sm:text-lg md:text-xl font-semibold truncate">
-            {mode === "edit" ? "İş Deneyimi Düzenle" : "İş Deneyimi Ekle"}
+            {mode === "edit" ? t("jobExp.title.edit") : t("jobExp.title.add")}
           </h2>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Kapat"
+            aria-label={t("common.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
@@ -509,7 +518,7 @@ export default function JobExperiencesAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Şirket / İş Adı *
+                  {t("jobExp.labels.company")} *
                 </label>
                 <input
                   type="text"
@@ -519,7 +528,7 @@ export default function JobExperiencesAddModal({
                   onBlur={onBlur}
                   maxLength={100}
                   className={FIELD_BASE}
-                  placeholder="Örn: ABC Teknoloji A.Ş."
+                  placeholder={t("jobExp.placeholders.company")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -544,7 +553,7 @@ export default function JobExperiencesAddModal({
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Departman *
+                  {t("jobExp.labels.department")} *
                 </label>
                 <input
                   type="text"
@@ -554,7 +563,7 @@ export default function JobExperiencesAddModal({
                   onBlur={onBlur}
                   maxLength={100}
                   className={FIELD_BASE}
-                  placeholder="Örn: Yazılım"
+                  placeholder={t("jobExp.placeholders.department")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -582,7 +591,7 @@ export default function JobExperiencesAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Pozisyon *
+                  {t("jobExp.labels.position")} *
                 </label>
                 <input
                   type="text"
@@ -592,7 +601,7 @@ export default function JobExperiencesAddModal({
                   onBlur={onBlur}
                   maxLength={100}
                   className={FIELD_BASE}
-                  placeholder="Örn: Full Stack Developer"
+                  placeholder={t("jobExp.placeholders.position")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -617,7 +626,7 @@ export default function JobExperiencesAddModal({
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Görev *
+                  {t("jobExp.labels.duty")} *
                 </label>
                 <input
                   type="text"
@@ -627,7 +636,7 @@ export default function JobExperiencesAddModal({
                   onBlur={onBlur}
                   maxLength={120}
                   className={FIELD_BASE}
-                  placeholder="Örn: Web geliştirme"
+                  placeholder={t("jobExp.placeholders.duty")}
                   required
                 />
                 <div className="flex justify-between items-center mt-1">
@@ -655,7 +664,7 @@ export default function JobExperiencesAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Ücret *
+                  {t("jobExp.labels.salary")} *
                 </label>
                 <input
                   type="text"
@@ -664,7 +673,7 @@ export default function JobExperiencesAddModal({
                   onChange={onInput}
                   onBlur={onBlur}
                   className={FIELD_BASE}
-                  placeholder="Örn: 2500"
+                  placeholder={t("jobExp.placeholders.salary")}
                   required
                 />
                 {touched.ucret && errors.ucret && (
@@ -676,7 +685,7 @@ export default function JobExperiencesAddModal({
 
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
-                  Ülke (İş) *
+                  {t("jobExp.labels.country")} *
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <SearchSelect
@@ -685,13 +694,13 @@ export default function JobExperiencesAddModal({
                     value={jobCountry}
                     onChange={handleCountryChange}
                     options={countryOptions}
-                    placeholder="Ülke ara veya seç…"
+                    placeholder={t("jobExp.placeholders.countrySearch")}
                     isClearable={false}
                     menuPortalTarget={portalTarget}
                   />
                   <input
                     type="text"
-                    placeholder="Ülke adı (Diğer)"
+                    placeholder={t("jobExp.placeholders.countryOther")}
                     value={jobCountryOther}
                     onChange={(e) => {
                       const v = onlyLettersTR(e.target.value);
@@ -722,7 +731,7 @@ export default function JobExperiencesAddModal({
             {/* 3.5 Satır: Şehir */}
             <div>
               <label className="block text-sm text-gray-600 mb-1">
-                Şehir (İş) *
+                {t("jobExp.labels.city")} *
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {jobCountry === "Türkiye" ? (
@@ -733,7 +742,7 @@ export default function JobExperiencesAddModal({
                       value={jobProvince}
                       onChange={handleCityChangeTR}
                       options={ilOptions}
-                      placeholder="İl ara veya seç…"
+                      placeholder={t("jobExp.placeholders.provinceSearch")}
                       isClearable={false}
                       isDisabled={!jobCountry}
                       menuPortalTarget={portalTarget}
@@ -744,7 +753,7 @@ export default function JobExperiencesAddModal({
                   <>
                     <input
                       type="text"
-                      placeholder="İl / Şehir"
+                      placeholder={t("jobExp.placeholders.cityOther")}
                       value={jobPlaceOther}
                       onChange={handleCityChangeOther}
                       disabled={
@@ -784,7 +793,7 @@ export default function JobExperiencesAddModal({
                 disabled={anotherActiveExists && !formData.halenCalisiyor}
                 title={
                   anotherActiveExists && !formData.halenCalisiyor
-                    ? "Zaten aktif bir iş var. Bu kaydı aktif yapamazsınız."
+                    ? t("jobExp.err.alreadyActive")
                     : ""
                 }
               />
@@ -792,7 +801,7 @@ export default function JobExperiencesAddModal({
                 htmlFor="halenCalisiyorum"
                 className="text-sm text-gray-700 select-none"
               >
-                Hâlen çalışıyorum
+                {t("jobExp.labels.ongoing")}
               </label>
               {touched.halenCalisiyor && errors.halenCalisiyor && (
                 <span className="text-xs text-red-600 font-medium ml-2">
@@ -805,7 +814,7 @@ export default function JobExperiencesAddModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="shadow-none">
                 <MuiDateStringField
-                  label="Başlangıç Tarihi"
+                  label={t("jobExp.labels.startDate")}
                   name="baslangicTarihi"
                   value={formData.baslangicTarihi}
                   onChange={(e) =>
@@ -833,8 +842,10 @@ export default function JobExperiencesAddModal({
               </div>
               <div className="shadow-none">
                 <MuiDateStringField
-                  label={`Bitiş Tarihi ${
-                    formData.halenCalisiyor ? "(Devam ediyor)" : "*"
+                  label={`${t("jobExp.labels.endDate")} ${
+                    formData.halenCalisiyor
+                      ? `(${t("jobExp.badges.ongoing")})`
+                      : "*"
                   }`}
                   name="bitisTarihi"
                   value={formData.bitisTarihi}
@@ -870,8 +881,10 @@ export default function JobExperiencesAddModal({
             {/* 5. Satır: Ayrılış Sebebi */}
             <div>
               <label className="block text-sm text-gray-600 mb-1">
-                Ayrılış Sebebi{" "}
-                {formData.halenCalisiyor ? "(Devam ediyor)" : "*"}
+                {t("jobExp.labels.leaveReason")}{" "}
+                {formData.halenCalisiyor
+                  ? `(${t("jobExp.badges.ongoing")})`
+                  : "*"}
               </label>
               <input
                 type="text"
@@ -886,7 +899,7 @@ export default function JobExperiencesAddModal({
                     ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-70"
                     : "bg-white border-gray-300 hover:border-black"
                 } w-full`}
-                placeholder="Örn: Eğitim / taşınma / proje bitişi..."
+                placeholder={t("jobExp.placeholders.leaveReason")}
               />
               <div className="flex justify-between items-center mt-1">
                 {touched.ayrilisSebebi && errors.ayrilisSebebi ? (
@@ -917,7 +930,7 @@ export default function JobExperiencesAddModal({
                 onClick={handleClose}
                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition cursor-pointer"
               >
-                İptal
+                {t("common.cancel")}
               </button>
 
               {mode === "create" ? (
@@ -931,7 +944,7 @@ export default function JobExperiencesAddModal({
                       : "bg-blue-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Kaydet
+                  {t("common.save")}
                 </button>
               ) : (
                 <button
@@ -944,7 +957,7 @@ export default function JobExperiencesAddModal({
                       : "bg-green-300 opacity-90 cursor-not-allowed"
                   }`}
                 >
-                  Güncelle
+                  {t("common.update")}
                 </button>
               )}
             </div>

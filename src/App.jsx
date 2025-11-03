@@ -1,7 +1,6 @@
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
 import JobApplicationForm from "./components/Users/jobApplicationForm";
-import Layout from "./components/Layouts/UserLayout/Layout";
 import AdminLayout from "./components/Layouts/AdminLayout/AdminLayout";
 
 import { ToastContainer } from "react-toastify";

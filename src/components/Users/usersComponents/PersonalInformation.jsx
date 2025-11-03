@@ -1,10 +1,16 @@
-// components/Users/PersonalInformation.jsx
-import { forwardRef, useImperativeHandle, useState, useEffect } from "react";
+import {
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import SearchSelect from "../Selected/SearchSelect";
 
-/* -------------------- Sabit Veriler -------------------- */
+/* -------------------- Sabit Veriler (TR iller/ilçeler) -------------------- */
 const TR_IL_ILCE = {
   İstanbul: ["Kadıköy", "Üsküdar", "Beşiktaş", "Bakırköy", "Sarıyer"],
   Ankara: ["Çankaya", "Keçiören", "Yenimahalle", "Mamak", "Sincan"],
@@ -28,7 +34,7 @@ const COUNTRY_OPTIONS = [
   "Diğer",
 ];
 
-// Ülke -> Uyruk eşleşmesi
+// Ülke -> Uyruk eşleşmesi (etiket gösterimi)
 const NATIONALITY_MAP = {
   Türkiye: "Türk",
   Türkmenistan: "Türkmen",
@@ -43,73 +49,14 @@ const NATIONALITY_MAP = {
   Diğer: "Diğer",
 };
 
-/* -------------------- Yardımcı -------------------- */
 const onlyLettersTR = (s) => s.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ\s]/g, "");
 
-/* -------------------- Zod Şema -------------------- */
-const schema = z.object({
-  ad: z
-    .string()
-    .min(1, "Ad gerekli")
-    .max(30, "Ad en fazla 30 karakter olabilir")
-    .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/, "Ad yalnızca harflerden oluşmalı"),
-  soyad: z
-    .string()
-    .min(1, "Soyad gerekli")
-    .max(30, "Soyad en fazla 30 karakter olabilir")
-    .regex(/^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/, "Soyad yalnızca harflerden oluşmalı"),
-  eposta: z.string().email("Geçerli bir e-posta adresi giriniz"),
-  telefon: z
-    .string()
-    .min(1, "Telefon gerekli")
-    .transform((v) => v.replace(/[\s()-]/g, ""))
-    .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
-      message: "Telefon numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX).",
-    }),
-  whatsapp: z
-    .string()
-    .optional()
-    .transform((v) => (v ? v.replace(/[\s()-]/g, "") : v))
-    .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), {
-      message: "WhatsApp numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX).",
-    }),
-  adres: z
-    .string()
-    .min(5, "Adres en az 5 karakter olmalıdır")
-    .max(90, "Adres en fazla 90 karakter olabilir"),
-  cinsiyet: z.string().min(1, "Cinsiyet seçiniz"),
-  medeniDurum: z.string().min(1, "Medeni durum seçiniz"),
-  dogumTarihi: z
-    .string()
-    .min(1, "Doğum tarihi gerekli")
-    .refine((date) => {
-      if (!date) return false;
-      const d = new Date(date);
-      const min = new Date("1950-01-01");
-      const today = new Date();
-      return d >= min && d <= today;
-    }, "Doğum tarihi 1950'den önce veya bugünden ileri olamaz")
-    .refine((date) => {
-      const d = new Date(date + "T00:00:00");
-      if (Number.isNaN(d.getTime())) return false;
-      const yBirth = d.getFullYear();
-      const now = new Date();
-      const yNow = now.getFullYear();
-      return yNow - yBirth >= 15;
-    }, "En az 15 yaşında olmalısınız."),
-  cocukSayisi: z.string().optional(),
-  dogumUlke: z.string().min(1, "Doğum ülkesi zorunlu"),
-  dogumSehir: z.string().min(1, "Doğum yeri (İl/İlçe) zorunlu"),
-  ikametUlke: z.string().min(1, "Yaşadığı ülke zorunlu"),
-  ikametSehir: z.string().min(1, "Yaşadığı şehir (İl/İlçe) zorunlu"),
-  uyruk: z.string().min(1, "Uyruğu seçiniz"),
-});
-
-/* -------------------- Bileşen -------------------- */
 const PersonalInformation = forwardRef(function PersonalInformation(
   { onValidChange },
   ref
 ) {
+  const { t, i18n } = useTranslation();
+
   const [formData, setFormData] = useState({
     ad: "",
     soyad: "",
@@ -129,31 +76,95 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     ikametUlke: "",
     ikametSehir: "",
   });
-
   const [errors, setErrors] = useState({});
   const [fotoPreview, setFotoPreview] = useState(null);
   const [fotoError, setFotoError] = useState("");
 
-  const countryOptions = [
-    { value: "", label: "Seçiniz" },
-    ...COUNTRY_OPTIONS.map((c) => ({ value: c, label: c })),
-  ];
+  /* ---------- i18n-derived options ---------- */
+  const genderOptions = useMemo(
+    () => [
+      { value: "", label: t("personal.placeholders.select") },
+      {
+        value: t("personal.options.gender.female"),
+        label: t("personal.options.gender.female"),
+      },
+      {
+        value: t("personal.options.gender.male"),
+        label: t("personal.options.gender.male"),
+      },
+    ],
+    [i18n.language]
+  );
+  const maritalOptions = useMemo(
+    () => [
+      { value: "", label: t("personal.placeholders.select") },
+      {
+        value: t("personal.options.marital.single"),
+        label: t("personal.options.marital.single"),
+      },
+      {
+        value: t("personal.options.marital.married"),
+        label: t("personal.options.marital.married"),
+      },
+      {
+        value: t("personal.options.marital.divorced"),
+        label: t("personal.options.marital.divorced"),
+      },
+      {
+        value: t("personal.options.marital.widowed"),
+        label: t("personal.options.marital.widowed"),
+      },
+    ],
+    [i18n.language]
+  );
+  const childOptions = useMemo(() => {
+    const base = [{ value: "", label: t("personal.placeholders.select") }];
+    for (let i = 0; i <= 6; i++)
+      base.push({ value: String(i), label: String(i) });
+    base.push({ value: "7+", label: t("personal.options.childrenMore") });
+    return base;
+  }, [i18n.language]);
 
-  /* ---------- Doğum ---------- */
-  const [birthCountry, setBirthCountry] = useState(""); // <-- artık "Seçiniz"
+  const countryOptions = useMemo(
+    () =>
+      [{ value: "", label: t("personal.placeholders.select") }].concat(
+        COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }))
+      ),
+    [i18n.language]
+  );
+
+  const ilOptions = useMemo(
+    () =>
+      [{ value: "", label: t("personal.labels.selectProvince") }].concat(
+        Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
+      ),
+    [i18n.language]
+  );
+  const ilceOptions = (il) =>
+    [
+      {
+        value: "",
+        label: il
+          ? t("personal.labels.selectDistrict")
+          : t("personal.labels.selectProvince"),
+      },
+    ].concat(
+      (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }))
+    );
+
+  /* ---------- Seçimler (Doğum/İkamet/Uyruk) ---------- */
+  const [birthCountry, setBirthCountry] = useState("");
   const [birthCountryOther, setBirthCountryOther] = useState("");
   const [birthProvince, setBirthProvince] = useState("");
   const [birthDistrict, setBirthDistrict] = useState("");
   const [birthPlaceOther, setBirthPlaceOther] = useState("");
 
-  /* ---------- İkamet ---------- */
-  const [resCountry, setResCountry] = useState(""); // <-- artık "Seçiniz"
+  const [resCountry, setResCountry] = useState("");
   const [resCountryOther, setResCountryOther] = useState("");
   const [resProvince, setResProvince] = useState("");
   const [resDistrict, setResDistrict] = useState("");
   const [resPlaceOther, setResPlaceOther] = useState("");
 
-  /* ---------- Uyruk ---------- */
   const [nationalitySel, setNationalitySel] = useState("");
   const [nationalityOther, setNationalityOther] = useState("");
 
@@ -194,18 +205,18 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     syncField({ uyruk: val });
   };
 
-  /* -------------------- Fotoğraf -------------------- */
+  /* ---------- Fotoğraf ---------- */
   const handleFotoUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setFotoError("Lütfen yalnızca JPG veya PNG dosyası yükleyiniz");
+      setFotoError(t("personal.photo.typeErr"));
       setFormData((p) => ({ ...p, foto: null }));
       setFotoPreview(null);
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setFotoError("Fotoğraf boyutu 2 MB'den küçük olmalıdır");
+      setFotoError(t("personal.photo.sizeErr"));
       setFormData((p) => ({ ...p, foto: null }));
       setFotoPreview(null);
       return;
@@ -217,7 +228,73 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     reader.readAsDataURL(file);
   };
 
-  /* -------------------- Ref API -------------------- */
+  /* ---------- Zod Şema (i18n’li) ---------- */
+  const schema = useMemo(() => {
+    return z.object({
+      ad: z
+        .string()
+        .min(1, t("personal.errors.firstName.required"))
+        .max(30, t("personal.errors.firstName.max"))
+        .regex(
+          /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/,
+          t("personal.errors.firstName.regex")
+        ),
+      soyad: z
+        .string()
+        .min(1, t("personal.errors.lastName.required"))
+        .max(30, t("personal.errors.lastName.max"))
+        .regex(
+          /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/,
+          t("personal.errors.lastName.regex")
+        ),
+      eposta: z.string().email(t("personal.errors.email.invalid")),
+      telefon: z
+        .string()
+        .min(1, t("personal.errors.phone.required"))
+        .transform((v) => v.replace(/[\s()-]/g, ""))
+        .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
+          message: t("personal.errors.phone.format"),
+        }),
+      whatsapp: z
+        .string()
+        .optional()
+        .transform((v) => (v ? v.replace(/[\s()-]/g, "") : v))
+        .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), {
+          message: t("personal.errors.whatsapp.format"),
+        }),
+      adres: z
+        .string()
+        .min(5, t("personal.errors.address.min"))
+        .max(90, t("personal.errors.address.max")),
+      cinsiyet: z.string().min(1, t("personal.errors.gender.required")),
+      medeniDurum: z.string().min(1, t("personal.errors.marital.required")),
+      dogumTarihi: z
+        .string()
+        .min(1, t("personal.errors.birthDate.required"))
+        .refine((date) => {
+          if (!date) return false;
+          const d = new Date(date);
+          const min = new Date("1950-01-01");
+          const today = new Date();
+          return d >= min && d <= today;
+        }, t("personal.errors.birthDate.range"))
+        .refine((date) => {
+          const d = new Date(date + "T00:00:00");
+          if (Number.isNaN(d.getTime())) return false;
+          const yBirth = d.getFullYear();
+          const now = new Date();
+          const yNow = now.getFullYear();
+          return yNow - yBirth >= 15;
+        }, t("personal.errors.birthDate.minAge")),
+      cocukSayisi: z.string().optional(),
+      dogumUlke: z.string().min(1, t("personal.errors.birthCountry")),
+      dogumSehir: z.string().min(1, t("personal.errors.birthCity")),
+      ikametUlke: z.string().min(1, t("personal.errors.resCountry")),
+      ikametSehir: z.string().min(1, t("personal.errors.resCity")),
+      uyruk: z.string().min(1, t("personal.errors.nationality")),
+    });
+  }, [i18n.language]);
+
   useImperativeHandle(ref, () => ({
     isValid: () => {
       const result = schema.safeParse(formData);
@@ -229,24 +306,15 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         setErrors(newErrors);
       }
       const fotoValid = !!formData.foto;
-      if (!fotoValid && !fotoError)
-        setFotoError("Zorunlu alan, lütfen vesikalık yükleyiniz");
+      if (!fotoValid && !fotoError) setFotoError(t("personal.photo.required"));
       return result.success && fotoValid;
     },
   }));
 
-  /* -------------------- Event-driven valid state bildirimi -------------------- */
   useEffect(() => {
     const ok = schema.safeParse(formData).success && !!formData.foto;
     onValidChange?.(ok);
-  }, [formData, onValidChange]);
-
-  /* -------------------- Generic change -------------------- */
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    validateField(name, value);
-  };
+  }, [formData, schema, onValidChange]);
 
   const validateField = (name, value) => {
     const result = schema.safeParse({ ...formData, [name]: value });
@@ -261,49 +329,29 @@ const PersonalInformation = forwardRef(function PersonalInformation(
     }
   };
 
-  /* -------------------- Options Helpers -------------------- */
-  const genderOptions = [
-    { value: "", label: "Seçiniz" },
-    { value: "Kadın", label: "Kadın" },
-    { value: "Erkek", label: "Erkek" },
-  ];
-  const maritalOptions = [
-    { value: "", label: "Seçiniz" },
-    { value: "Bekâr", label: "Bekâr" },
-    { value: "Evli", label: "Evli" },
-    { value: "Boşanmış", label: "Boşanmış" },
-    { value: "Dul", label: "Dul" },
-  ];
-  const childOptions = [
-    { value: "", label: "Seçiniz" },
-    ...[...Array(7)].map((_, i) => ({ value: String(i), label: String(i) })),
-    { value: "7+", label: "Daha Fazla" },
-  ];
-  const ilOptions = [{ value: "", label: "İl Seçiniz" }].concat(
-    Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
-  );
-  const ilceOptions = (il) =>
-    [{ value: "", label: il ? "İlçe Seçiniz" : "Önce il seçiniz" }].concat(
-      (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }))
-    );
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    validateField(name, value);
+  };
 
   const portalTarget = typeof document !== "undefined" ? document.body : null;
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none overscroll-contain">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* --- Foto --- */}
+        {/* Foto */}
         <div className="flex flex-col sm:flex-row items-start gap-6">
           <div className="relative w-32 h-32 rounded-lg overflow-hidden border-4 border-gray-300 bg-gray-100 shadow-md flex items-center justify-center">
             {fotoPreview ? (
               <img
                 src={fotoPreview}
-                alt="Vesikalık"
+                alt={t("personal.labels.photo")}
                 className="object-cover w-full h-full"
               />
             ) : (
               <span className="text-gray-400 text-sm text-center px-2">
-                Fotoğraf Yok
+                {t("personal.placeholders.noPhoto")}
               </span>
             )}
           </div>
@@ -312,14 +360,18 @@ const PersonalInformation = forwardRef(function PersonalInformation(
               htmlFor="foto"
               className="block text-sm font-bold text-gray-700 mb-2"
             >
-              Vesikalık Fotoğraf <span className="text-red-500">*</span>
+              {t("personal.labels.photo")}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center gap-3">
               <label
                 htmlFor="foto"
                 className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition"
               >
-                📤 {fotoPreview ? "Değiştir" : "Yükle"}
+                📤{" "}
+                {fotoPreview
+                  ? t("personal.placeholders.replace")
+                  : t("personal.placeholders.upload")}
               </label>
               <input
                 type="file"
@@ -336,7 +388,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
             )}
             {!formData.foto && !fotoError && (
               <p className="text-xs text-gray-400 mt-1">
-                * Maksimum 2 MB, JPG veya PNG olmalıdır.
+                {t("personal.photo.hint")}
               </p>
             )}
           </div>
@@ -344,19 +396,19 @@ const PersonalInformation = forwardRef(function PersonalInformation(
 
         {/* Ad / Soyad */}
         <InputField
-          label="Ad"
+          label={t("personal.labels.firstName")}
           name="ad"
           value={formData.ad}
-          placeholder="Adınızı giriniz"
+          placeholder={t("personal.placeholders.firstName")}
           onChange={handleChange}
           error={errors.ad}
           max={30}
         />
         <InputField
-          label="Soyad"
+          label={t("personal.labels.lastName")}
           name="soyad"
           value={formData.soyad}
-          placeholder="Soyadınızı giriniz"
+          placeholder={t("personal.placeholders.lastName")}
           onChange={handleChange}
           error={errors.soyad}
           max={30}
@@ -364,48 +416,48 @@ const PersonalInformation = forwardRef(function PersonalInformation(
 
         {/* E-posta / Telefon / WhatsApp */}
         <InputField
-          label="E-posta"
+          label={t("personal.labels.email")}
           name="eposta"
           type="email"
           value={formData.eposta}
-          placeholder="ornek@mail.com"
+          placeholder={t("personal.placeholders.email")}
           onChange={handleChange}
           error={errors.eposta}
         />
         <InputField
-          label="Telefon"
+          label={t("personal.labels.phone")}
           name="telefon"
           type="tel"
           value={formData.telefon}
-          placeholder="+90 5XXXXXXXXX"
+          placeholder={t("personal.placeholders.phone")}
           onChange={handleChange}
           error={errors.telefon}
         />
         <InputField
-          label="WhatsApp Telefon"
+          label={t("personal.labels.whatsapp")}
           name="whatsapp"
           type="tel"
           value={formData.whatsapp}
-          placeholder="+90 5XXXXXXXXX"
+          placeholder={t("personal.placeholders.whatsapp")}
           onChange={handleChange}
           error={errors.whatsapp}
         />
 
         {/* Adres */}
         <InputField
-          label="Adres"
+          label={t("personal.labels.address")}
           name="adres"
           value={formData.adres}
-          placeholder="Mahalle / Cadde / No"
+          placeholder={t("personal.placeholders.address")}
           onChange={handleChange}
           error={errors.adres}
           max={90}
         />
 
-        {/* Doğum Tarihi (MUI) */}
+        {/* Doğum Tarihi */}
         <div className="shadow-none outline-none">
           <MuiDateStringField
-            label="Doğum Tarihi"
+            label={t("personal.labels.birthDate")}
             name="dogumTarihi"
             value={formData.dogumTarihi}
             onChange={handleChange}
@@ -417,41 +469,40 @@ const PersonalInformation = forwardRef(function PersonalInformation(
           />
         </div>
 
-        {/* Cinsiyet / Medeni Durum / Çocuk Sayısı */}
+        {/* Cinsiyet / Medeni / Çocuk */}
         <SearchSelect
-          label="Cinsiyet"
+          label={t("personal.labels.gender")}
           name="cinsiyet"
           value={formData.cinsiyet}
           options={genderOptions}
           onChange={handleChange}
-          placeholder="Cinsiyet"
+          placeholder={t("personal.placeholders.select")}
           menuPortalTarget={portalTarget}
         />
-
         <SearchSelect
-          label="Medeni Durum"
+          label={t("personal.labels.marital")}
           name="medeniDurum"
           value={formData.medeniDurum}
           options={maritalOptions}
           onChange={handleChange}
-          placeholder="Medeni Durum"
+          placeholder={t("personal.placeholders.select")}
           menuPortalTarget={portalTarget}
         />
-
         <SearchSelect
-          label="Çocuk Sayısı"
+          label={t("personal.labels.children")}
           name="cocukSayisi"
           value={formData.cocukSayisi}
           options={childOptions}
           onChange={handleChange}
-          placeholder="Çocuk Sayısı"
+          placeholder={t("personal.placeholders.select")}
           menuPortalTarget={portalTarget}
         />
 
-        {/* -------------------- UYRUĞU -------------------- */}
+        {/* Uyruk */}
         <div className="lg:col-span-1 mt-1">
           <label className="block text-sm font-bold text-gray-700 ">
-            Uyruğu <span className="text-red-500">*</span>
+            {t("personal.labels.nationality")}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <SearchSelect
@@ -464,18 +515,18 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                 syncNationalityToForm(v, v === "Diğer" ? nationalityOther : "");
               }}
               options={[
-                { value: "", label: "Seçiniz" },
+                { value: "", label: t("personal.placeholders.select") },
                 ...Object.values(NATIONALITY_MAP).map((n) => ({
                   value: n,
                   label: n,
                 })),
               ]}
-              placeholder="Uyruğu seçiniz"
+              placeholder={t("personal.placeholders.select")}
               menuPortalTarget={portalTarget}
             />
             <input
               type="text"
-              placeholder="Uyruğu (Diğer)"
+              placeholder={t("personal.placeholders.countryOther")}
               value={nationalityOther}
               onChange={(e) => {
                 const v = onlyLettersTR(e.target.value);
@@ -500,7 +551,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         {/* Ülke (Doğum) */}
         <div className="lg:col-span-2">
           <label className="block text-sm font-bold text-gray-700 mb-1">
-            Ülke (Doğum) <span className="text-red-500">*</span>
+            {t("personal.labels.birthCountry")}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <SearchSelect
@@ -519,13 +571,12 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   dogumSehir: "",
                 });
               }}
-              placeholder="Ülke ara veya seç…"
+              placeholder={t("personal.placeholders.countrySearch")}
               menuPortalTarget={portalTarget}
             />
-
             <input
               type="text"
-              placeholder="Ülke adı (Diğer)"
+              placeholder={t("personal.placeholders.countryOther")}
               value={birthCountryOther}
               onChange={(e) => {
                 const v = onlyLettersTR(e.target.value);
@@ -550,7 +601,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         {/* Şehir (Doğum Yeri) */}
         <div className="lg:col-span-2">
           <label className="block text-sm font-bold text-gray-700 mb-1">
-            Şehir (Doğum Yeri) <span className="text-red-500">*</span>
+            {t("personal.labels.birthCity")}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {birthCountry === "Türkiye" ? (
@@ -564,7 +616,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                     syncBirthToForm();
                   }}
                   options={ilOptions}
-                  placeholder="İl Seçiniz"
+                  placeholder={t("personal.labels.selectProvince")}
                   menuPortalTarget={portalTarget}
                 />
                 <SearchSelect
@@ -576,7 +628,9 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   }}
                   options={ilceOptions(birthProvince)}
                   placeholder={
-                    birthProvince ? "İlçe Seçiniz" : "Önce il seçiniz"
+                    birthProvince
+                      ? t("personal.labels.selectDistrict")
+                      : t("personal.labels.selectProvince")
                   }
                   menuPortalTarget={portalTarget}
                 />
@@ -585,7 +639,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
               <>
                 <input
                   type="text"
-                  placeholder="İl / İlçe"
+                  placeholder={t("personal.placeholders.cityOther")}
                   value={birthPlaceOther}
                   onChange={(e) => {
                     const v = onlyLettersTR(e.target.value);
@@ -617,7 +671,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         {/* Yaşadığı Ülke */}
         <div className="lg:col-span-2">
           <label className="block text-sm font-bold text-gray-700 mb-1">
-            Yaşadığı Ülke <span className="text-red-500">*</span>
+            {t("personal.labels.resCountry")}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <SearchSelect
@@ -636,13 +691,12 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                   ikametSehir: "",
                 });
               }}
-              placeholder="Ülke ara veya seç…"
+              placeholder={t("personal.placeholders.countrySearch")}
               menuPortalTarget={portalTarget}
             />
-
             <input
               type="text"
-              placeholder="Ülke adı (Diğer)"
+              placeholder={t("personal.placeholders.countryOther")}
               value={resCountryOther}
               onChange={(e) => {
                 const v = onlyLettersTR(e.target.value);
@@ -667,7 +721,8 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         {/* Yaşadığı Şehir */}
         <div className="lg:col-span-2">
           <label className="block text-sm font-bold text-gray-700 mb-1">
-            Yaşadığı Şehir <span className="text-red-500">*</span>
+            {t("personal.labels.resCity")}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {resCountry === "Türkiye" ? (
@@ -681,7 +736,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                     syncResToForm();
                   }}
                   options={ilOptions}
-                  placeholder="İl Seçiniz"
+                  placeholder={t("personal.labels.selectProvince")}
                   menuPortalTarget={portalTarget}
                 />
                 <SearchSelect
@@ -692,7 +747,11 @@ const PersonalInformation = forwardRef(function PersonalInformation(
                     syncResToForm();
                   }}
                   options={ilceOptions(resProvince)}
-                  placeholder={resProvince ? "İlçe Seçiniz" : "Önce il seçiniz"}
+                  placeholder={
+                    resProvince
+                      ? t("personal.labels.selectDistrict")
+                      : t("personal.labels.selectProvince")
+                  }
                   menuPortalTarget={portalTarget}
                 />
               </>
@@ -700,7 +759,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
               <>
                 <input
                   type="text"
-                  placeholder="İl / İlçe"
+                  placeholder={t("personal.placeholders.cityOther")}
                   value={resPlaceOther}
                   onChange={(e) => {
                     const v = onlyLettersTR(e.target.value);
@@ -731,7 +790,6 @@ const PersonalInformation = forwardRef(function PersonalInformation(
   );
 });
 
-/* -------------------- Alt Bileşenler -------------------- */
 function InputField({
   label,
   name,
