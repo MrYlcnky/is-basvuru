@@ -184,7 +184,7 @@ export default function ComputerInformationAddModal({
                   className={`${FIELD_BASE} h-[42px]`}
                   required
                 >
-                  <option value="">{t("common.select")}</option>
+                  <option value="">{t("computer.select.choose")}</option>
                   <option value={t("computer.levels.veryPoor")}>
                     {t("computer.levels.veryPoor")}
                   </option>

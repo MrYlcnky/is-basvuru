@@ -1,7 +1,9 @@
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
-import JobApplicationForm from "./components/Users/jobApplicationForm";
+import JobApplicationForm from "./components/Users/JobApplicationForm";
+import Layout from "./components/Layouts/UserLayout/Layout";
 import AdminLayout from "./components/Layouts/AdminLayout/AdminLayout";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -13,19 +15,19 @@ function App() {
     <>
       <Routes>
         {/* User */}
-        <Route path="/" element={<JobApplicationForm />}>
+        <Route path="/" element={<Layout />}>
           <Route path="JobApplicationForm" element={<JobApplicationForm />} />
         </Route>
 
-        {/* Admin (Login'i Layout içinde göstermek) */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Login />} /> {/* /admin  -> Login */}
-          <Route path="login" element={<Login />} /> {/* /admin/login */}
-          <Route path="panel" element={<AdminPanel />} /> {/* /admin/panel */}
-        </Route>
+        {/* Login */}
+        <Route path="/login" element={<Login />} />
 
-        {/* İstersen ikinci layoutu kapat ya da ayrı test için bırak
-        <Route path="/LAYOUT" element={<AdminLayout2 />}></Route> */}
+        {/* Admin (korumalı) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="panel" element={<AdminPanel />} />
+          </Route>
+        </Route>
       </Routes>
 
       <ToastContainer position="top-right" autoClose={3000} />

@@ -132,6 +132,9 @@
       "title": "Are you sure?",
       "text": "Do you want to delete “{{name}}”?"
     },
+     "select": {
+      "choose": "Select"
+    },
     "validations": {
       "program": {
         "required": "Program name is required.",
@@ -196,6 +199,9 @@
     },
     "hints": {
       "noEndWhenContinuing": "No end date is required when Continuing/Dropped."
+    },
+     "select": {
+      "choose": "Select"
     },
     "delete": {
       "title": "Are you sure?",

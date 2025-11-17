@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Swal from "sweetalert2";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const LANGS = [
   { code: "tr", label: "Türkçe", flag: "🇹🇷" },
@@ -64,14 +65,12 @@ export default function LanguageSwitcher({ className = "" }) {
       await i18n.changeLanguage(other.code);
     } catch (err) {
       alertError(err);
-      // Dil değişmediyse menüyü kapatmayalım:
-      return;
+      return; // Dil değişmediyse menüyü kapatma
     }
 
     try {
       localStorage.setItem("app.lang", other.code);
     } catch (err) {
-      // depolama kapalıysa da kullanıcıyı bilgilendir
       alertError(err);
     }
 
@@ -85,12 +84,14 @@ export default function LanguageSwitcher({ className = "" }) {
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center justify-center h-9 w-9 text-xl rounded-lg hover:bg-white/10 focus:outline-none cursor-pointer"
+        className="inline-flex items-center justify-center h-9 min-w-9 px-2 gap-2 text-base rounded-lg hover:bg-white/10 focus:outline-none cursor-pointer"
         aria-haspopup="menu"
         aria-expanded={open}
         title={current.label}
+        aria-label={current.label}
       >
-        {current.flag}
+        {/* Bayrak */}
+        <span className="text-xl leading-none">{current.flag}</span>
       </button>
 
       {/* Menü: sadece diğer dilin bayrağı */}

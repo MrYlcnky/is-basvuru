@@ -16,6 +16,7 @@ import {
   faCheckCircle,
   faCircleXmark,
   faInfoCircle,
+  faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 
 import PersonalInformation from "./usersComponents/PersonalInformation";
@@ -126,8 +127,15 @@ export default function JobApplicationForm() {
       {/* === HERO HEADER === */}
       <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 py-12 sm:py-16 md:py-20 shadow-2xl rounded-2xl text-center">
         {/* Sağ üst dil seçici */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
-          <LanguageSwitcher />
+        <div className="absolute flex flex-row top-3 right-3 sm:top-4 sm:right-4 z-20">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1.5">
+            <FontAwesomeIcon
+              icon={faGlobe}
+              className="text-yellow-400"
+              aria-hidden="true"
+            />
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <div className="relative z-10 container mx-auto px-4 sm:px-6">
@@ -166,7 +174,7 @@ export default function JobApplicationForm() {
 
       {/* === Zorunlu Bilgiler (Sticky Status Bar) === */}
       <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-4">
-        <div className="bg-gray-300/85 rounded-lg border border-gray-300 shadow-md px-4 py-4 flex flex-col items-center gap-3">
+        <div className="bg-gray-300/85 rounded-lg border border-gray-300 shadow-md px-4 py-2 flex flex-col items-center gap-3">
           {/* Başlık + Durum ikonu */}
           <div className="flex items-center justify-center gap-2">
             <span className="text-sm sm:text-base text-gray-800 font-semibold">
@@ -188,31 +196,36 @@ export default function JobApplicationForm() {
             />
           </div>
           {/* Rozetler */}
-          <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 place-items-center">
-            <StatusPill
-              ok={statuses.personalOk}
-              label={t("sections.personal")}
-              icon={faUser}
-              onClick={() => scrollToSection(SECTION_IDS.personal)}
-            />
-            <StatusPill
-              ok={statuses.educationOk}
-              label={t("sections.education")}
-              icon={faGraduationCap}
-              onClick={() => scrollToSection(SECTION_IDS.education)}
-            />
-            <StatusPill
-              ok={statuses.otherOk}
-              label={t("sections.other")}
-              icon={faUserCog}
-              onClick={() => scrollToSection(SECTION_IDS.other)}
-            />
-            <StatusPill
-              ok={statuses.jobDetailsOk}
-              label={t("sections.jobDetails")}
-              icon={faFileSignature}
-              onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
-            />
+          <div className="overflow-x-auto sm:overflow-visible w-full sm:w-auto mx-auto">
+            <div
+              className="grid grid-flow-col auto-cols-max justify-center gap-2 sm:gap-3 sm:grid-flow-row sm:grid-cols-4 min-w-max sm:min-w-0
+    "
+            >
+              <StatusPill
+                ok={statuses.personalOk}
+                label={t("sections.personal")}
+                icon={faUser}
+                onClick={() => scrollToSection(SECTION_IDS.personal)}
+              />
+              <StatusPill
+                ok={statuses.educationOk}
+                label={t("sections.education")}
+                icon={faGraduationCap}
+                onClick={() => scrollToSection(SECTION_IDS.education)}
+              />
+              <StatusPill
+                ok={statuses.otherOk}
+                label={t("sections.other")}
+                icon={faUserCog}
+                onClick={() => scrollToSection(SECTION_IDS.other)}
+              />
+              <StatusPill
+                ok={statuses.jobDetailsOk}
+                label={t("sections.jobDetails")}
+                icon={faFileSignature}
+                onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -340,7 +353,7 @@ export default function JobApplicationForm() {
 /* ---------- Status Pill (clickable) ---------- */
 function StatusPill({ ok, label, icon, onClick }) {
   let cls =
-    "inline-flex items-center gap-1.5 sm:px-2.5 px-1.5 sm:py-1 py-1 rounded-full text-xs border select-none transition focus:outline-none cursor-pointer";
+    "inline-flex items-center  gap-1.5 sm:px-2.5 px-1.5 sm:py-1 py-1 rounded-full text-xs border select-none transition focus:outline-none cursor-pointer";
   if (ok === true) {
     cls += " bg-green-50 text-green-700 border-green-200";
   } else if (ok === false) {

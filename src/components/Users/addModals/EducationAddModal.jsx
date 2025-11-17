@@ -356,7 +356,7 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_SELECT}
                 >
-                  <option value="">{t("common.select")}</option>
+                  <option value="">{t("education.select.choose")}</option>
                   <option value="Lise">
                     {t("education.levels.highschool")}
                   </option>
@@ -454,7 +454,7 @@ export default function EducationAddModal({
                   onChange={handleChange}
                   className={BASE_SELECT}
                 >
-                  <option value="">{t("common.select")}</option>
+                  <option value="">{t("education.select.choose")}</option>
                   <option value="Mezun">
                     {t("education.diploma.graduated")}
                   </option>
