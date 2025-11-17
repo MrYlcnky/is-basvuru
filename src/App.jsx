@@ -14,9 +14,10 @@ function App() {
     <>
       <Routes>
         {/* User */}
-        <Route path="/" element={<JobApplicationForm />}>
-          <Route path="JobApplicationForm" element={<JobApplicationForm />} />
-        </Route>
+        <Route
+          path="/JobApplicationForm"
+          element={<JobApplicationForm />}
+        ></Route>
 
         {/* Login */}
         <Route path="/login" element={<Login />} />
