@@ -132,6 +132,9 @@
       "title": "Emin misin?",
       "text": "“{{name}}” kaydını silmek istiyor musun?"
     },
+     "select": {
+      "choose": "Seçiniz"
+    },
     "validations": {
       "program": {
         "required": "Program adı zorunlu.",
@@ -181,6 +184,9 @@
       "master": "Yüksek Lisans",
       "phd": "Doktora",
       "other": "Diğer"
+    },
+    "select": {
+      "choose": "Seçiniz"
     },
     "diploma": {
       "graduated": "Mezun",
