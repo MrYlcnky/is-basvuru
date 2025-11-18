@@ -197,21 +197,15 @@ export default function AdminPanel() {
 
   const [applicationData, setApplicationData] = useState([]);
 
-<<<<<<< HEAD
   // YENİ: fetchData fonksiyonu güncellendi
-=======
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
   const fetchData = () => {
     console.log("Veri yeniden çekiliyor...");
     const data = getApplications();
     setApplicationData(data);
-<<<<<<< HEAD
 
     // YENİ: Navbar'ı güncellemesi için sinyal gönder
     // Bu sinyal, Navbar'daki bildirim çanının sayısını günceller
     window.dispatchEvent(new CustomEvent("applicationsUpdated"));
-=======
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
   };
 
   useEffect(() => {
@@ -566,11 +560,7 @@ export default function AdminPanel() {
       }
 
       Swal.fire(title, text, icon);
-<<<<<<< HEAD
       fetchData(); // <-- Burası Navbar'a sinyali gönderecek
-=======
-      fetchData();
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
     } else {
       Swal.fire({
         icon: "error",

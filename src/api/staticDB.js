@@ -582,11 +582,7 @@ const ROLE_TO_STAGE_MAP = {
 };
 
 // Yetki kontrolü için: admin ve ik_spv 'ik' rolü gibidir.
-<<<<<<< HEAD
 export const getAuthRoleForCheck = (role) => {
-=======
-const getAuthRoleForCheck = (role) => {
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
   if (role === "admin" || role === "ik_spv" || role === "ik_user") return "ik";
   return role;
 };
@@ -792,7 +788,6 @@ export const createApplication = (formData) => {
   APPLICATIONS.unshift(newApplication); // Yeni başvuruyu en üste ekle
 
   return { success: true, newId: newId };
-<<<<<<< HEAD
 };
 
 // --- YENİ FONKSİYON ---
@@ -818,6 +813,4 @@ export const dbChangePassword = (username, oldPassword, newPassword) => {
   console.log(`[StaticDB] ${username} için şifre hafızada güncellendi.`);
   
   return { success: true, message: "Şifreniz başarıyla güncellendi." };
-=======
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
 };
