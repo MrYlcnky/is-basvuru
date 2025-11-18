@@ -1,7 +1,6 @@
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
 import JobApplicationForm from "./components/Users/JobApplicationForm";
-import Layout from "./components/Layouts/UserLayout/Layout";
 import AdminLayout from "./components/Layouts/AdminLayout/AdminLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
@@ -15,9 +14,8 @@ function App() {
     <>
       <Routes>
         {/* User */}
-        <Route path="/" element={<Layout />}>
-          <Route path="JobApplicationForm" element={<JobApplicationForm />} />
-        </Route>
+
+        <Route path="JobApplicationForm" element={<JobApplicationForm />} />
 
         {/* Login */}
         <Route path="/login" element={<Login />} />
