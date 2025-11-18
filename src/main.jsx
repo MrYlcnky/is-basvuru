@@ -74,11 +74,7 @@ createRoot(document.getElementById("root")).render(
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <I18nBridge>
-<<<<<<< HEAD
           <BrowserRouter basename="/is-basvuru">
-=======
-          <BrowserRouter>
->>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
             <App />
           </BrowserRouter>
         </I18nBridge>
