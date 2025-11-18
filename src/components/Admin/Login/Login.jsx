@@ -74,7 +74,11 @@ export default function Login() {
                 htmlFor="username"
                 className="block text-sm font-medium text-gray-300"
               >
+<<<<<<< HEAD
                 Kullanıcı Adı (ik_spv, ik_user, it_girne, it_prestige, gm_gire)
+=======
+                Kullanıcı Adı (dm, gm, ik, admin)
+>>>>>>> 49136a9db111245786e600133a7e912ed85c3f53
               </label>
               <input
                 id="username"

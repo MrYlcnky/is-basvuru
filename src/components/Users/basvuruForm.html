@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İş Başvuru Formu</title>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <!-- FontAwesome (CDN kullanıldı çünkü dosyan yok) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Senin özel css'in -->
+    <link rel="stylesheet" href="basvuruForm.css" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3"
+             style="background: linear-gradient(135deg, #D29C09, #f6e27a 60%, #b07c04 100%);">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">basvuruApp</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                        aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" href="#">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" href="#">Privacy</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container pt-5 pb-5">
+        <main role="main" class="pb-5 pt-5">
+
+            <!-- Formunu buraya yapıştırdım (aynen senin kodun) -->
+            <!-- ASP.NET/Razor ile ilgili tüm attributelar kaldırıldı -->
+
+
+
+<form method="post" enctype="multipart/form-data" class="row g-3 bg-white p-5 rounded-4 shadow-lg mx-auto mt-5"
+  style="max-width: 1400px;  ">
+
+  <!--<h2>İş Başvuru Formu</h2>-->
+  <div class="col-12 text-center bg-light rounded mb-3 isBasImg">
+    <img src="../images/ChLightBasvuru.png" alt="İş Başvuru Formu" class="img-fluid"
+      style="max-width: 100%; width:100%; height: 20rem; border-radius: 13px;">
+  </div>
+  <!-- Geliştirilmiş Uyarı Kutusu -->
+  <div class="callout callout-danger mb-4">
+    <div class="callout-icon">
+      <i class="fa-solid fa-exclamation-triangle"></i>
+    </div>
+    <div class="callout-body">
+      <strong>Dikkat!</strong>
+      Formu doldurmadan önce lütfen metni dikkatle okuyunuz.
+      Bu başvuru yalnızca başvuran kişi tarafından eksiksiz şekilde doldurulmalıdır.
+      Lütfen hiçbir alanı boş bırakmayınız!
+    </div>
+  </div>
+
+
+  <!-- Kişisel Bilgiler -->
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-user section-icon"></i>
+      <h4>Kişisel Bilgiler</h4>
+    </div>
+  </div>
+
+
+  <!-- Ad-->
+  <div class="col-md-6 mb-3">
+    <label for="firstName" class="form-label highlighted-label">Ad</label>
+    <input  id="firstName" name="firstName" type="text" class="form-control underline-input"
+      placeholder="Adınız" />
+  </div>
+
+  <!-- Soyad -->
+  <div class="col-md-6 mb-3">
+    <label for="lastName" class="form-label highlighted-label">Soyad</label>
+    <input id="lastName" name="lastName" type="text" class="form-control underline-input" placeholder="Soyadınız" />
+  </div>
+
+  <!-- E-posta -->
+  <div class="col-md-6 mb-3">
+    <label for="email" class="form-label highlighted-label">E-posta</label>
+    <input id="email" name="email" type="email" class="form-control underline-input" placeholder="örnek@mail.com" />
+  </div>
+
+  <!-- Telefon -->
+  <div class="col-md-6 mb-3">
+    <label for="phone" class="form-label highlighted-label">Telefon</label>
+    <input id="phone" name="phone" type="tel" class="form-control underline-input" placeholder="+90 5xx xxx xx xx" />
+  </div>
+
+  <!-- Whatsapp Telefon -->
+  <div class="col-md-6">
+    <label for="phoneWp" class="form-label highlighted-label">Whatsapp Telefon</label>
+    <input id="phoneWp" name="phoneWp" type="tel" class="form-control underline-input"
+      placeholder="+90 5xx xxx xx xx" />
+  </div>
+
+  <!-- Ülke -->
+  <div class="col-md-6 mb-3">
+    <label for="country" class="form-label highlighted-label">Ülke</label>
+    <select id="country" name="country" class="form-select underline-select">
+      <option value="" selected disabled>-- Seçiniz --</option>
+      <option>Türkiye</option>
+      <option>Amerika Birleşik Devletleri</option>
+      <option>Almanya</option>
+      <option>Birleşik Krallık</option>
+    </select>
+  </div>
+
+  <!-- Uyruğu -->
+  <div class="col-md-6 mb-3">
+    <label for="nationality" class="form-label highlighted-label">Uyruğu</label>
+    <select id="nationality" name="nationality" class="form-select underline-select">
+      <option value="" selected disabled>-- Seçiniz --</option>
+      <option>Türk</option>
+      <option>Amerikan</option>
+      <option>Alman</option>
+      <option>İngiliz</option>
+    </select>
+  </div>
+
+  <!-- Doğum Tarihi -->
+  <div class="col-md-6 mb-3">
+    <label for="birthDate" class="form-label highlighted-label">Doğum Tarihi</label>
+    <input id="birthDate" name="birthDate" type="date" class="form-control underline-date" />
+  </div>
+
+  <!-- Doğum Yeri -->
+  <div class="col-md-6 mb-3">
+    <label for="birthPlace" class="form-label highlighted-label">Doğum Yeri (İl)</label>
+    <select id="birthPlace" name="birthPlace" class="form-select underline-select">
+      <option value="" selected disabled>-- İl Seçiniz --</option>
+      <option value="19">Çorum</option>
+      <!-- İl seçenekleri veritabanından yüklenecek -->
+    </select>
+  </div>
+
+  <!-- Cinsiyet -->
+  <div class="col-md-6 mb-3">
+    <label for="gender" class="form-label highlighted-label">Cinsiyet</label>
+    <select id="gender" name="gender" class="form-select underline-select">
+      <option value="" selected disabled>-- Seçiniz --</option>
+      <option value="Erkek">Erkek</option>
+      <option value="Kadın">Kadın</option>
+      <option value="Diğer">Diğer</option>
+    </select>
+  </div>
+
+  <!-- Medeni Durum -->
+  <div class="col-md-6 mb-3">
+    <label for="maritalStatus" class="form-label highlighted-label">Medeni Durum</label>
+    <select id="maritalStatus" name="maritalStatus" class="form-select underline-select">
+      <option value="" selected disabled>-- Seçiniz --</option>
+      <option value="Bekar">Bekar</option>
+      <option value="Evli">Evli</option>
+      <option value="Boşanmış">Boşanmış</option>
+      <option value="Dul">Dul</option>
+    </select>
+  </div>
+
+  <!-- Yaşanan Ülke -->
+  <div class="col-md-6 mb-3">
+    <label for="livecountry" class="form-label highlighted-label">Yaşadığınız Ülke</label>
+    <select id="livecountry" name="livecountry" class="form-select underline-select">
+      <option value="" selected disabled>--Ülke Seçiniz --</option>
+      <option value="TR">Türkiye</option>
+    </select>
+  </div>
+
+  <!-- Yaşanan Şehir -->
+  <div class="col-md-6 mb-3">
+    <label for="liveCity" class="form-label highlighted-label">Yaşadığınız Şehir</label>
+    <select id="liveCity" name="liveCity" class="form-select underline-select">
+      <option value="" selected disabled>--Şehir Seçiniz --</option>
+      <option value="06">Ankara</option>
+    </select>
+  </div>
+
+  <!-- Adres -->
+  <div class="col-md-6 mb-3">
+    <label for="address" class="form-label highlighted-label">Adres</label>
+    <input id="address" name="address" type="text" class="form-control underline-input mt-1" placeholder="Sokak, No" />
+  </div>
+
+  <!-- Eğitim Bilgileri Başlığı ve + Butonu -->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-graduation-cap section-icon"></i>
+      <h4>Eğitim Bilgileri</h4>
+    </div>
+    <button id="addEducation" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+  <div class="col-12">
+    <table id="educationTable"
+      class=" table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0 ">
+      <thead id="educationHead" class="table-light" style="display: none;">
+        <tr>
+          <th>Seviye</th>
+          <th>Okul Adı</th>
+          <th>Bölüm</th>
+          <th>Ağırlık Sistemi</th>
+          <th>GANO</th>
+          <th>Başlangıç Yılı</th>
+          <th>Bitiş Yılı</th>
+          <th>Diploma Durumu</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="educationContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- Sertifikalar ve Eğitimler -->
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-award section-icon"></i>
+      <h4>Sertifikalar ve Eğitimler</h4>
+    </div>
+    <button id="addCertificate" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+
+  <div class="col-12">
+    <table id="certificateTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="certificateHead" class="table-light" style="display: none;">
+        <tr>
+          <th>Sertifik/Eğitim Adı</th>
+          <th>Alınan Kurum/Organizasyon</th>
+          <th>Süresi</th>
+          <th>Alım Tarihi</th>
+          <th>Geçerlilik Tarihi</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="certificateContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- Bilgisayar Bilgisi -->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-laptop-code section-icon"></i>
+      <h4>Bilgisayar Bilgileri</h4>
+    </div>
+    <button id="addComputer" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+
+  <div class="col-12">
+    <table id="computerTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="computerHead" class="table-light" style="display: none;">
+        <tr>
+          <th>Kullanılan Programlar</th>
+          <th>Programlar Yetkinliği</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="computerContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- Yabancı Dil Bilgisi-->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-language section-icon"></i>
+      <h4>Yabancı Dil Bilgisi</h4>
+    </div>
+    <button id="addLanguages" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+
+  <div class="col-12">
+    <table id="languagesTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="languagesHead" class="table-light" style="display: none;">
+        <tr>
+          <th>Dil</th>
+          <th>Konuşma</th>
+          <th>Dinleme</th>
+          <th>Okuma</th>
+          <th>Yazma</th>
+          <th>Nereden Öğrendi</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="languagesContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- İş Deneyimleri-->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-briefcase section-icon"></i>
+      <h4>İş Deneyimleri</h4>
+    </div>
+    <button id="addJob" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+  <div class="col-12">
+    <table id="jobTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="jobHead" class="table-light" style="display: none;">
+        <tr>
+          <th>İş Yeri Adı</th>
+          <th>Departman</th>
+          <th>Pozisyon</th>
+          <th>Görev</th>
+          <th>Net Ücret</th>
+          <th>Başlangıç Tarihi</th>
+          <th>Bitiş Tarihi</th>
+          <th>Ayrılış Sebebi</th>
+          <th>İş Yeri Ülke</th>
+          <th>İş Yeri Şehir</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="jobContainer"></tbody>
+    </table>
+  </div>
+
+
+  <!-- REFERANSLAR-->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-address-book section-icon"></i>
+      <h4>Referanslar</h4>
+    </div>
+    <button id="addReference" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+
+  <div class="col-12">
+    <table id="referenceTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="referenceHead" class="table-light" style="display: none;">
+        <tr>
+          <th>Referans Adı</th>
+          <th>Referans Soyadı</th>
+          <th>İş Yeri</th>
+          <th>Görevi</th>
+          <th>Telefon No</th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="referenceContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- Diğer Kişisel Bilgiler-->
+
+  <div class="col-12 section-header section-header-gradient">
+    <div class="headerDiv">
+      <i class="fa-solid fa-user-cog section-icon"></i>
+      <h4>Diğer Kişisel Bilgiler</h4>
+    </div>
+    <button id="addOtherPersonal" class="btn btn-pill" type="button">
+      <i class="fa-solid fa-plus me-2"></i> Ekle
+    </button>
+  </div>
+
+  <div class="col-12">
+    <table id="otherPersonalTable"
+      class="table table-striped table-hover table-borderless shadow rounded-4 align-middle mt-3 mb-0">
+      <thead id="otherPersonalHead" class="table-light" style="display: none;">
+        <tr>
+          <th>KKTC Geçerli Belge</th>
+          <th>Dava Durum</th>
+          <th>Sigara</th>
+          <th>Kalıcı Rahatsızlık</th>
+          <th>Ehliyet</th>
+          <th>Askerlik</th>
+          <th>Boy (Cm)</th>
+          <th>Kilo (Kg) </th>
+          <th style="width: 70px;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody id="otherPersonalContainer"></tbody>
+    </table>
+  </div>
+
+  <!-- Neden Bizi Tercih Ettiniz? -->
+  <div class="mb-4 tercih-container">
+    <label for="tercihNedeni" class="form-label fw-bold">Neden Bizi Tercih Ettiniz?</label>
+    <textarea id="tercihNedeni" name="tercihNedeni" class="form-control tercih-textarea" rows="4"
+      placeholder="Kısa bir açıklama giriniz…" required></textarea>
+  </div>
+
+
+
+
+  <!-- onay-container -->
+  <div class="onay-container">
+
+    <!-- Doğruluk Beyanı -->
+    <div class="onay-card">
+      <div class="onay-icon">
+        <i class="fa-solid fa-check-circle"></i>
+      </div>
+      <div class="onay-body">
+        <div class="form-check">
+          <input class="form-check-input tercihCheck" type="checkbox" id="cb-dogruluk" required>
+          <label class="form-check-label" for="cb-dogruluk">
+            <strong>Doğruluk Beyanı:</strong><br>
+            “Bu başvuru formunu imzalarken belirtilen her şeyin doğru ve eksiksiz olduğunu kabul ediyorum.”
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- KVKK Onayı -->
+    <div class="onay-card">
+      <div class="onay-icon">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+      <div class="onay-body">
+        <div class="form-check">
+          <input class="form-check-input tercihCheck" type="checkbox" id="cb-kvkk" required>
+          <label class="form-check-label" for="cb-kvkk">
+            <strong>Kişisel Verilerin İşlenmesi:</strong><br>
+            “Başvurumu kabul ederek, kişisel verilerimin işlenmesini ve saklanmasını onaylıyorum.”
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Referans Kontrolü İzni -->
+    <div class="onay-card">
+      <div class="onay-icon">
+        <i class="fa-solid fa-phone-volume"></i>
+      </div>
+      <div class="onay-body">
+        <div class="form-check">
+          <input class="form-check-input tercihCheck" type="checkbox" id="cb-referans" required>
+          <label class="form-check-label" for="cb-referans">
+            <strong>Referans Kontrolü İzni:</strong><br>
+            “Referanslarımla iletişime geçilmesine onay veriyorum.”
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BAŞVUR Butonu -->
+  <div class="col-12 text-center mt-4">
+    <button type="submit" class="btn btn-gradient btn-lg px-5">
+      <i class="fa-solid fa-paper-plane me-2"></i>
+      BAŞVUR
+    </button>
+  </div>
+  <!-- BAŞVUR Butonu -->
+
+</form>
+
+        </main>
+    </div>
+
+
+    <!-- Scripts -->
+    <script src="lib/jquery/dist/jquery.min.js"></script>
+    <script src="lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="basvuruForm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/tr.js"></script>
+</body>
+</html>
