@@ -131,8 +131,7 @@ export default function ApplicationModal({
 
   // Revizeyi SADECE tamamlanmışsa ve İK SPV DEĞİLSE iste
   const canRequestRevision =
-    (data.status === "Onaylanan" || data.status === "Reddedilen") &&
-    !isIKSupervisor(auth?.role);
+    data.status === "Onaylanan" || data.status === "Reddedilen";
 
   // Revizeye SADECE İK SPV/Admin karar verebilir
   const canDecideRevision =

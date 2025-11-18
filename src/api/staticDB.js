@@ -582,7 +582,7 @@ const ROLE_TO_STAGE_MAP = {
 };
 
 // Yetki kontrolü için: admin ve ik_spv 'ik' rolü gibidir.
-const getAuthRoleForCheck = (role) => {
+export const getAuthRoleForCheck = (role) => {
   if (role === "admin" || role === "ik_spv" || role === "ik_user") return "ik";
   return role;
 };
@@ -788,4 +788,29 @@ export const createApplication = (formData) => {
   APPLICATIONS.unshift(newApplication); // Yeni başvuruyu en üste ekle
 
   return { success: true, newId: newId };
+};
+
+// --- YENİ FONKSİYON ---
+/**
+ * 5. CHANGE PASSWORD (Hafızada)
+ * UYARI: Bu değişiklik kalıcı değildir. Sayfa yenilendiğinde USERS dizisi sıfırlanır.
+ */
+export const dbChangePassword = (username, oldPassword, newPassword) => {
+  console.log(`[StaticDB] dbChangePassword denemesi: ${username}`);
+  const user = USERS.find((u) => u.username === username);
+  
+  if (!user) {
+    return { success: false, message: "Kullanıcı bulunamadı." };
+  }
+
+  if (user.password !== oldPassword) {
+    return { success: false, message: "Eski şifreniz hatalı." };
+  }
+  
+  // Şifreyi hafızadaki USERS dizisinde güncelle
+  user.password = newPassword;
+  
+  console.log(`[StaticDB] ${username} için şifre hafızada güncellendi.`);
+  
+  return { success: true, message: "Şifreniz başarıyla güncellendi." };
 };
