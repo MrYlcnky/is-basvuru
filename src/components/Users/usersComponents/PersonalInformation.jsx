@@ -255,13 +255,15 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
           message: t("personal.errors.phone.format"),
         }),
+      // --- DÜZELTME BAŞLANGICI ---
       whatsapp: z
         .string()
-        .optional()
-        .transform((v) => (v ? v.replace(/[\s()-]/g, "") : v))
-        .refine((v) => !v || /^\+[1-9]\d{6,14}$/.test(v), {
+        .min(1, t("personal.errors.whatsapp.required")) // Zorunlu hale getirildi
+        .transform((v) => v.replace(/[\s()-]/g, ""))
+        .refine((v) => /^\+[1-9]\d{6,14}$/.test(v), {
           message: t("personal.errors.whatsapp.format"),
         }),
+      // --- DÜZELTME BİTİŞİ ---
       adres: z
         .string()
         .min(5, t("personal.errors.address.min"))
@@ -293,7 +295,7 @@ const PersonalInformation = forwardRef(function PersonalInformation(
       ikametSehir: z.string().min(1, t("personal.errors.resCity")),
       uyruk: z.string().min(1, t("personal.errors.nationality")),
     });
-  }, [i18n.language]);
+  }, [i18n.language, t]);
 
   useImperativeHandle(ref, () => ({
     isValid: () => {

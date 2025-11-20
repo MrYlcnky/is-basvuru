@@ -1,4 +1,4 @@
-// components/Users/JobApplicationForm.jsx
+// src/components/Users/JobApplicationForm.jsx
 import { useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -31,6 +31,9 @@ import JobApplicationDetails from "./usersComponents/JobApplicationDetails";
 import ApplicationConfirmSection from "./usersComponents/ApplicationConfirmSection";
 import { lockScroll } from "./modalHooks/scrollLock";
 import LanguageSwitcher from "../LanguageSwitcher";
+
+// YENİ LOGO IMPORTU
+// import logo from "../../assets/logo.jpg";
 
 export default function JobApplicationForm() {
   const { t } = useTranslation();
@@ -94,21 +97,25 @@ export default function JobApplicationForm() {
 
     window.scrollTo({ top: y, behavior: "smooth" });
 
-    // Kısa süreli highlight
+    // Kısa süreli highlight (Amber tonu ile uyumlu)
     setHighlightId(targetId);
     el.classList.add(
       "ring-2",
-      "ring-green-400",
+      "ring-amber-500",
       "ring-offset-2",
-      "ring-offset-gray-800"
+      "ring-offset-[#0f172a]", // Offset rengi arka planla aynı
+      "transition-all",
+      "duration-500"
     );
 
     setTimeout(() => {
       el.classList.remove(
         "ring-2",
-        "ring-green-400",
+        "ring-amber-500",
         "ring-offset-2",
-        "ring-offset-gray-800"
+        "ring-offset-[#0f172a]",
+        "transition-all",
+        "duration-500"
       );
       setHighlightId(null);
     }, 1600);
@@ -123,115 +130,121 @@ export default function JobApplicationForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-500 via-gray-500 to-gray-600 pb-10 rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)] border border-gray-400/20">
+    // GÜNCELLEME 1: Radial Gradient Arka Plan (Derinlik Hissi)
+    <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#334155] via-[#0f172a] to-black pb-10 shadow-2xl border-x border-gray-800/50">
       {/* === HERO HEADER === */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 py-12 sm:py-16 md:py-20 shadow-2xl rounded-2xl text-center">
+      <div className="relative overflow-hidden bg-gradient-to-br from-black via-[#111827] to-black py-12 sm:py-16 md:py-20 shadow-2xl rounded-b-2xl text-center border-b border-gray-800">
         {/* Sağ üst dil seçici */}
-        <div className="absolute flex flex-row top-3 right-3 sm:top-4 sm:right-4 z-20">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1.5">
+        <div className="absolute flex flex-row top-4 right-4 z-20">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-800/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-700 transition-colors">
             <FontAwesomeIcon
               icon={faGlobe}
-              className="text-yellow-400"
+              className="text-gray-400"
               aria-hidden="true"
             />
             <LanguageSwitcher />
           </div>
         </div>
 
-        <div className="relative z-10 container mx-auto px-4 sm:px-6">
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-wide text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.3)] leading-tight">
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-amber-200">
-              {t("hero.brand")}
-            </span>
-            <span className="block mt-2 text-gray-300 font-light text-lg sm:text-2xl">
-              {t("hero.formTitle")}
-            </span>
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 flex flex-col items-center">
+          {/* BAŞLIKLAR */}
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-wider text-white drop-shadow-lg leading-tight font-sans">
+            {t("hero.brand")}
           </h1>
+          <h2 className="mt-3 text-lg sm:text-xl font-light text-gray-300 tracking-[0.2em] uppercase opacity-80">
+            {t("hero.formTitle")}
+          </h2>
 
-          <p className="mt-5 text-base sm:text-lg text-gray-300 flex items-center justify-center gap-2">
-            <FontAwesomeIcon icon={faInfoCircle} className="text-amber-300" />
-            <span className="text-center">
-              <span className="font-semibold text-amber-300">
+          {/* BİLGİ MESAJI */}
+          <div className="mt-8 flex items-center gap-2 text-sm sm:text-base text-gray-400 bg-gray-900/60 px-5 py-2.5 rounded-full border border-gray-800/50 shadow-sm backdrop-blur-sm">
+            <FontAwesomeIcon
+              icon={faInfoCircle}
+              className="text-red-500 text-lg"
+            />
+            <span>
+              <span className="text-red-500 font-bold tracking-wide">
                 {t("hero.please")}
               </span>{" "}
-              {t("hero.notice")}{" "}
-              <span
-                className="font-semibold text-amber-300"
-                aria-label={t("hero.required")}
-              >
-                *
-              </span>{" "}
-              {t("hero.requiredSuffix")}
+              <span className="text-gray-300">{t("hero.notice")}</span>{" "}
+              <span className="text-red-500 font-bold mx-1">*</span>{" "}
+              <span className="text-gray-300">{t("hero.requiredSuffix")}</span>
             </span>
-          </p>
+          </div>
 
-          <div className="mt-6 mx-auto w-24 sm:w-32 h-[3px] bg-gradient-to-r from-gray-200 via-amber-300 to-gray-200 rounded-full" />
+          {/* Dekoratif Çizgi */}
+          <div className="mt-10 w-24 h-1 bg-gradient-to-r from-transparent via-gray-700 to-transparent rounded-full opacity-60" />
         </div>
 
-        {/* Arka plan glow */}
-        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] bg-amber-100/10 blur-3xl rounded-full" />
+        {/* Arka plan dekoratif glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-transparent via-amber-900/5 to-transparent pointer-events-none" />
       </div>
 
       {/* === Zorunlu Bilgiler (Sticky Status Bar) === */}
-      <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-4">
-        <div className="bg-gray-300/85 rounded-lg border border-gray-300 shadow-md px-4 py-2 flex flex-col items-center gap-3">
-          {/* Başlık + Durum ikonu */}
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-sm sm:text-base text-gray-800 font-semibold">
-              {t("statusBar.title")}
-            </span>
-            <FontAwesomeIcon
-              icon={allRequiredOk ? faCheckCircle : faCircleXmark}
-              className={allRequiredOk ? "text-green-600" : "text-red-600"}
-              title={
-                allRequiredOk
-                  ? t("statusBar.completed")
-                  : t("statusBar.missing")
-              }
-              aria-label={
-                allRequiredOk
-                  ? t("statusBar.completed")
-                  : t("statusBar.missing")
-              }
-            />
-          </div>
-          {/* Rozetler */}
-          <div className="overflow-x-auto sm:overflow-visible w-full sm:w-auto mx-auto">
+      <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-6">
+        {/* GÜNCELLEME 2: Daha Şeffaf ve Blur Efektli "Glassy" Bar */}
+        <div className="bg-[#1e293b]/70 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
+          {/* Sol: Genel Durum */}
+          <div className="flex items-center gap-3 border-b md:border-b-0 border-slate-700 pb-2 md:pb-0 w-full md:w-auto justify-center md:justify-start">
             <div
-              className="grid grid-flow-col auto-cols-max justify-center gap-2 sm:gap-3 sm:grid-flow-row sm:grid-cols-4 min-w-max sm:min-w-0
-    "
+              className={`w-10 h-10 flex items-center justify-center rounded-full border-2 shadow-inner ${
+                allRequiredOk
+                  ? "border-green-500 bg-green-500/10 text-green-400"
+                  : "border-red-500 bg-red-500/10 text-red-400"
+              }`}
             >
-              <StatusPill
-                ok={statuses.personalOk}
-                label={t("sections.personal")}
-                icon={faUser}
-                onClick={() => scrollToSection(SECTION_IDS.personal)}
-              />
-              <StatusPill
-                ok={statuses.educationOk}
-                label={t("sections.education")}
-                icon={faGraduationCap}
-                onClick={() => scrollToSection(SECTION_IDS.education)}
-              />
-              <StatusPill
-                ok={statuses.otherOk}
-                label={t("sections.other")}
-                icon={faUserCog}
-                onClick={() => scrollToSection(SECTION_IDS.other)}
-              />
-              <StatusPill
-                ok={statuses.jobDetailsOk}
-                label={t("sections.jobDetails")}
-                icon={faFileSignature}
-                onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
+              <FontAwesomeIcon
+                icon={allRequiredOk ? faCheckCircle : faCircleXmark}
+                className="text-xl"
               />
             </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                {t("statusBar.title")}
+              </span>
+              <span
+                className={`text-sm font-bold ${
+                  allRequiredOk ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {allRequiredOk
+                  ? t("statusBar.completed")
+                  : t("statusBar.missing")}
+              </span>
+            </div>
+          </div>
+
+          {/* Sağ: İlerleme Hapları */}
+          <div className="flex flex-wrap justify-center md:justify-end gap-2 w-full md:w-auto">
+            <StatusPill
+              ok={statuses.personalOk}
+              label={t("sections.personal")}
+              icon={faUser}
+              onClick={() => scrollToSection(SECTION_IDS.personal)}
+            />
+            <StatusPill
+              ok={statuses.educationOk}
+              label={t("sections.education")}
+              icon={faGraduationCap}
+              onClick={() => scrollToSection(SECTION_IDS.education)}
+            />
+            <StatusPill
+              ok={statuses.otherOk}
+              label={t("sections.other")}
+              icon={faUserCog}
+              onClick={() => scrollToSection(SECTION_IDS.other)}
+            />
+            <StatusPill
+              ok={statuses.jobDetailsOk}
+              label={t("sections.jobDetails")}
+              icon={faFileSignature}
+              onClick={() => scrollToSection(SECTION_IDS.jobDetails)}
+            />
           </div>
         </div>
       </div>
 
       {/* === CONTENT SECTIONS === */}
-      <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-6">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-8">
         <Section
           id={SECTION_IDS.personal}
           icon={faUser}
@@ -350,59 +363,75 @@ export default function JobApplicationForm() {
   );
 }
 
-/* ---------- Status Pill (clickable) ---------- */
+/* ---------- Status Pill (Modernize Edilmiş) ---------- */
 function StatusPill({ ok, label, icon, onClick }) {
   let cls =
-    "inline-flex items-center  gap-1.5 sm:px-2.5 px-1.5 sm:py-1 py-1 rounded-full text-xs border select-none transition focus:outline-none cursor-pointer";
+    "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-200 select-none focus:outline-none cursor-pointer active:scale-95";
+
+  // Varsayılan
+  let colors =
+    "bg-[#1e293b] border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white";
+
   if (ok === true) {
-    cls += " bg-green-50 text-green-700 border-green-200";
+    // Yeşil Glow
+    colors =
+      "bg-green-900/20 border-green-500/40 text-green-400 hover:bg-green-900/40 hover:text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.1)]";
   } else if (ok === false) {
-    cls += " bg-red-50 text-red-700 border-red-200";
-  } else {
-    cls += " bg-gray-50 text-gray-600 border-gray-200";
+    // Kırmızı Glow
+    colors =
+      "bg-red-900/20 border-red-500/40 text-red-400 hover:bg-red-900/40 hover:text-red-300 shadow-[0_0_10px_rgba(248,113,113,0.1)]";
   }
 
   return (
     <button
       type="button"
-      className={`${cls} hover:brightness-95 active:scale-95`}
+      className={`${cls} ${colors}`}
       title={`${label} bölümüne git`}
-      aria-label={`${label} bölümüne git`}
       onClick={onClick}
     >
-      <FontAwesomeIcon icon={icon} className="text-sm sm:text-base" />
-      {/* Mobilde metni gizle, sm+’da göster */}
-      <span className="hidden sm:inline">{label}</span>
-      <span className="sr-only">{label}</span>
+      <FontAwesomeIcon icon={icon} className="text-sm" />
+      <span className="hidden md:inline">{label}</span>
     </button>
   );
 }
 
-/* --- Section Template --- */
+/* --- Section Template (Güncellenmiş: Amber Buton & Yumuşak İçerik) --- */
 function Section({ id, icon, title, required = false, onAdd, content }) {
   const { t } = useTranslation();
   return (
     <div
       id={id}
-      className="bg-gray-800 rounded-lg border border-gray-700 shadow-md overflow-hidden transition"
+      className="bg-[#1e293b] rounded-xl border border-slate-700 shadow-lg overflow-hidden transition-all hover:border-slate-600 hover:shadow-2xl"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-b border-gray-700">
+      {/* Kart Başlığı */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-5 sm:px-6 py-5 border-b border-slate-700/80">
         <div className="flex items-center gap-3 sm:gap-4">
-          <FontAwesomeIcon
-            icon={icon}
-            className="text-amber-50 text-2xl sm:text-3xl shrink-0"
-          />
-          <h4 className="text-base sm:text-lg md:text-xl font-semibold text-amber-50 truncate flex items-center gap-2">
+          <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900/50 border border-slate-700 shadow-inner">
+            <FontAwesomeIcon
+              icon={icon}
+              className="text-slate-300 text-lg sm:text-xl shrink-0"
+            />
+          </div>
+
+          <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-100 truncate flex items-center gap-2 tracking-tight">
             {title}
-            {required && <span className="text-red-500">*</span>}
+            {required && (
+              <span
+                className="text-red-400 text-sm align-top"
+                title={t("hero.required")}
+              >
+                *
+              </span>
+            )}
           </h4>
         </div>
 
+        {/* GÜNCELLEME 3: Amber (Gold) Buton - Temaya Uyumlu */}
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium rounded-md transition duration-150 ease-in-out focus:outline-none text-sm sm:text-base active:scale-95"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow-lg shadow-amber-900/20 transition-all duration-200 focus:outline-none text-sm active:scale-95 border border-amber-500/20"
           >
             <FontAwesomeIcon icon={faPlus} />
             <span>{t("actions.add")}</span>
@@ -410,7 +439,10 @@ function Section({ id, icon, title, required = false, onAdd, content }) {
         )}
       </div>
 
-      <div className="overflow-x-auto bg-gray-50 text-gray-900">{content}</div>
+      {/* GÜNCELLEME 4: İçerik Alanı (Yumuşatılmış Kontrast) */}
+      <div className="overflow-x-auto bg-slate-50 text-slate-800 border-t border-slate-200/50">
+        {content}
+      </div>
     </div>
   );
 }
