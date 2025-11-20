@@ -590,6 +590,7 @@
         "format": "Telefon numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX)."
       },
       "whatsapp": {
+        "required": "Telefon gerekli.",
         "format": "WhatsApp numarasını ülke kodu ile yazın (örn: +905XXXXXXXXX)."
       },
       "address": {

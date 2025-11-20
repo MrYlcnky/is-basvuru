@@ -591,6 +591,7 @@
         "format": "Write the phone with country code (e.g., +905XXXXXXXXX)."
       },
       "whatsapp": {
+        "required": "Phone is required.",
         "format": "Write the WhatsApp number with country code (e.g., +905XXXXXXXXX)."
       },
       "address": {
