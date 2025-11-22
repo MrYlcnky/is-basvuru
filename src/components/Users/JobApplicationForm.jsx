@@ -288,7 +288,7 @@ export default function JobApplicationForm() {
       {/* Hero Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-black via-[#111827] to-black py-12 sm:py-16 md:py-20 shadow-2xl rounded-b-2xl text-center border-b border-gray-800">
         <div className="absolute flex flex-row top-4 right-4 z-20">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-800/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-700 transition-colors">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-800/50 border border-gray-700 hover:bg-gray-700 transition-colors">
             <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
             <LanguageSwitcher />
           </div>
@@ -300,7 +300,7 @@ export default function JobApplicationForm() {
           <h2 className="mt-3 text-lg sm:text-xl font-light text-gray-300 tracking-[0.2em] uppercase opacity-80">
             {t("hero.formTitle")}
           </h2>
-          <div className="mt-8 flex items-center gap-2 text-sm sm:text-base text-gray-400 bg-gray-900/60 px-5 py-2.5 rounded-full border border-gray-800/50 shadow-sm backdrop-blur-sm">
+          <div className="mt-8 flex items-center gap-2 text-sm sm:text-base text-gray-400 bg-gray-900/60 px-5 py-2.5 rounded-full border border-gray-800/50 shadow-sm ">
             <FontAwesomeIcon
               icon={faInfoCircle}
               className="text-red-500 text-lg"
@@ -349,7 +349,6 @@ export default function JobApplicationForm() {
                 // Animasyon sınıfları (slide-in, fade-in) kaldırıldı
                 <div className="flex flex-col w-full sm:w-auto">
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <p className="text-white">test mail: mehmet@gmail.com</p>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
                         <FontAwesomeIcon icon={faEnvelope} />
@@ -408,7 +407,7 @@ export default function JobApplicationForm() {
 
       {/* Status Bar */}
       <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-6">
-        <div className="bg-[#1e293b]/80 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
+        <div className="bg-[#1e293b]/80  rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
           <div className="flex items-center gap-3 border-b md:border-b-0 border-slate-700 pb-2 md:pb-0 w-full md:w-auto justify-center md:justify-start">
             {/* İKON KUTUSU: Duruma göre Kırmızı veya Yeşil */}
             <div
