@@ -349,6 +349,7 @@ export default function JobApplicationForm() {
                 // Animasyon sınıfları (slide-in, fade-in) kaldırıldı
                 <div className="flex flex-col w-full sm:w-auto">
                   <div className="flex flex-col sm:flex-row gap-2">
+                    <p className="text-white">test mail: mehmet@gmail.com</p>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
                         <FontAwesomeIcon icon={faEnvelope} />
