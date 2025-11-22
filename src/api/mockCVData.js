@@ -1,205 +1,206 @@
 // src/api/mockCVData.js
-// Bu dosya, PDF oluşturma özelliğini test etmek için
-// JobApplicationForm'daki tüm alanları doldurulmuş
-// sahte (mock) bir aday verisi içerir.
 
 export const mockCVData = {
-  // ReadOnlyApplicationView'in ihtiyaç duyduğu üst seviye veriler
-  id: "A-12345",
-  name: "Mehmet Örnek Aday",
-  branches: ["Girne", "Prestige"],
-  areas: ["Hotel", "Casino"],
-  departments: ["IT", "Casino F&B"],
-  roles: ["IT Destek Uzmanı", "Garson"],
-  date: "2025-11-15",
-  age: 30,
-  appliedAt: "2025-11-15",
-  approvalStage: "tamamlandi",
-  status: "Onaylanan",
+  // Yönetim paneli için üst veriler
+  id: "A-998877",
+  name: "Mehmet Yılmaz",
+  appliedAt: "2025-11-20",
+  approvalStage: "ik_degerlendirme",
+  status: "Değerlendiriliyor",
   notes: [
     {
-      user: "Ulaş Gencan (IT Girne)",
-      note: "Teknik bilgisi çok yerinde.",
-      date: "2025-11-16",
-      action: "ONAYLANDI",
-    },
-    {
-      user: "Sezgin Bingül (GM)",
-      note: "Mülakat olumlu geçti.",
-      date: "2025-11-17",
-      action: "ONAYLANDI",
-    },
-    {
-      user: "Ayşe Yılmaz (İK SPV)",
-      note: "İşe alım tamamlandı.",
-      date: "2025-11-17",
-      action: "ONAYLANDI",
-    },
+      user: "İK Bot",
+      note: "Otomatik veri çekme testi başarılı.",
+      date: "2025-11-20",
+      action: "SİSTEM",
+    }
   ],
 
-  // 1. Kişisel Bilgiler
+  // 1. Kişisel Bilgiler (PersonalInformation.jsx)
+  // Lokasyon formatı: "İl/İlçe" (TR için) veya "Şehir/Bölge" (Yurt dışı için)
   personal: {
-    foto: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
-    ad: "Mehmet Örnek",
-    soyad: "Aday",
-    dogumTarihi: "1995-05-20",
+    ad: "Mehmet",
+    soyad: "Yılmaz",
+    eposta: "mehmet@gmail.com",
+    telefon: "+905551234567",
+    whatsapp: "+905551234567",
+    adres: "Cumhuriyet Mahallesi, Atatürk Caddesi No: 10 D: 5",
     cinsiyet: "Erkek",
-    eposta: "mehmet.aday@mail.com",
-    telefon: "+90 555 123 4567",
-    whatsapp: "+90 555 123 4567",
-    medeniDurum: "Bekâr",
-    cocukSayisi: "0",
-    uyruk: "T.C.",
+    medeniDurum: "Evli",
+    dogumTarihi: "1990-05-15",
+    uyruk: "Türkiye", 
+    cocukSayisi: "1",
+    foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+    
+    // Lokasyonlar
     dogumUlke: "Türkiye",
-    dogumSehir: "Ankara",
-    ikametUlke: "KKTC",
-    ikametSehir: "Girne",
-    adres: "Girne Merkez, Ziya Rızkı Cad. No: 10 D: 5",
+    dogumSehir: "Ankara/Çankaya", // Otomatik ayrıştırılacak
+    
+    ikametUlke: "Türkiye",
+    ikametSehir: "İstanbul/Kadıköy" // Otomatik ayrıştırılacak
   },
 
-  // 2. Eğitim Bilgileri
+  // 2. Eğitim Bilgileri (EducationTable.jsx)
   education: [
     {
       id: 1,
       seviye: "Lisans",
-      okul: "Orta Doğu Teknik Üniversitesi",
+      okul: "İstanbul Teknik Üniversitesi",
       bolum: "Bilgisayar Mühendisliği",
-      baslangic: "2013-09-01",
-      bitis: "2018-06-15",
+      baslangic: "2008-09-01",
+      bitis: "2012-06-15",
       diplomaDurum: "Mezun",
       notSistemi: "4",
-      gano: "3.20",
+      gano: "3.50",
     },
     {
       id: 2,
-      seviye: "Lise",
-      okul: "Ankara Atatürk Lisesi",
-      bolum: "Sayısal",
-      baslangic: "2009-09-01",
-      bitis: "2013-06-15",
+      seviye: "Yüksek Lisans",
+      okul: "Boğaziçi Üniversitesi",
+      bolum: "Yazılım Mühendisliği",
+      baslangic: "2013-09-01",
+      bitis: "2015-06-20",
       diplomaDurum: "Mezun",
-      notSistemi: "100",
-      gano: "85",
-    },
+      notSistemi: "4",
+      gano: "3.80",
+    }
   ],
 
-  // 3. Sertifikalar
+  // 3. Sertifikalar (CertificatesTable.jsx)
   certificates: [
     {
       id: 1,
-      ad: "Cisco CCNA Routing and Switching",
-      kurum: "Cisco Networking Academy",
-      sure: "6 Ay",
-      verilisTarihi: "2019-03-01",
-      gecerlilikTarihi: "2022-03-01",
+      ad: "İleri Düzey Java",
+      kurum: "Udemy",
+      sure: "40 Saat",
+      verilisTarihi: "2020-01-15",
+      gecerlilikTarihi: null,
     },
     {
       id: 2,
-      ad: "Microsoft Certified: Azure Fundamentals",
-      kurum: "Microsoft",
-      sure: "1 Ay",
-      verilisTarihi: "2020-05-15",
-      gecerlilikTarihi: null,
-    },
+      ad: "İlk Yardım Sertifikası",
+      kurum: "Kızılay",
+      sure: "16 Saat",
+      verilisTarihi: "2022-05-10",
+      gecerlilikTarihi: "2025-05-10",
+    }
   ],
 
-  // 4. Bilgisayar Bilgileri
+  // 4. Bilgisayar Bilgileri (ComputerInformationTable.jsx)
   computer: [
-    { id: 1, programAdi: "Microsoft Office", yetkinlik: "Çok İyi" },
-    { id: 2, programAdi: "Photoshop", yetkinlik: "Orta" },
-    { id: 3, programAdi: "Opera (Otelcilik)", yetkinlik: "İyi" },
+    { id: 1, programAdi: "Microsoft Excel", yetkinlik: "İyi" },
+    { id: 2, programAdi: "Adobe Photoshop", yetkinlik: "Orta" },
+    { id: 3, programAdi: "VS Code", yetkinlik: "İyi" }
   ],
 
-  // 5. Yabancı Dil
+  // 5. Yabancı Dil (LanguageTable.jsx)
   languages: [
     {
       id: 1,
       dil: "İngilizce",
-      konuşma: "C1",
+      konusma: "C1", 
       dinleme: "C1",
-      okuma: "C2",
-      yazma: "B2",
-      ogrenilenKurum: "Okul ve Kurs",
+      okuma: "C1",
+      yazma: "C1",
+      ogrenilenKurum: "Üniversite Hazırlık",
     },
     {
       id: 2,
       dil: "Almanca",
-      konuşma: "A2",
+      konusma: "B1",
       dinleme: "B1",
-      okuma: "B1",
-      yazma: "A2",
-      ogrenilenKurum: "Kendi kendine",
-    },
+      okuma: "B2",
+      yazma: "B1",
+      ogrenilenKurum: "Goethe Institut",
+    }
   ],
 
-  // 6. İş Deneyimleri
+  // 6. İş Deneyimleri (JobExperiencesTable.jsx)
   experience: [
     {
       id: 1,
-      isAdi: "ABC Teknoloji A.Ş.",
-      departman: "IT",
-      pozisyon: "Kıdemli Sistem Uzmanı",
-      baslangicTarihi: "2020-01-10",
+      isAdi: "Tech Solutions A.Ş.",
+      departman: "Yazılım",
+      pozisyon: "Kıdemli Geliştirici",
+      gorev: "Backend sistemlerinin geliştirilmesi ve bakımı.",
+      ucret: "45000", 
+      baslangicTarihi: "2018-02-01",
       halenCalisiyor: true,
       bitisTarihi: null,
       ayrilisSebebi: "",
-      ulke: "Türkiye",
-      sehir: "İstanbul",
+      isUlke: "Türkiye",
+      isSehir: "İstanbul"
     },
     {
       id: 2,
-      isAdi: "XYZ Bilişim",
-      departman: "IT",
-      pozisyon: "IT Destek Uzmanı",
-      baslangicTarihi: "2018-07-01",
+      isAdi: "Soft Yazılım Ltd.",
+      departman: "Bilgi İşlem",
+      pozisyon: "Junior Geliştirici",
+      gorev: "Web arayüz kodlaması.",
+      ucret: "20000",
+      baslangicTarihi: "2015-07-01",
       halenCalisiyor: false,
-      bitisTarihi: "2019-12-31",
-      ayrilisSebebi: "Daha iyi bir teklif",
-      ulke: "Türkiye",
-      sehir: "Ankara",
-    },
+      bitisTarihi: "2018-01-30",
+      ayrilisSebebi: "Kariyer değişikliği",
+      isUlke: "Türkiye",
+      isSehir: "Ankara"
+    }
   ],
 
-  // 7. Referanslar
+  // 7. Referanslar (ReferencesTable.jsx)
   references: [
     {
       id: 1,
-      calistigiKurum: "Harici",
+      calistigiKurum: "Harici", 
       referansAdi: "Ahmet",
-      referansSoyadi: "Yılmaz",
-      referansIsYeri: "ABC Teknoloji A.Ş.",
-      referansGorevi: "IT Direktörü",
-      referansTelefon: "+90 555 987 6543",
-    },
+      referansSoyadi: "Demir",
+      referansIsYeri: "Tech Solutions A.Ş.",
+      referansGorevi: "Takım Lideri",
+      referansTelefon: "+905321112233",
+    }
   ],
 
-  // 8. Diğer Kişisel Bilgiler
+  // 8. Diğer Kişisel Bilgiler (OtherPersonalInformationTable.jsx)
+  // "Evet", "Hayır" gibi standart değerler kullanıldı. 
+  // Ancak OtherPersonalInformationTable içindeki "fillData" eski "Var/Yok" verilerini de otomatik düzeltecektir.
   otherInfo: {
     kktcGecerliBelge: "Çalışma İzni",
-    askerlik: "Yapıldı",
-    ehliyet: "Var",
-    ehliyetTurleri: ["B", "A2"],
-    boy: "180",
-    kilo: "80",
+    davaDurumu: "Evet", // "Var" yerine "Evet" (Standart)
+    davaNedeni: "Devam eden ticari dava", // Dava durumu evet ise neden zorunlu
     sigara: "Hayır",
-    davaDurumu: "Hayır",
-    davaNedeni: "",
-    kaliciRahatsizlik: "Hayır",
-    rahatsizlikAciklama: "",
+    kaliciRahatsizlik: "Evet",
+    rahatsizlikAciklama: "Hafif derecede miyop, gözlük kullanıyorum.",
+    ehliyet: "Evet", 
+    ehliyetTurleri: ["B", "A2"], 
+    askerlik: "Yapıldı",
+    boy: "180",
+    kilo: "78"
   },
 
-  // 9. İş Başvuru Detayları
+  // 9. İş Başvuru Detayları (JobApplicationDetails.jsx)
   jobDetails: {
-    subeler: [{ label: "Girne" }, { label: "Prestige" }],
-    alanlar: [{ label: "Hotel" }, { label: "Casino" }],
-    departmanlar: [{ label: "IT" }, { label: "Casino F&B" }],
-    departmanPozisyonlari: [
-      { label: "IT Destek Uzmanı" },
-      { label: "Garson" },
+    subeler: [
+      { value: "Girne", label: "Girne" },
+      { value: "Prestige", label: "Prestige" }
     ],
-    programlar: [{ label: "Opera" }, { label: "Excel" }],
-    kagitOyunlari: [],
+    alanlar: [
+      { value: "Otel", label: "Otel" },
+      { value: "Casino", label: "Casino" }
+    ],
+    departmanlar: [
+      { value: "Otel Resepsiyon", label: "Otel Resepsiyon" },
+      { value: "Casino Slot", label: "Casino Slot" }
+    ],
+    programlar: [
+      { value: "Opera PMS", label: "Opera PMS" },
+      { value: "Asist", label: "Asist" }
+    ],
+    departmanPozisyonlari: [
+      { value: "Otel Resepsiyon::Receptionist", label: "Receptionist", dept: "Otel Resepsiyon" },
+      { value: "Casino Slot::Slot Attendant", label: "Slot Attendant", dept: "Casino Slot" }
+    ],
+    kagitOyunlari: [], 
     lojman: "Evet",
-    tercihNedeni: "Kariyer gelişimi ve şirketin vizyonu. Kariyer gelişimi ve şirketin vizyonu. Kariyer gelişimi ve şirketin vizyonu. Kariyer gelişimi ve şirketin vizyonu. Kariyer gelişimi ve şirketin vizyonu.",
+    tercihNedeni: "Kurumsal yapısı, vizyonu ve kariyer imkanları sebebiyle."
   },
 };

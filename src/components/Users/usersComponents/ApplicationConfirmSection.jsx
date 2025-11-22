@@ -1,4 +1,3 @@
-// components/Users/usersComponents/ApplicationConfirmSection.jsx
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,6 +12,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ReCAPTCHA from "react-google-recaptcha";
 
+// .env dosyanızda VITE_RECAPTCHA_SITE_KEY tanımlı olmalıdır
 const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const ApplicationConfirmSection = ({
@@ -20,6 +20,7 @@ const ApplicationConfirmSection = ({
   educationRef,
   otherInfoRef,
   validateJobDetails,
+  onSubmit, // Parent bileşenden (JobApplicationForm) gelen güvenli submit fonksiyonu
 }) => {
   const { t, i18n } = useTranslation();
 
@@ -29,7 +30,7 @@ const ApplicationConfirmSection = ({
     referans: false,
   });
 
-  // reCAPTCHA
+  // reCAPTCHA referansı ve state'i
   const recaptchaRef = useRef(null);
   const [recaptchaToken, setRecaptchaToken] = useState("");
 
@@ -41,6 +42,7 @@ const ApplicationConfirmSection = ({
   const handleSubmit = async () => {
     const missingSections = [];
 
+    // 1. Bölüm Validasyonları
     const personalValid = validatePersonalInfo?.() ?? false;
     if (!personalValid) missingSections.push(t("sections.personal"));
 
@@ -53,11 +55,14 @@ const ApplicationConfirmSection = ({
     const jobValid = validateJobDetails?.() ?? false;
     if (!jobValid) missingSections.push(t("sections.jobDetails"));
 
+    // 2. Checkbox Kontrolü
     const allChecked = Object.values(checks).every(Boolean);
     if (!allChecked) missingSections.push(t("confirm.checks"));
 
+    // 3. ReCAPTCHA Kontrolü
     if (!recaptchaToken) missingSections.push("reCAPTCHA");
 
+    // Hata varsa uyarı göster
     if (missingSections.length > 0) {
       Swal.fire({
         icon: "error",
@@ -76,24 +81,30 @@ const ApplicationConfirmSection = ({
       return;
     }
 
-    // TODO: Backend geldiğinde recaptchaToken'ı POST et ve /siteverify ile doğrula.
-
-    toast.success(t("confirm.toast.success"), {
-      position: "top-center",
-      autoClose: 3000,
-    });
-
-    // reCAPTCHA'yı sıfırla
-    recaptchaRef.current?.reset();
-    setRecaptchaToken("");
+    // Validasyon başarılıysa Parent'a gönder
+    if (onSubmit) {
+      // Token'ı ve başarı callback'ini gönderiyoruz
+      onSubmit(recaptchaToken, () => {
+        // İşlem başarılı olursa formu/captcha'yı sıfırla
+        recaptchaRef.current?.reset();
+        setRecaptchaToken("");
+        setChecks({ dogruluk: false, kvkk: false, referans: false });
+        toast.success(t("confirm.toast.success"));
+      });
+    } else {
+      // Fallback (Eğer onSubmit prop'u yoksa)
+      console.warn("onSubmit prop'u eksik!");
+      toast.success(t("confirm.toast.success"));
+    }
   };
 
+  // ReCAPTCHA dil ayarı
   const captchaHl = (i18n.resolvedLanguage || i18n.language || "tr")
     .slice(0, 2)
     .toLowerCase();
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 mt-10">
+    <div className="px-4 sm:px-6 lg:px-10 mt-10 pb-10">
       {/* Onay Kartları */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ConfirmCard
@@ -122,7 +133,7 @@ const ApplicationConfirmSection = ({
         />
       </div>
 
-      {/* reCAPTCHA (NORMAL) + Başvur */}
+      {/* reCAPTCHA ve Başvuru Butonu */}
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
         <div className="recaptcha-wrap focus:outline-none focus:ring-0">
           <ReCAPTCHA
@@ -142,7 +153,7 @@ const ApplicationConfirmSection = ({
           className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold shadow-md transition duration-200 ease-in-out active:scale-95
             ${
               recaptchaToken
-                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white cursor-pointer"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           aria-label={t("confirm.submit")}
@@ -167,7 +178,7 @@ function ConfirmCard({ id, icon, title, text, checked, onChange }) {
         <div className="flex-1">
           <div className="flex items-start gap-2">
             <input
-              className="mt-[6px] h-4 w-4 text-amber-600 border-gray-300 rounded cursor-pointer"
+              className="mt-[6px] h-4 w-4 text-amber-600 border-gray-300 rounded cursor-pointer focus:ring-amber-500"
               type="checkbox"
               id={id}
               checked={checked}

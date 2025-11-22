@@ -1,7 +1,6 @@
-// components/Users/usersComponents/LanguageTable.jsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import Swal from "sweetalert2";
@@ -10,7 +9,10 @@ import "react-toastify/dist/ReactToastify.css";
 import LanguageAddModal from "../addModals/LanguageAddModal";
 import useCrudTable from "../modalHooks/useCrudTable";
 
-const LanguageTable = forwardRef(function LanguageTable(_, ref) {
+const LanguageTable = forwardRef(function LanguageTable(
+  { onValidChange },
+  ref
+) {
   const { t } = useTranslation();
 
   const confirmDelete = async (row) => {
@@ -30,6 +32,7 @@ const LanguageTable = forwardRef(function LanguageTable(_, ref) {
 
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -41,7 +44,19 @@ const LanguageTable = forwardRef(function LanguageTable(_, ref) {
     handleDelete,
   } = useCrudTable(staticLanguageTableDB, { confirmDelete, notify });
 
-  useImperativeHandle(ref, () => ({ openCreate }));
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
+
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
+  }));
 
   return (
     <div className="">
@@ -148,21 +163,8 @@ const LanguageTable = forwardRef(function LanguageTable(_, ref) {
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticLanguageTableDB() {
-  const rows = [
-    /* örnek:
-    {
-      id: 1,
-      dil: "English",
-      konusma: "B2",
-      dinleme: "B2",
-      okuma: "C1",
-      yazma: "B2",
-      ogrenilenKurum: "Udemy",
-    }
-    */
-  ];
+function staticLanguageTableDB() {
+  const rows = [];
   return rows;
 }
 

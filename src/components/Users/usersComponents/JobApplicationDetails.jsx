@@ -1,10 +1,10 @@
-// components/Users/tables/JobApplicationDetails.jsx
 import {
   forwardRef,
   useState,
   useMemo,
   useEffect,
   useImperativeHandle,
+  useCallback,
 } from "react";
 import Select from "react-select";
 import { z } from "zod";
@@ -25,82 +25,99 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   { onValidChange },
   ref
 ) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation(); // i18n kaldırıldı
 
-  // --- Sabit veri kümeleri (value sabit, label t() ile)
-  const otelDepartments = [
-    {
-      value: "Otel Resepsiyon",
-      label: t("jobDetails.departments.hotelReception"),
-    },
-    {
-      value: "Otel Housekeeping",
-      label: t("jobDetails.departments.hotelHousekeeping"),
-    },
-  ];
-  const casinoDepartments = [
-    { value: "Casino F&B", label: t("jobDetails.departments.casinoFB") },
-    { value: "Casino Kasa", label: t("jobDetails.departments.casinoCashier") },
-    { value: "Casino Slot", label: t("jobDetails.departments.casinoSlot") },
-    {
-      value: "Casino Canlı Oyun",
-      label: t("jobDetails.departments.casinoLiveGame"),
-    },
-  ];
+  // --- Sabit veri kümeleri (Memoized) ---
+  const otelDepartments = useMemo(
+    () => [
+      {
+        value: "Otel Resepsiyon",
+        label: t("jobDetails.departments.hotelReception"),
+      },
+      {
+        value: "Otel Housekeeping",
+        label: t("jobDetails.departments.hotelHousekeeping"),
+      },
+    ],
+    [t]
+  );
 
-  const departmentPrograms = {
-    "Casino F&B": ["Asist"],
-    "Casino Kasa": ["drCage"],
-    "Casino Slot": ["Asist", "drReports"],
-    "Casino Canlı Oyun": [],
-    "Otel Resepsiyon": ["Opera PMS"],
-    "Otel Housekeeping": ["HotelLogix"],
-  };
+  const casinoDepartments = useMemo(
+    () => [
+      { value: "Casino F&B", label: t("jobDetails.departments.casinoFB") },
+      {
+        value: "Casino Kasa",
+        label: t("jobDetails.departments.casinoCashier"),
+      },
+      { value: "Casino Slot", label: t("jobDetails.departments.casinoSlot") },
+      {
+        value: "Casino Canlı Oyun",
+        label: t("jobDetails.departments.casinoLiveGame"),
+      },
+    ],
+    [t]
+  );
 
-  // role label’larını da t() ile üretelim
-  const departmentRoles = {
-    "Casino F&B": [
-      t("jobDetails.roles.waiter"),
-      t("jobDetails.roles.bartender"),
-      t("jobDetails.roles.barback"),
-      t("jobDetails.roles.commis"),
-      t("jobDetails.roles.supervisor"),
-    ],
-    "Casino Kasa": [
-      t("jobDetails.roles.cashier"),
-      t("jobDetails.roles.cageSupervisor"),
-    ],
-    "Casino Slot": [
-      t("jobDetails.roles.slotAttendant"),
-      t("jobDetails.roles.slotTechnician"),
-      t("jobDetails.roles.host"),
-    ],
-    "Casino Canlı Oyun": [
-      t("jobDetails.roles.dealer"),
-      t("jobDetails.roles.inspector"),
-      t("jobDetails.roles.pitboss"),
-    ],
-    "Otel Resepsiyon": [
-      t("jobDetails.roles.receptionist"),
-      t("jobDetails.roles.guestRelations"),
-      t("jobDetails.roles.nightAuditor"),
-    ],
-    "Otel Housekeeping": [
-      t("jobDetails.roles.roomAttendant"),
-      t("jobDetails.roles.floorSupervisor"),
-      t("jobDetails.roles.laundry"),
-    ],
-  };
+  const departmentPrograms = useMemo(
+    () => ({
+      "Casino F&B": ["Asist"],
+      "Casino Kasa": ["drCage"],
+      "Casino Slot": ["Asist", "drReports"],
+      "Casino Canlı Oyun": [],
+      "Otel Resepsiyon": ["Opera PMS"],
+      "Otel Housekeeping": ["HotelLogix"],
+    }),
+    []
+  );
 
-  const kagitOyunlariList = [
-    { value: "Poker", label: t("jobDetails.cards.poker") },
-    { value: "Blackjack", label: t("jobDetails.cards.blackjack") },
-    { value: "Baccarat", label: t("jobDetails.cards.baccarat") },
-    { value: "Roulette", label: t("jobDetails.cards.roulette") },
-    { value: "Texas Hold’em", label: t("jobDetails.cards.texasHoldem") },
-  ];
+  const departmentRoles = useMemo(
+    () => ({
+      "Casino F&B": [
+        t("jobDetails.roles.waiter"),
+        t("jobDetails.roles.bartender"),
+        t("jobDetails.roles.barback"),
+        t("jobDetails.roles.commis"),
+        t("jobDetails.roles.supervisor"),
+      ],
+      "Casino Kasa": [
+        t("jobDetails.roles.cashier"),
+        t("jobDetails.roles.cageSupervisor"),
+      ],
+      "Casino Slot": [
+        t("jobDetails.roles.slotAttendant"),
+        t("jobDetails.roles.slotTechnician"),
+        t("jobDetails.roles.host"),
+      ],
+      "Casino Canlı Oyun": [
+        t("jobDetails.roles.dealer"),
+        t("jobDetails.roles.inspector"),
+        t("jobDetails.roles.pitboss"),
+      ],
+      "Otel Resepsiyon": [
+        t("jobDetails.roles.receptionist"),
+        t("jobDetails.roles.guestRelations"),
+        t("jobDetails.roles.nightAuditor"),
+      ],
+      "Otel Housekeeping": [
+        t("jobDetails.roles.roomAttendant"),
+        t("jobDetails.roles.floorSupervisor"),
+        t("jobDetails.roles.laundry"),
+      ],
+    }),
+    [t]
+  );
 
-  // --- State ---
+  const kagitOyunlariList = useMemo(
+    () => [
+      { value: "Poker", label: t("jobDetails.cards.poker") },
+      { value: "Blackjack", label: t("jobDetails.cards.blackjack") },
+      { value: "Baccarat", label: t("jobDetails.cards.baccarat") },
+      { value: "Roulette", label: t("jobDetails.cards.roulette") },
+      { value: "Texas Hold’em", label: t("jobDetails.cards.texasHoldem") },
+    ],
+    [t]
+  );
+
   const [formData, setFormData] = useState({
     subeler: [],
     alanlar: [],
@@ -113,21 +130,28 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   });
   const [errors, setErrors] = useState({});
 
-  // --- Seçenek listeleri (branch adları yer/ad olduğundan çevirmiyoruz)
-  const subeOptions = [
-    { value: "Prestige", label: "Prestige" },
-    { value: "Girne", label: "Girne" },
-  ];
-  const alanOptions = [
-    { value: "Otel", label: t("jobDetails.areas.hotel") },
-    { value: "Casino", label: t("jobDetails.areas.casino") },
-  ];
-  const lojmanOptions = [
-    { value: "Evet", label: t("jobDetails.housing.yes") },
-    { value: "Hayır", label: t("jobDetails.housing.no") },
-  ];
+  const subeOptions = useMemo(
+    () => [
+      { value: "Prestige", label: "Prestige" },
+      { value: "Girne", label: "Girne" },
+    ],
+    []
+  );
+  const alanOptions = useMemo(
+    () => [
+      { value: "Otel", label: t("jobDetails.areas.hotel") },
+      { value: "Casino", label: t("jobDetails.areas.casino") },
+    ],
+    [t]
+  );
+  const lojmanOptions = useMemo(
+    () => [
+      { value: "Evet", label: t("jobDetails.housing.yes") },
+      { value: "Hayır", label: t("jobDetails.housing.no") },
+    ],
+    [t]
+  );
 
-  // --- Alan, departman, program ilişkileri ---
   const availableDepartments = useMemo(() => {
     let list = [];
     if (formData.alanlar.some((a) => a.value === "Otel"))
@@ -135,8 +159,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     if (formData.alanlar.some((a) => a.value === "Casino"))
       list.push(...casinoDepartments);
     return list;
-    // i18n değişince label’lar güncellensin
-  }, [formData.alanlar, i18n.language]);
+  }, [formData.alanlar, otelDepartments, casinoDepartments]);
 
   const availablePrograms = useMemo(() => {
     const set = new Set();
@@ -144,7 +167,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
       (departmentPrograms[d.value] || []).forEach((p) => set.add(p));
     });
     return Array.from(set).map((p) => ({ value: p, label: p }));
-  }, [formData.departmanlar]);
+  }, [formData.departmanlar, departmentPrograms]);
 
   const availableRoles = useMemo(() => {
     const groups = [];
@@ -156,7 +179,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
         dept: d.value,
       }));
       if (roles.length) {
-        // group label: departman label’ını bul
         const deptLabel =
           [...otelDepartments, ...casinoDepartments].find(
             (x) => x.value === d.value
@@ -165,7 +187,12 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
       }
     });
     return groups;
-  }, [formData.departmanlar, i18n.language]);
+  }, [
+    formData.departmanlar,
+    departmentRoles,
+    otelDepartments,
+    casinoDepartments,
+  ]);
 
   const canliOyunSelected = formData.departmanlar.some(
     (d) => d.value === "Casino Canlı Oyun"
@@ -173,7 +200,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   const hasSubeSelected = formData.subeler.length > 0;
   const needsRoles = availableRoles.length > 0;
 
-  // --- react-select stil ---
   const customStyles = {
     control: (base, state) => ({
       ...base,
@@ -197,97 +223,102 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     }),
   };
 
-  /* -------------------- ZOD ŞEMASI -------------------- */
-  const optionSchema = z.object({ value: z.string(), label: z.string() });
-  const roleOptionSchema = z.object({
-    value: z.string(),
-    label: z.string(),
-    dept: z.string(),
-  });
-  const arrayNonEmpty = (schema, msg) => z.array(schema).min(1, msg);
-
-  const schema = z
-    .object({
-      subeler: arrayNonEmpty(
-        optionSchema,
-        t("jobDetails.errors.branchRequired")
-      ),
-      alanlar: arrayNonEmpty(optionSchema, t("jobDetails.errors.areaRequired")),
-      departmanlar: arrayNonEmpty(
-        optionSchema,
-        t("jobDetails.errors.departmentRequired")
-      ),
-      programlar: arrayNonEmpty(
-        optionSchema,
-        t("jobDetails.errors.programRequired")
-      ),
-      departmanPozisyonlari: z.array(roleOptionSchema).optional().default([]),
-      kagitOyunlari: z.array(optionSchema).optional().default([]),
-      lojman: z
-        .string()
-        .refine(
-          (v) => ["Evet", "Hayır"].includes(v),
-          t("jobDetails.errors.housingRequired")
-        ),
-      tercihNedeni: z
-        .string()
-        .min(1, t("jobDetails.errors.reasonRequired"))
-        .regex(
-          /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-          t("jobDetails.errors.reasonChars")
-        )
-        .max(500, t("jobDetails.errors.reasonMax")),
-    })
-    .superRefine((data, ctx) => {
-      const anyDeptHasRoles = data.departmanlar.some(
-        (d) => (departmentRoles[d.value] || []).length > 0
-      );
-      if (
-        anyDeptHasRoles &&
-        (!data.departmanPozisyonlari || data.departmanPozisyonlari.length === 0)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["departmanPozisyonlari"],
-          message: t("jobDetails.errors.rolesRequired"),
-        });
-      }
-      const canliOyun = data.departmanlar.some(
-        (d) => d.value === "Casino Canlı Oyun"
-      );
-      if (
-        canliOyun &&
-        (!data.kagitOyunlari || data.kagitOyunlari.length === 0)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["kagitOyunlari"],
-          message: t("jobDetails.errors.cardGamesRequired"),
-        });
-      }
+  /* ---------- Zod Schema ---------- */
+  const schema = useMemo(() => {
+    const optionSchema = z.object({ value: z.string(), label: z.string() });
+    const roleOptionSchema = z.object({
+      value: z.string(),
+      label: z.string(),
+      dept: z.string(),
     });
+    const arrayNonEmpty = (schema, msg) => z.array(schema).min(1, msg);
 
-  /* -------------------- Doğrulama Mantığı -------------------- */
-  const validateAll = (nextData = formData, { silent = false } = {}) => {
-    const res = schema.safeParse(nextData);
-    const ok = res.success;
+    return z
+      .object({
+        subeler: arrayNonEmpty(
+          optionSchema,
+          t("jobDetails.errors.branchRequired")
+        ),
+        alanlar: arrayNonEmpty(
+          optionSchema,
+          t("jobDetails.errors.areaRequired")
+        ),
+        departmanlar: arrayNonEmpty(
+          optionSchema,
+          t("jobDetails.errors.departmentRequired")
+        ),
+        programlar: arrayNonEmpty(
+          optionSchema,
+          t("jobDetails.errors.programRequired")
+        ),
+        departmanPozisyonlari: z.array(roleOptionSchema).optional().default([]),
+        kagitOyunlari: z.array(optionSchema).optional().default([]),
+        lojman: z
+          .string()
+          .refine(
+            (v) => ["Evet", "Hayır"].includes(v),
+            t("jobDetails.errors.housingRequired")
+          ),
+        tercihNedeni: z
+          .string()
+          .min(1, t("jobDetails.errors.reasonRequired"))
+          .regex(
+            /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.,]+$/u,
+            t("jobDetails.errors.reasonChars")
+          )
+          .max(500, t("jobDetails.errors.reasonMax")),
+      })
+      .superRefine((data, ctx) => {
+        const anyDeptHasRoles = data.departmanlar.some(
+          (d) => (departmentRoles[d.value] || []).length > 0
+        );
+        if (
+          anyDeptHasRoles &&
+          (!data.departmanPozisyonlari ||
+            data.departmanPozisyonlari.length === 0)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["departmanPozisyonlari"],
+            message: t("jobDetails.errors.rolesRequired"),
+          });
+        }
+        const canliOyun = data.departmanlar.some(
+          (d) => d.value === "Casino Canlı Oyun"
+        );
+        if (
+          canliOyun &&
+          (!data.kagitOyunlari || data.kagitOyunlari.length === 0)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["kagitOyunlari"],
+            message: t("jobDetails.errors.cardGamesRequired"),
+          });
+        }
+      });
+  }, [t, departmentRoles]); // optionSchema vb. içe taşındı, dependency sorunu çözüldü
 
-    if (!silent) {
-      if (!ok) {
-        const newErrors = {};
-        res.error.issues.forEach((i) => {
-          const key = i.path[0];
-          if (key && !newErrors[key]) newErrors[key] = i.message;
-        });
-        setErrors(newErrors);
-      } else {
-        setErrors({});
+  const validateAll = useCallback(
+    (nextData = formData, { silent = false } = {}) => {
+      const res = schema.safeParse(nextData);
+      const ok = res.success;
+      if (!silent) {
+        if (!ok) {
+          const newErrors = {};
+          res.error.issues.forEach((i) => {
+            if (i.path[0]) newErrors[i.path[0]] = i.message;
+          });
+          setErrors(newErrors);
+        } else {
+          setErrors({});
+        }
       }
-    }
-
-    onValidChange?.(ok);
-    return ok;
-  };
+      onValidChange?.(ok);
+      return ok;
+    },
+    [formData, onValidChange, schema]
+  );
 
   const validateField = (name, value) => {
     const next = { ...formData, [name]: value };
@@ -296,26 +327,26 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
 
   useImperativeHandle(ref, () => ({
     isValid: () => validateAll(undefined, { silent: false }),
+    fillData: (data) => {
+      if (!data) return;
+      setFormData((prev) => ({ ...prev, ...data }));
+    },
   }));
 
   useEffect(() => {
     validateAll(formData, { silent: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, i18n.language]); // dil değişince de yeniden değerlendir
+  }, [formData, validateAll]);
 
-  // --- Handlers ---
   const handleMultiChange = (key, value) => {
     const v = value || [];
-    setFormData((prev) => ({ ...prev, [key]: v }));
+    setFormData((p) => ({ ...p, [key]: v }));
     validateField(key, v);
   };
-
   const handleSingleChange = (key, value) => {
     const v = value ? value.value : "";
-    setFormData((prev) => ({ ...prev, [key]: v }));
+    setFormData((p) => ({ ...p, [key]: v }));
     validateField(key, v);
   };
-
   const onDepartmentsChange = (v) => {
     const allowedDepts = new Set((v || []).map((x) => x.value));
     const filteredRoles = (formData.departmanPozisyonlari || []).filter((r) =>
@@ -332,7 +363,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8">
-      {/* Bilgilendirme Alanı */}
       <div className="mb-6 bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 rounded-md shadow-sm">
         <p className="text-sm sm:text-base leading-relaxed">
           <strong>📋 {t("jobDetails.info.title")}</strong>{" "}
@@ -346,8 +376,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           )}
         </p>
       </div>
-
-      {/* Form Alanları */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
         <SelectField
           label={t("jobDetails.labels.branches")}
@@ -360,7 +388,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           isMulti
           styles={customStyles}
         />
-
         <SelectField
           label={t("jobDetails.labels.areas")}
           name="alanlar"
@@ -377,7 +404,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           isMulti
           styles={customStyles}
         />
-
         <SelectField
           label={t("jobDetails.labels.departments")}
           name="departmanlar"
@@ -394,7 +420,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           isMulti
           styles={customStyles}
         />
-
         <SelectField
           label={t("jobDetails.labels.roles")}
           name="departmanPozisyonlari"
@@ -411,7 +436,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           isMulti
           styles={customStyles}
         />
-
         <SelectField
           label={t("jobDetails.labels.programs")}
           name="programlar"
@@ -428,7 +452,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           isMulti
           styles={customStyles}
         />
-
         <SelectField
           label={t("jobDetails.labels.cardGames")}
           name="kagitOyunlari"
@@ -446,8 +469,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           styles={customStyles}
         />
       </div>
-
-      {/* 3. satır: Lojman + Tercih Nedeni */}
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
         <div className="lg:col-span-2">
           <SelectField
@@ -474,7 +495,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
             styles={customStyles}
           />
         </div>
-
         <div className="lg:col-span-10 flex flex-col">
           <label
             htmlFor="tercihNedeni"
@@ -483,7 +503,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
             {t("jobDetails.labels.whyUs")}{" "}
             <span className="text-red-500">*</span>
           </label>
-
           <textarea
             id="tercihNedeni"
             name="tercihNedeni"
@@ -500,7 +519,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
                 : "border-gray-300 focus:border-black"
             }`}
           />
-
           <div className="flex justify-between items-center mt-1">
             {errors.tercihNedeni ? (
               <p className="text-xs text-red-600 font-medium">
@@ -521,14 +539,12 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           </div>
         </div>
       </div>
-
-      {/* --- Önizleme --- */}
+      {/* Önizleme Bölümü (Aynı) */}
       <div className="mt-10 bg-white rounded-lg border border-gray-200 shadow-sm p-5 sm:p-6 md:p-8 transition-all">
         <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
           <FontAwesomeIcon icon={faEye} className="text-red-600 text-lg" />
           {t("jobDetails.preview.title")}
         </h3>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-sm sm:text-[15px] text-gray-700">
           {[
             {
@@ -582,7 +598,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
             </p>
           ))}
         </div>
-
         <div className="mt-4 text-xs sm:text-sm text-gray-400 italic text-right">
           <FontAwesomeIcon icon={faCircleInfo} className="mr-1 text-gray-400" />
           {t("jobDetails.preview.liveUpdate")}
@@ -592,7 +607,6 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
   );
 });
 
-/* --- Çok satırlı metni 2 satırda kesip tooltip veren yardımcı bileşen --- */
 function ClampText({ text, lines = 2 }) {
   return (
     <span
@@ -612,8 +626,6 @@ function ClampText({ text, lines = 2 }) {
     </span>
   );
 }
-
-/* --- Reusable Select Field --- */
 function SelectField({ label, error, ...props }) {
   return (
     <div className="w-full">

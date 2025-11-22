@@ -115,11 +115,7 @@ export default function Navbar() {
           <div className="flex h-16 items-center justify-between">
             {/* Sol Taraf (Logo) */}
             <div className="flex-shrink-0">
-              <img
-                src={logo}
-                alt="Chamada Group Logo"
-                className="h-10 w-auto"
-              />
+              <img src={logo} alt="Chamda Group Logo" className="h-10 w-auto" />
             </div>
 
             {/* Sağ Taraf (İkonlar) */}

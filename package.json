@@ -45,7 +45,8 @@
     "react-router-dom": "^7.9.1",
     "react-select": "^5.10.2",
     "react-toastify": "^11.0.5",
-    "sweetalert2": "^11.23.0",
+    "sweetalert2": "^11.26.3",
+    "sweetalert2-react-content": "^5.1.0",
     "tailwindcss": "^4.1.13",
     "zod": "^4.1.12",
     "zod-i18n-map": "^2.27.0"

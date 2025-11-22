@@ -4,7 +4,6 @@ import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import EducationAddModal from "../addModals/EducationAddModal";
 import { formatDate } from "../modalHooks/dateUtils";
 import useCrudTable from "../modalHooks/useCrudTable";
-
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,7 +14,6 @@ const EducationTable = forwardRef(function EducationTable(
   ref
 ) {
   const { t } = useTranslation();
-
   const notSistemaText = (val) =>
     val === "100"
       ? t("education.gradeSystem.hundred")
@@ -39,6 +37,7 @@ const EducationTable = forwardRef(function EducationTable(
 
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -58,6 +57,11 @@ const EducationTable = forwardRef(function EducationTable(
     openCreate,
     getData: () => rows,
     hasAnyRow: () => rows.length > 0,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
   }));
 
   return (
@@ -87,70 +91,35 @@ const EducationTable = forwardRef(function EducationTable(
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="bg-white border-t">
-                  <td
-                    className="px-4 py-3 font-medium text-gray-800 max-w-[100px] truncate"
-                    title={r.seviye}
-                  >
+                  <td className="px-4 py-3 truncate" title={r.seviye}>
                     {r.seviye}
                   </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    title={r.okul}
-                  >
+                  <td className="px-4 py-3 truncate" title={r.okul}>
                     {r.okul}
                   </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
-                    title={r.bolum}
-                  >
+                  <td className="px-4 py-3 truncate" title={r.bolum}>
                     {r.bolum}
                   </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[120px] truncate"
-                    title={notSistemaText(r.notSistemi)}
-                  >
+                  <td className="px-4 py-3 truncate">
                     {notSistemaText(r.notSistemi)}
                   </td>
-                  <td className="px-4 py-3 text-gray-800 max-w-[100px] truncate">
-                    {r.gano !== null && r.gano !== undefined
-                      ? Number(r.gano).toFixed(2)
-                      : t("common.dash")}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    title={formatDate(r.baslangic)}
-                  >
+                  <td className="px-4 py-3 truncate">{r.gano}</td>
+                  <td className="px-4 py-3 truncate">
                     {formatDate(r.baslangic)}
                   </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[100px] truncate"
-                    title={formatDate(r.bitis)}
-                  >
-                    {formatDate(r.bitis)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-gray-800 max-w-[180px] truncate"
-                    title={r.diplomaDurum}
-                  >
-                    {r.diplomaDurum}
-                  </td>
+                  <td className="px-4 py-3 truncate">{formatDate(r.bitis)}</td>
+                  <td className="px-4 py-3 truncate">{r.diplomaDurum}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-2">
                       <button
-                        type="button"
-                        aria-label={t("actions.update")}
-                        title={t("actions.update")}
                         onClick={() => openEdit(r)}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
+                        className="px-2 py-1 border rounded hover:bg-gray-50"
                       >
                         <FontAwesomeIcon icon={faPen} />
                       </button>
                       <button
-                        type="button"
-                        aria-label={t("actions.delete")}
-                        title={t("actions.delete")}
                         onClick={() => handleDelete(r)}
-                        className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
+                        className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                       >
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
@@ -162,7 +131,6 @@ const EducationTable = forwardRef(function EducationTable(
           </table>
         </div>
       )}
-
       <EducationAddModal
         open={modalOpen}
         mode={modalMode}
@@ -175,12 +143,7 @@ const EducationTable = forwardRef(function EducationTable(
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticEducationDB() {
-  const rows = [
-    // başlangıç verisi istersen burayı kullanabilirsin
-  ];
-  return rows;
+function staticEducationDB() {
+  return [];
 }
-
 export default EducationTable;

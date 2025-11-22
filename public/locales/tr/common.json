@@ -8,6 +8,20 @@
     "required": "Zorunlu alan",
     "requiredSuffix": "işaretli alanlar zorunludur."
   },
+  "loadProfile": {
+    "title": "Daha önce başvuruda bulundunuz mu?",
+    "description": "Mevcut kaydınızı güncellemek için onay kodunu kullanarak bilgilerinizi getirebilirsiniz.",
+    "buttonYes": "Evet, bilgilerimi getir",
+    "emailPlaceholder": "E-posta adresiniz",
+    "fetchBtn": "Getir",
+    "otpTitle": "Doğrulama Kodu",
+    "otpText": "{{email}} adresine gönderilen doğrulama kodunu giriniz (Test: 1234):",
+    "verifyBtn": "Doğrula ve Getir",
+    "emailNotFound": "Hata: Bu e-posta adresi ile kayıtlı başvuru bulunamadı.",
+    "otpRequired": "Lütfen kodu giriniz",
+    "otpInvalid": "Hatalı kod!",
+    "success": "Profil başarıyla yüklendi"
+  },
   "statusBar": {
     "title": "Zorunlu Bilgiler",
     "completed": "Tamamlandı",
@@ -44,7 +58,21 @@
     "checks": "Onay Kutuları",
     "missing": {
       "title": "Eksik Bilgi!",
-      "bodyIntro": "Lütfen aşağıdaki bölümleri doldurunuz:"
+      "bodyIntro": "Lütfen aşağıdaki bölümleri doldurunuz:",
+      "emailTitle": "E-posta Eksik",
+      "emailText": "Lütfen kişisel bilgiler kısmına e-posta adresinizi giriniz."
+    },
+    "otp": {
+        "title": "Başvuruyu Onayla",
+        "text": "Başvurunuzu tamamlamak için <b>{{email}}</b> adresine gönderilen kodu giriniz:",
+        "verifyAndSubmit": "Onayla ve Gönder"
+    },
+    "success": {
+        "title": "Tebrikler!",
+        "text": "Başvurunuz başarıyla alındı."
+    },
+    "error": {
+        "submit": "Başvuru sırasında hata oluştu."
     },
     "toast": { "success": "Başvurunuz başarıyla gönderildi!" },
     "cards": {
@@ -64,7 +92,16 @@
   },
   "common": {
     "dash": "-",
-    "select": "Seçiniz"
+    "select": "Seçiniz",
+    "actions": "İşlem",
+    "cancel": "İptal",
+    "close": "Kapat",
+    "deleteYes": "Evet, sil!",
+    "save": "Kaydet",
+    "update": "Güncelle",
+    "pleaseSelect": "Lütfen seçiniz",
+    "fillAllProperly": "Tüm zorunlu alanları doğru doldurunuz.",
+    "error": "Hata"
   },
   "certificates": {
     "table": {
@@ -132,7 +169,7 @@
       "title": "Emin misin?",
       "text": "“{{name}}” kaydını silmek istiyor musun?"
     },
-     "select": {
+      "select": {
       "choose": "Seçiniz"
     },
     "validations": {
@@ -335,15 +372,6 @@
       "rolesRequired": "Pozisyon(lar) seçiniz",
       "cardGamesRequired": "Kağıt oyunlarından en az birini seçiniz"
     }
-  },"common": {
-    "actions": "İşlem",
-    "cancel": "İptal",
-    "close": "Kapat",
-    "deleteYes": "Evet, sil!",
-    "save": "Kaydet",
-    "update": "Güncelle",
-    "pleaseSelect": "Lütfen seçiniz",
-    "fillAllProperly": "Tüm zorunlu alanları doğru doldurunuz."
   },
   "jobExp": {
     "title": { "add": "İş Deneyimi Ekle", "edit": "İş Deneyimi Düzenle" },
@@ -635,7 +663,7 @@
       "kktcDoc": ["Vatandaşlık", "Çalışma İzni", "Öğrenci Belgesi", "Belge Yok"],
       "yesNo": { "yes": "Evet", "no": "Hayır" },
       "license": { "have": "Var", "none": "Yok" },
-      "lawsuit": { "have": "Var", "none": "Yok" },
+      "lawsuit": { "have": "Evet", "none": "Hayır" },
       "military": { "done": "Yapıldı", "notDone": "Yapılmadı", "postponed": "Tecilli", "exempt": "Muaf" }
     },
     "errors": {

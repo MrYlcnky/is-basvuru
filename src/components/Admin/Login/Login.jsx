@@ -5,7 +5,6 @@ import { login } from "../../../auth/session"; // Session'dan login'i al
 import Swal from "sweetalert2";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightToBracket } from "@fortawesome/free-solid-svg-icons";
-import logo from "../../../assets/group.png"; //
 
 export default function Login() {
   const navigate = useNavigate();
@@ -56,7 +55,11 @@ export default function Login() {
           className="rounded-2xl border border-gray-800 bg-gray-900 p-8 shadow-2xl"
         >
           <div className="text-center mb-8">
-            <img src={logo} alt="Chamada Group" className="w-32 mx-auto" />
+            <img
+              src="/src/images/group.png" // Bu yolu /src/assets/group.png olarak da değiştirebilirsin
+              alt="Chamada Group"
+              className="w-32 mx-auto"
+            />
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-white">
               Admin Paneli
             </h1>

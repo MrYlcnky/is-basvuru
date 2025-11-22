@@ -1,4 +1,3 @@
-// src/components/Users/JobApplicationForm.jsx
 import { useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -17,7 +16,15 @@ import {
   faCircleXmark,
   faInfoCircle,
   faGlobe,
+  faRotateLeft,
+  faShieldHalved,
+  faEnvelope,
 } from "@fortawesome/free-solid-svg-icons";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { z } from "zod";
 
 import PersonalInformation from "./usersComponents/PersonalInformation";
 import EducationTable from "./usersComponents/EducationTable";
@@ -31,9 +38,26 @@ import JobApplicationDetails from "./usersComponents/JobApplicationDetails";
 import ApplicationConfirmSection from "./usersComponents/ApplicationConfirmSection";
 import { lockScroll } from "./modalHooks/scrollLock";
 import LanguageSwitcher from "../LanguageSwitcher";
+import { mockCVData } from "../../api/mockCVData";
 
-// YENİ LOGO IMPORTU
-// import logo from "../../assets/logo.jpg";
+const MySwal = withReactContent(Swal);
+
+// SweetAlert Konfigürasyonu (Sky Tema)
+const swalSkyConfig = {
+  background: "#1e293b",
+  color: "#fff",
+  confirmButtonColor: "#0ea5e9", // Sky-500
+  cancelButtonColor: "#475569",
+  customClass: {
+    popup: "border border-slate-700 shadow-2xl rounded-xl",
+    input:
+      "bg-slate-800 border border-slate-600 text-white focus:border-sky-500 focus:ring-0 shadow-none outline-none rounded-lg px-4 py-2",
+    confirmButton:
+      "shadow-none focus:shadow-none rounded-lg px-5 py-2.5 font-medium",
+    cancelButton:
+      "shadow-none focus:shadow-none rounded-lg px-5 py-2.5 font-medium",
+  },
+};
 
 export default function JobApplicationForm() {
   const { t } = useTranslation();
@@ -48,13 +72,17 @@ export default function JobApplicationForm() {
   const otherPersonalInformationTableRef = useRef(null);
   const jobApplicationDetailsRef = useRef(null);
 
-  // Tüm "Ekle" butonları için ortak handler:
+  // --- STATE ---
+  const [isReturningUser, setIsReturningUser] = useState(false);
+  const [returningEmail, setReturningEmail] = useState("");
+  const [emailError, setEmailError] = useState(""); // E-posta format hatası
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
   const onAddWithScrollLock = (fn) => () => {
     lockScroll();
     fn?.();
   };
 
-  /* ---------- Zorunlu Bölümler (event-driven) ---------- */
   const [statuses, setStatuses] = useState({
     personalOk: false,
     educationOk: false,
@@ -62,19 +90,29 @@ export default function JobApplicationForm() {
     jobDetailsOk: false,
   });
 
-  const onPersonalValidChange = (ok) =>
-    setStatuses((s) => (s.personalOk === ok ? s : { ...s, personalOk: ok }));
-
-  const onEducationHasRowChange = (ok) =>
-    setStatuses((s) => (s.educationOk === ok ? s : { ...s, educationOk: ok }));
-
-  const onOtherValidChange = (ok) =>
-    setStatuses((s) => (s.otherOk === ok ? s : { ...s, otherOk: ok }));
-
-  const onJobDetailsValidChange = (ok) =>
-    setStatuses((s) =>
-      s.jobDetailsOk === ok ? s : { ...s, jobDetailsOk: ok }
-    );
+  const onPersonalValidChange = useCallback(
+    (ok) =>
+      setStatuses((s) => (s.personalOk === ok ? s : { ...s, personalOk: ok })),
+    []
+  );
+  const onEducationHasRowChange = useCallback(
+    (ok) =>
+      setStatuses((s) =>
+        s.educationOk === ok ? s : { ...s, educationOk: ok }
+      ),
+    []
+  );
+  const onOtherValidChange = useCallback(
+    (ok) => setStatuses((s) => (s.otherOk === ok ? s : { ...s, otherOk: ok })),
+    []
+  );
+  const onJobDetailsValidChange = useCallback(
+    (ok) =>
+      setStatuses((s) =>
+        s.jobDetailsOk === ok ? s : { ...s, jobDetailsOk: ok }
+      ),
+    []
+  );
 
   const allRequiredOk = useMemo(
     () =>
@@ -85,43 +123,33 @@ export default function JobApplicationForm() {
     [statuses]
   );
 
-  /* ---------- Scroll-to-Section & Highlight ---------- */
-  const [, setHighlightId] = useState(null);
-
   const scrollToSection = useCallback((targetId, offset = 100) => {
     const el = document.getElementById(targetId);
     if (!el) return;
-
     const y =
       el.getBoundingClientRect().top + window.scrollY - Math.max(offset, 0);
-
     window.scrollTo({ top: y, behavior: "smooth" });
 
-    // Kısa süreli highlight (Amber tonu ile uyumlu)
-    setHighlightId(targetId);
     el.classList.add(
-      "ring-2",
-      "ring-amber-500",
-      "ring-offset-2",
-      "ring-offset-[#0f172a]", // Offset rengi arka planla aynı
+      "ring-1",
+      "ring-sky-500",
+      "ring-offset-1",
+      "ring-offset-[#0f172a]",
       "transition-all",
       "duration-500"
     );
-
     setTimeout(() => {
       el.classList.remove(
-        "ring-2",
-        "ring-amber-500",
-        "ring-offset-2",
+        "ring-1",
+        "ring-sky-500",
+        "ring-offset-1",
         "ring-offset-[#0f172a]",
         "transition-all",
         "duration-500"
       );
-      setHighlightId(null);
     }, 1600);
   }, []);
 
-  // Section id sabitleri
   const SECTION_IDS = {
     personal: "section-personal",
     education: "section-education",
@@ -129,33 +157,145 @@ export default function JobApplicationForm() {
     jobDetails: "section-jobdetails",
   };
 
+  /* --- PROFİL GETİRME İŞLEMİ (GÜNCELLENDİ) --- */
+  const handleFetchProfile = async () => {
+    setEmailError(""); // Önceki format hatalarını temizle
+
+    // 1. Zod ile Format Kontrolü (Input altında çıkar)
+    const emailSchema = z.string().email(t("personal.errors.email.invalid"));
+    const result = emailSchema.safeParse(returningEmail);
+
+    if (!result.success) {
+      // Format hatalıysa input altında göster
+      setEmailError(result.error.errors[0].message);
+      return;
+    }
+
+    setIsLoadingProfile(true);
+
+    try {
+      // 2. Veritabanı (Mock) Kontrolü: Bu e-posta kayıtlı mı?
+      // mockCVData içindeki e-posta ile eşleşiyor mu?
+      const userExists = mockCVData.personal.eposta === returningEmail;
+
+      if (!userExists) {
+        // Kayıt yoksa Toastify ile yukarıdan uyarı ver
+        toast.error(t("loadProfile.emailNotFound"), {
+          position: "top-center",
+          theme: "dark",
+        });
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      // 3. Kayıt varsa OTP Süreci Başlar
+      console.log("OTP Gönderiliyor: ", returningEmail);
+      const { value: otpCode } = await MySwal.fire({
+        ...swalSkyConfig,
+        title: t("loadProfile.otpTitle"),
+        text: t("loadProfile.otpText", { email: returningEmail }),
+        input: "text",
+        inputAttributes: { maxlength: 6, autocapitalize: "off" },
+        showCancelButton: true,
+        confirmButtonText: t("loadProfile.verifyBtn"),
+        cancelButtonText: t("actions.cancel"),
+        preConfirm: (code) => {
+          if (!code) Swal.showValidationMessage(t("loadProfile.otpRequired"));
+          if (code !== "1234")
+            Swal.showValidationMessage(t("loadProfile.otpInvalid"));
+          return code === "1234";
+        },
+      });
+
+      if (otpCode) {
+        const data = mockCVData;
+        personalInfoRef.current?.fillData?.(data.personal);
+        educationTableRef.current?.fillData?.(data.education);
+        certificatesTableRef.current?.fillData?.(data.certificates);
+        computerInformationTableRef.current?.fillData?.(data.computer);
+        languageTableRef.current?.fillData?.(data.languages);
+        jobExperiencesTableRef.current?.fillData?.(data.experience);
+        referencesTableRef.current?.fillData?.(data.references);
+        otherPersonalInformationTableRef.current?.fillData?.(data.otherInfo);
+        jobApplicationDetailsRef.current?.fillData?.(data.jobDetails);
+
+        toast.success(t("loadProfile.success"), {
+          position: "top-right",
+          theme: "dark",
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t("common.error"), { theme: "dark" });
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  /* --- GÜVENLİ BAŞVURU --- */
+  const handleSecureSubmit = async (recaptchaToken, onSuccessCallback) => {
+    const applicantEmail = personalInfoRef.current?.getEmail?.();
+
+    if (!applicantEmail) {
+      toast.error(t("confirm.missing.emailText"), {
+        position: "top-center",
+        theme: "dark",
+      });
+      return;
+    }
+
+    try {
+      const { value: otpCode } = await MySwal.fire({
+        ...swalSkyConfig,
+        title: t("confirm.otp.title"),
+        html: t("confirm.otp.text", { email: applicantEmail }),
+        input: "text",
+        inputAttributes: { maxlength: 6 },
+        showCancelButton: true,
+        confirmButtonText: t("confirm.otp.verifyAndSubmit"),
+        cancelButtonText: t("actions.cancel"),
+        preConfirm: (code) => {
+          if (!code) Swal.showValidationMessage(t("loadProfile.otpRequired"));
+          return code;
+        },
+      });
+
+      if (otpCode) {
+        if (otpCode === "1234") {
+          if (onSuccessCallback) onSuccessCallback();
+        } else {
+          toast.error(t("loadProfile.otpInvalid"), {
+            position: "top-center",
+            theme: "dark",
+          });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t("confirm.error.submit"), {
+        position: "top-center",
+        theme: "dark",
+      });
+    }
+  };
+
   return (
-    // GÜNCELLEME 1: Radial Gradient Arka Plan (Derinlik Hissi)
     <div className="min-h-screen bg-[#020617] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#334155] via-[#0f172a] to-black pb-10 shadow-2xl border-x border-gray-800/50">
-      {/* === HERO HEADER === */}
+      {/* Hero Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-black via-[#111827] to-black py-12 sm:py-16 md:py-20 shadow-2xl rounded-b-2xl text-center border-b border-gray-800">
-        {/* Sağ üst dil seçici */}
         <div className="absolute flex flex-row top-4 right-4 z-20">
           <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-gray-800/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-700 transition-colors">
-            <FontAwesomeIcon
-              icon={faGlobe}
-              className="text-gray-400"
-              aria-hidden="true"
-            />
+            <FontAwesomeIcon icon={faGlobe} className="text-gray-400" />
             <LanguageSwitcher />
           </div>
         </div>
-
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 flex flex-col items-center">
-          {/* BAŞLIKLAR */}
+        <div className="relative z-10 container mx-auto px-4 flex flex-col items-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-wider text-white drop-shadow-lg leading-tight font-sans">
             {t("hero.brand")}
           </h1>
           <h2 className="mt-3 text-lg sm:text-xl font-light text-gray-300 tracking-[0.2em] uppercase opacity-80">
             {t("hero.formTitle")}
           </h2>
-
-          {/* BİLGİ MESAJI */}
           <div className="mt-8 flex items-center gap-2 text-sm sm:text-base text-gray-400 bg-gray-900/60 px-5 py-2.5 rounded-full border border-gray-800/50 shadow-sm backdrop-blur-sm">
             <FontAwesomeIcon
               icon={faInfoCircle}
@@ -170,23 +310,106 @@ export default function JobApplicationForm() {
               <span className="text-gray-300">{t("hero.requiredSuffix")}</span>
             </span>
           </div>
-
-          {/* Dekoratif Çizgi */}
           <div className="mt-10 w-24 h-1 bg-gradient-to-r from-transparent via-gray-700 to-transparent rounded-full opacity-60" />
         </div>
-
-        {/* Arka plan dekoratif glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-transparent via-amber-900/5 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-transparent via-sky-900/5 to-transparent pointer-events-none" />
       </div>
 
-      {/* === Zorunlu Bilgiler (Sticky Status Bar) === */}
+      {/* Load Profile Section */}
+      <div className="container mx-auto px-3 sm:px-6 lg:px-10 mt-8">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-sky-500/20 shadow-lg p-1 overflow-hidden relative group transition-all duration-300 hover:border-sky-500/40">
+          <div className="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
+          <div className="p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-sky-500/10 p-2 rounded-lg text-sky-500">
+                  <FontAwesomeIcon icon={faRotateLeft} size="lg" />
+                </div>
+                <h3 className="text-lg font-bold text-white">
+                  {t("loadProfile.title")}
+                </h3>
+              </div>
+              <p className="text-slate-400 text-sm pl-12 max-w-xl">
+                {t("loadProfile.description")}
+              </p>
+            </div>
+            <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-start gap-3">
+              {!isReturningUser ? (
+                <button
+                  onClick={() => setIsReturningUser(true)}
+                  className="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all text-sm border border-slate-600 hover:border-sky-500/50 "
+                >
+                  {t("loadProfile.buttonYes")}
+                </button>
+              ) : (
+                <div className="flex flex-col w-full sm:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <p className="text-white"> test mail: mehmet@gmail.com </p>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
+                        <FontAwesomeIcon icon={faEnvelope} />
+                      </span>
+                      <input
+                        type="email"
+                        placeholder={t("loadProfile.emailPlaceholder")}
+                        value={returningEmail}
+                        onChange={(e) => {
+                          setReturningEmail(e.target.value);
+                          if (emailError) setEmailError("");
+                        }}
+                        className={`pl-10 pr-4 py-2.5 w-full sm:w-64 bg-slate-950 border rounded-lg text-white placeholder-gray-500 outline-none text-sm transition-colors ${
+                          emailError
+                            ? "border-red-500 focus:border-red-500"
+                            : "border-slate-600 focus:border-sky-500"
+                        }`}
+                      />
+                    </div>
+                    <button
+                      onClick={handleFetchProfile}
+                      disabled={isLoadingProfile}
+                      className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-sm transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-visible:outline-none focus:ring-1 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-900"
+                    >
+                      {isLoadingProfile ? (
+                        <span className="animate-spin h-4 w-4 border-1 border-t-transparent rounded-full">
+                          {" "}
+                          asdasd
+                        </span>
+                      ) : (
+                        <>
+                          <span>{t("loadProfile.fetchBtn")}</span>
+                          <FontAwesomeIcon icon={faShieldHalved} />
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsReturningUser(false);
+                        setEmailError("");
+                        setReturningEmail("");
+                      }}
+                      className="px-3 py-2 text-slate-400 hover:text-white text-sm transition-colors"
+                    >
+                      {t("actions.cancel")}
+                    </button>
+                  </div>
+                  {emailError && (
+                    <span className="text-red-400 text-xs mt-1 ml-1 animate-pulse">
+                      {emailError}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Bar */}
       <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-6">
-        {/* GÜNCELLEME 2: Daha Şeffaf ve Blur Efektli "Glassy" Bar */}
-        <div className="bg-[#1e293b]/70 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
-          {/* Sol: Genel Durum */}
+        <div className="bg-[#1e293b]/80 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
           <div className="flex items-center gap-3 border-b md:border-b-0 border-slate-700 pb-2 md:pb-0 w-full md:w-auto justify-center md:justify-start">
             <div
-              className={`w-10 h-10 flex items-center justify-center rounded-full border-2 shadow-inner ${
+              className={`w-10 h-10 flex items-center justify-center rounded-full border transition-colors ${
                 allRequiredOk
                   ? "border-green-500 bg-green-500/10 text-green-400"
                   : "border-red-500 bg-red-500/10 text-red-400"
@@ -194,11 +417,17 @@ export default function JobApplicationForm() {
             >
               <FontAwesomeIcon
                 icon={allRequiredOk ? faCheckCircle : faCircleXmark}
-                className="text-xl"
+                className={`text-xl ${
+                  allRequiredOk ? "text-green-400" : "text-red-400"
+                }`}
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+              <span
+                className={`text-xs font-bold uppercase tracking-widest ${
+                  allRequiredOk ? "text-green-400" : "text-red-400"
+                }`}
+              >
                 {t("statusBar.title")}
               </span>
               <span
@@ -212,8 +441,6 @@ export default function JobApplicationForm() {
               </span>
             </div>
           </div>
-
-          {/* Sağ: İlerleme Hapları */}
           <div className="flex flex-wrap justify-center md:justify-end gap-2 w-full md:w-auto">
             <StatusPill
               ok={statuses.personalOk}
@@ -243,7 +470,7 @@ export default function JobApplicationForm() {
         </div>
       </div>
 
-      {/* === CONTENT SECTIONS === */}
+      {/* Sections */}
       <div className="container mx-auto px-3 sm:px-6 lg:px-10 space-y-8 mt-8">
         <Section
           id={SECTION_IDS.personal}
@@ -257,7 +484,6 @@ export default function JobApplicationForm() {
             />
           }
         />
-
         <Section
           id={SECTION_IDS.education}
           icon={faGraduationCap}
@@ -282,7 +508,6 @@ export default function JobApplicationForm() {
           )}
           content={<CertificateTable ref={certificatesTableRef} />}
         />
-
         <Section
           icon={faLaptopCode}
           title={t("sections.computer")}
@@ -293,7 +518,6 @@ export default function JobApplicationForm() {
             <ComputerInformationTable ref={computerInformationTableRef} />
           }
         />
-
         <Section
           icon={faLanguage}
           title={t("sections.languages")}
@@ -302,7 +526,6 @@ export default function JobApplicationForm() {
           )}
           content={<LanguageTable ref={languageTableRef} />}
         />
-
         <Section
           icon={faBriefcase}
           title={t("sections.experience")}
@@ -311,7 +534,6 @@ export default function JobApplicationForm() {
           )}
           content={<JobExperiencesTable ref={jobExperiencesTableRef} />}
         />
-
         <Section
           icon={faPhoneVolume}
           title={t("sections.references")}
@@ -333,7 +555,6 @@ export default function JobApplicationForm() {
             />
           }
         />
-
         <Section
           id={SECTION_IDS.jobDetails}
           icon={faFileSignature}
@@ -347,7 +568,6 @@ export default function JobApplicationForm() {
           }
         />
 
-        {/* Başvuru onay akışı */}
         <ApplicationConfirmSection
           validatePersonalInfo={() =>
             personalInfoRef.current?.isValid?.() ?? false
@@ -357,53 +577,41 @@ export default function JobApplicationForm() {
           validateJobDetails={() =>
             jobApplicationDetailsRef.current?.isValid?.() ?? false
           }
+          onSubmit={handleSecureSubmit}
         />
       </div>
     </div>
   );
 }
 
-/* ---------- Status Pill (Modernize Edilmiş) ---------- */
 function StatusPill({ ok, label, icon, onClick }) {
-  let cls =
-    "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-200 select-none focus:outline-none cursor-pointer active:scale-95";
-
-  // Varsayılan
   let colors =
     "bg-[#1e293b] border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white";
-
-  if (ok === true) {
-    // Yeşil Glow
+  if (ok === true)
     colors =
-      "bg-green-900/20 border-green-500/40 text-green-400 hover:bg-green-900/40 hover:text-green-300 shadow-[0_0_10px_rgba(74,222,128,0.1)]";
-  } else if (ok === false) {
-    // Kırmızı Glow
+      "bg-green-900/20 border-green-500/30 text-green-400 hover:bg-green-900/30 hover:text-green-300";
+  else if (ok === false)
     colors =
-      "bg-red-900/20 border-red-500/40 text-red-400 hover:bg-red-900/40 hover:text-red-300 shadow-[0_0_10px_rgba(248,113,113,0.1)]";
-  }
-
+      "bg-red-900/20 border-red-500/30 text-red-400 hover:bg-red-900/30 hover:text-red-300";
   return (
     <button
       type="button"
-      className={`${cls} ${colors}`}
-      title={`${label} bölümüne git`}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-200 select-none focus:outline-none cursor-pointer active:scale-95 ${colors}`}
       onClick={onClick}
     >
-      <FontAwesomeIcon icon={icon} className="text-sm" />
+      <FontAwesomeIcon icon={icon} className="text-sm" />{" "}
       <span className="hidden md:inline">{label}</span>
     </button>
   );
 }
 
-/* --- Section Template (Güncellenmiş: Amber Buton & Yumuşak İçerik) --- */
 function Section({ id, icon, title, required = false, onAdd, content }) {
   const { t } = useTranslation();
   return (
     <div
       id={id}
-      className="bg-[#1e293b] rounded-xl border border-slate-700 shadow-lg overflow-hidden transition-all hover:border-slate-600 hover:shadow-2xl"
+      className="bg-[#1e293b] rounded-xl border border-slate-700 shadow-lg overflow-hidden transition-all hover:border-slate-600"
     >
-      {/* Kart Başlığı */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-5 sm:px-6 py-5 border-b border-slate-700/80">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-900/50 border border-slate-700 shadow-inner">
@@ -412,34 +620,23 @@ function Section({ id, icon, title, required = false, onAdd, content }) {
               className="text-slate-300 text-lg sm:text-xl shrink-0"
             />
           </div>
-
           <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-100 truncate flex items-center gap-2 tracking-tight">
-            {title}
+            {title}{" "}
             {required && (
-              <span
-                className="text-red-400 text-sm align-top"
-                title={t("hero.required")}
-              >
-                *
-              </span>
+              <span className="text-red-400 text-sm align-top">*</span>
             )}
           </h4>
         </div>
-
-        {/* GÜNCELLEME 3: Amber (Gold) Buton - Temaya Uyumlu */}
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg shadow-lg shadow-amber-900/20 transition-all duration-200 focus:outline-none text-sm active:scale-95 border border-amber-500/20"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg shadow-md transition-all duration-200 focus:outline-none text-sm active:scale-95 border border-sky-500/20"
           >
-            <FontAwesomeIcon icon={faPlus} />
-            <span>{t("actions.add")}</span>
+            <FontAwesomeIcon icon={faPlus} /> <span>{t("actions.add")}</span>
           </button>
         )}
       </div>
-
-      {/* GÜNCELLEME 4: İçerik Alanı (Yumuşatılmış Kontrast) */}
       <div className="overflow-x-auto bg-slate-50 text-slate-800 border-t border-slate-200/50">
         {content}
       </div>

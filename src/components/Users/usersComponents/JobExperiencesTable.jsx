@@ -1,7 +1,6 @@
-// components/Users/usersComponents/JobExperiencesTable.jsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import Swal from "sweetalert2";
@@ -12,7 +11,6 @@ import useCrudTable from "../modalHooks/useCrudTable";
 import JobExperiencesAddModal from "../addModals/JobExperiencesAddModal";
 import { formatDate } from "../modalHooks/dateUtils";
 
-// Basit para gösterimi: 2500 -> 2.500
 const formatMoney = (val) => {
   if (val == null || val === "") return "-";
   const n = Number(String(val).replace(",", "."));
@@ -20,10 +18,12 @@ const formatMoney = (val) => {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
-const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
+const JobExperiencesTable = forwardRef(function JobExperiencesTable(
+  { onValidChange },
+  ref
+) {
   const { t } = useTranslation();
 
-  // Silme onayı
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
       title: t("jobExp.confirm.title"),
@@ -40,12 +40,11 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
     return res.isConfirmed;
   };
 
-  // bildirim
   const notify = (msg) => toast.success(msg);
 
-  // CRUD hook
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -57,10 +56,20 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
     handleDelete,
   } = useCrudTable(staticJobExperiencesTableDB, { confirmDelete, notify });
 
-  // parent'tan butonla modal açmak için
-  useImperativeHandle(ref, () => ({ openCreate }));
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
 
-  // tabloda başka aktif iş var mı?
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
+  }));
+
   const anyActive = rows.some(
     (r) => r?.halenCalisiyor === true || !r?.bitisTarihi
   );
@@ -206,11 +215,8 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(_, ref) {
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticJobExperiencesTableDB() {
-  const rows = [
-    /* örnek başlangıç verileri */
-  ];
+function staticJobExperiencesTableDB() {
+  const rows = [];
   return rows;
 }
 

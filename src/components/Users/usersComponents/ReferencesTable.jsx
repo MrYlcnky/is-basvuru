@@ -1,7 +1,6 @@
-// components/Users/usersComponents/ReferencesTable.jsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import Swal from "sweetalert2";
@@ -10,7 +9,10 @@ import "react-toastify/dist/ReactToastify.css";
 import ReferenceAddModal from "../addModals/ReferenceAddModal";
 import useCrudTable from "../modalHooks/useCrudTable";
 
-const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
+const ReferencesTable = forwardRef(function ReferencesTable(
+  { onValidChange },
+  ref
+) {
   const { t } = useTranslation();
 
   const confirmDelete = async (row) => {
@@ -32,6 +34,7 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
 
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -43,7 +46,19 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
     handleDelete,
   } = useCrudTable(staticReferencesDB, { confirmDelete, notify });
 
-  useImperativeHandle(ref, () => ({ openCreate }));
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
+
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
+  }));
 
   return (
     <div className="">
@@ -149,21 +164,8 @@ const ReferencesTable = forwardRef(function ReferencesTable(_, ref) {
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticReferencesDB() {
-  const rows = [
-    /* örnek:
-    {
-      id: 1,
-      calistigiKurum: "In-house / Group",
-      referansAdi: "Mehmet",
-      referansSoyadi: "Yalçınkaya",
-      referansIsYeri: "Chamada Girne",
-      referansGorevi: "IT",
-      referansTelefon: "+90 5XX XXX XX XX",
-    },
-    */
-  ];
+function staticReferencesDB() {
+  const rows = [];
   return rows;
 }
 

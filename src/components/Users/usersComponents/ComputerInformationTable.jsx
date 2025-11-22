@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useEffect } from "react";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,7 +10,7 @@ import ComputerInformationAddModal from "../addModals/ComputerInformationAddModa
 import useCrudTable from "../modalHooks/useCrudTable";
 
 const ComputerInformationTable = forwardRef(function ComputerInformationTable(
-  _,
+  { onValidChange },
   ref
 ) {
   const { t } = useTranslation();
@@ -32,6 +32,7 @@ const ComputerInformationTable = forwardRef(function ComputerInformationTable(
 
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -43,7 +44,19 @@ const ComputerInformationTable = forwardRef(function ComputerInformationTable(
     handleDelete,
   } = useCrudTable(staticComputerInformationDB, { confirmDelete, notify });
 
-  useImperativeHandle(ref, () => ({ openCreate }));
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
+
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
+  }));
 
   return (
     <div>
@@ -115,11 +128,8 @@ const ComputerInformationTable = forwardRef(function ComputerInformationTable(
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticComputerInformationDB() {
-  const rows = [
-    // örnek satırlar opsiyonel
-  ];
+function staticComputerInformationDB() {
+  const rows = [];
   return rows;
 }
 

@@ -1,7 +1,6 @@
-// components/Users/usersComponents/CertificatesTable.jsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useEffect } from "react";
 import CertificatesAddModal from "../addModals/CertificatesAddModal";
 import { formatDate } from "../modalHooks/dateUtils";
 import useCrudTable from "../modalHooks/useCrudTable";
@@ -11,7 +10,10 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const CertificateTable = forwardRef(function CertificateTable(_, ref) {
+const CertificateTable = forwardRef(function CertificateTable(
+  { onValidChange },
+  ref
+) {
   const { t } = useTranslation();
 
   const confirmDelete = async (row) => {
@@ -34,6 +36,7 @@ const CertificateTable = forwardRef(function CertificateTable(_, ref) {
 
   const {
     rows,
+    setRows,
     modalOpen,
     modalMode,
     selectedRow,
@@ -48,7 +51,19 @@ const CertificateTable = forwardRef(function CertificateTable(_, ref) {
     notify: (m) => notify(m || t("toast.saved")),
   });
 
-  useImperativeHandle(ref, () => ({ openCreate }));
+  useEffect(() => {
+    onValidChange?.(rows.length > 0);
+  }, [rows, onValidChange]);
+
+  useImperativeHandle(ref, () => ({
+    openCreate,
+    getData: () => rows,
+    fillData: (data) => {
+      if (Array.isArray(data)) {
+        setRows(data);
+      }
+    },
+  }));
 
   const dash = t("common.dash");
 
@@ -143,7 +158,6 @@ const CertificateTable = forwardRef(function CertificateTable(_, ref) {
         </div>
       )}
 
-      {/* Modal (controlled) */}
       <CertificatesAddModal
         open={modalOpen}
         mode={modalMode}
@@ -156,11 +170,8 @@ const CertificateTable = forwardRef(function CertificateTable(_, ref) {
   );
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function staticCertificatesDB() {
-  const rows = [
-    // örnek satırları açık bırakabilirsin
-  ];
+function staticCertificatesDB() {
+  const rows = [];
   return rows;
 }
 
