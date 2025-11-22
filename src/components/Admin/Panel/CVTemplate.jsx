@@ -1,4 +1,3 @@
-// src/components/Admin/Panel/CVTemplate.jsx
 import React from "react";
 import { mockCVData } from "../../../api/mockCVData";
 import {
@@ -20,17 +19,15 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDate } from "../../Users/modalHooks/dateUtils";
 
-// === YARDIMCI BİLEŞENLER (PDF Şablonu için) ===
+// === YARDIMCI BİLEŞENLER ===
 
-// Ana Başlık (örn: İŞ DENEYİMİ)
 const Section = ({ title, icon, children }) => (
-  // --- GÜNCELLEME: Kesilmeyi önlemek için paddingTop/Bottom eklendi ---
   <div
     className="pdf-section"
     style={{
-      marginTop: "12px", // Azaltıldı
-      paddingTop: "12px", // Tampon bölge
-      paddingBottom: "12px", // Tampon bölge
+      marginTop: "20px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
       breakInside: "avoid",
     }}
   >
@@ -38,63 +35,78 @@ const Section = ({ title, icon, children }) => (
       style={{
         display: "flex",
         alignItems: "center",
-        fontSize: "1.125rem", // 18px
+        fontSize: "1.25rem",
         fontWeight: "700",
-        color: "#1F2937", // text-gray-800
-        borderBottom: "2px solid #D1D5DB", // border-gray-300
-        paddingBottom: "4px",
-        marginBottom: "12px",
+        color: "#111827",
+        borderBottom: "2px solid #E5E7EB",
+        paddingBottom: "8px",
+        marginBottom: "16px",
       }}
     >
-      <FontAwesomeIcon
-        icon={icon}
+      <span
         style={{
-          width: "20px",
-          height: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "32px",
+          height: "32px",
+          backgroundColor: "#F3F4F6",
+          borderRadius: "6px",
           marginRight: "12px",
-          color: "#4B5563", // text-gray-600
         }}
-      />
+      >
+        <FontAwesomeIcon
+          icon={icon}
+          style={{ width: "16px", height: "16px", color: "#4B5563" }}
+        />
+      </span>
       {title.toUpperCase()}
     </h2>
-    <div style={{ fontSize: "0.875rem", color: "#374151" }}>{children}</div>
+    <div style={{ fontSize: "0.925rem", color: "#374151", lineHeight: "1.5" }}>
+      {children}
+    </div>
   </div>
 );
-// --- /GÜNCELLEME ---
 
-// Etiket-Değer çifti (örn: Adı: Mehmet)
 const Row = ({ label, value, colSpan = false }) => (
   <div
     style={{
       display: "flex",
-      marginBottom: "6px",
-      gridColumn: colSpan ? "span 3 / span 3" : "span 1 / span 1",
+      flexDirection: "column",
+      marginBottom: "12px",
+      gridColumn: colSpan ? "span 3" : "span 1",
     }}
   >
     <span
       style={{
-        width: "33.3333%",
-        minWidth: "120px",
+        fontSize: "0.75rem",
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
         fontWeight: "600",
-        color: "#4B5563", // text-gray-600
+        color: "#6B7280",
+        marginBottom: "4px",
       }}
     >
       {label}
     </span>
     <span
-      style={{ width: "66.6667%", color: "#1F2937", wordBreak: "break-word" }}
+      style={{
+        fontSize: "0.95rem",
+        fontWeight: "500",
+        color: "#111827",
+        wordBreak: "break-word",
+      }}
     >
       {value || "-"}
     </span>
   </div>
 );
 
-// Tablo (Eğitim, Deneyim vb. için)
 const Table = ({ headers, rows }) => {
-  if (rows.length === 0) {
+  if (!rows || rows.length === 0) {
     return (
       <p
-        style={{ fontSize: "0.875rem", color: "#6B7280", fontStyle: "italic" }}
+        style={{ fontSize: "0.875rem", color: "#9CA3AF", fontStyle: "italic" }}
       >
         Veri girilmemiş.
       </p>
@@ -103,25 +115,23 @@ const Table = ({ headers, rows }) => {
   return (
     <table
       style={{
-        minWidth: "100%",
-        fontSize: "0.875rem",
+        width: "100%",
         borderCollapse: "collapse",
-        border: "1px solid #D1D5DB", // border-gray-300
+        fontSize: "0.875rem",
       }}
     >
       <thead>
-        <tr style={{ backgroundColor: "#F3F4F6" }}>
-          {" "}
-          {/* bg-gray-100 */}
+        <tr style={{ borderBottom: "2px solid #E5E7EB" }}>
           {headers.map((h, i) => (
             <th
               key={i}
               style={{
-                padding: "8px 12px",
+                padding: "12px 8px",
                 textAlign: "left",
                 fontWeight: "600",
-                color: "#4B5563", // text-gray-600
-                border: "1px solid #D1D5DB",
+                color: "#374151",
+                fontSize: "0.8rem",
+                textTransform: "uppercase",
               }}
             >
               {h}
@@ -134,17 +144,17 @@ const Table = ({ headers, rows }) => {
           <tr
             key={i}
             style={{
-              borderBottom: "1px solid #E5E7EB", // border-gray-200
-              breakInside: "avoid", // CSS denemesi
+              borderBottom: "1px solid #F3F4F6",
+              breakInside: "avoid",
             }}
           >
             {row.map((cell, j) => (
               <td
                 key={j}
                 style={{
-                  padding: "8px 12px",
-                  color: "#1F2937", // text-gray-800
-                  border: "1px solid #D1D5DB",
+                  padding: "12px 8px",
+                  color: "#4B5563",
+                  verticalAlign: "top",
                 }}
               >
                 {cell || "-"}
@@ -156,165 +166,218 @@ const Table = ({ headers, rows }) => {
     </table>
   );
 };
-// === /YARDIMCI BİLEŞENLER ===
+
+// === ANA BİLEŞEN ===
 
 export default function CVTemplate({ data }) {
   const cv = data || mockCVData;
-  const {
-    personal,
-    jobDetails,
-    experience,
-    education,
-    languages,
-    computer,
-    certificates,
-    references,
-    otherInfo,
-    notes,
-  } = cv;
+
+  // Güvenli veri erişimi
+  const personal = cv.personal || {};
+  const jobDetails = cv.jobDetails || {};
+  const experience = cv.experience || [];
+  const education = cv.education || [];
+  const languages = cv.languages || [];
+  const computer = cv.computer || [];
+  const certificates = cv.certificates || [];
+  const references = cv.references || [];
+  const otherInfo = cv.otherInfo || {};
+  const notes = cv.notes || [];
+
+  // Rolleri güvenli şekilde al
+  const rolesDisplay = Array.isArray(cv.roles)
+    ? cv.roles.join(" / ")
+    : (jobDetails.departmanPozisyonlari || [])
+        .map((p) => p.label)
+        .join(" / ") || "-";
 
   return (
     <div
       id="cv-to-print"
       style={{
         width: "100%",
+        maxWidth: "210mm",
+        margin: "0 auto",
         backgroundColor: "#FFFFFF",
-        color: "#333333",
-        padding: "40px",
-        fontFamily: "Arial, sans-serif",
-        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+        color: "#1F2937",
+        // Kenar boşlukları artırıldı (Kesilmeyi önler)
+        padding: "50px 40px",
+        fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        lineHeight: "1.5",
+        boxSizing: "border-box",
       }}
     >
-      {/* === 1. BAŞLIK (Ad, Foto, İletişim) === */}
-      <header
-        className="pdf-section" // Etiket
+      {/* === BAŞLIK (HEADER) - TABLO YAPISI (Kaymayı Önler) === */}
+      <table
         style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          paddingBottom: "24px",
-          borderBottom: "2px solid #6B7280",
-          paddingTop: "12px", // Tampon bölge
+          width: "100%",
+          borderCollapse: "collapse",
+          marginBottom: "30px",
+          borderBottom: "3px solid #111827",
         }}
       >
-        <div style={{ width: "75%" }}>
-          <h1
-            style={{
-              fontSize: "2.25rem",
-              fontWeight: "700",
-              color: "#111827",
-            }}
-          >
-            {personal.ad} {personal.soyad}
-          </h1>
-          <p
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: "300",
-              color: "#374151",
-              marginTop: "8px",
-            }}
-          >
-            {cv.roles.join(" / ")}
-          </p>
-
-          <div
-            style={{
-              marginTop: "24px",
-              fontSize: "0.875rem",
-              color: "#4B5563",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "8px",
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faPhone}
-                style={{ width: "16px", height: "16px", marginRight: "12px" }}
-              />
-              <span>{personal.telefon}</span>
-              {personal.whatsapp && (
-                <span style={{ marginLeft: "16px" }}>
-                  (WhatsApp: {personal.whatsapp})
-                </span>
-              )}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "8px",
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faEnvelope}
-                style={{ width: "16px", height: "16px", marginRight: "12px" }}
-              />
-              <span>{personal.eposta}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-start" }}>
-              <FontAwesomeIcon
-                icon={faMapMarkerAlt}
+        <tbody>
+          <tr>
+            {/* SOL TARAF: İSİM ve İLETİŞİM */}
+            <td style={{ verticalAlign: "top", paddingBottom: "30px" }}>
+              <h1
                 style={{
-                  width: "16px",
-                  height: "16px",
-                  marginRight: "12px",
-                  marginTop: "4px",
+                  fontSize: "2.5rem",
+                  fontWeight: "800",
+                  color: "#111827",
+                  margin: "0 0 8px 0",
+                  lineHeight: "1.1",
                 }}
-              />
-              <span>{personal.adres}</span>
-            </div>
-          </div>
-        </div>
-        <div
-          style={{ width: "25%", display: "flex", justifyContent: "flex-end" }}
-        >
-          {personal.foto ? (
-            <img
-              src={personal.foto}
-              alt="Profil"
+              >
+                {personal.ad} {personal.soyad}
+              </h1>
+              <p
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: "500",
+                  color: "#4B5563",
+                  margin: "0 0 24px 0",
+                }}
+              >
+                {rolesDisplay}
+              </p>
+
+              {/* İletişim Bilgileri Tablosu */}
+              <table style={{ width: "100%" }}>
+                <tbody>
+                  <tr>
+                    <td
+                      style={{
+                        width: "24px",
+                        verticalAlign: "middle",
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faPhone}
+                        style={{ color: "#6B7280" }}
+                      />
+                    </td>
+                    <td
+                      style={{
+                        color: "#374151",
+                        fontSize: "0.925rem",
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      {personal.telefon}
+                      {personal.whatsapp && (
+                        <span style={{ color: "#9CA3AF", marginLeft: "8px" }}>
+                          • WA: {personal.whatsapp}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        width: "24px",
+                        verticalAlign: "middle",
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faEnvelope}
+                        style={{ color: "#6B7280" }}
+                      />
+                    </td>
+                    <td
+                      style={{
+                        color: "#374151",
+                        fontSize: "0.925rem",
+                        paddingBottom: "8px",
+                      }}
+                    >
+                      {personal.eposta}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      style={{
+                        width: "24px",
+                        verticalAlign: "top",
+                        paddingTop: "2px",
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faMapMarkerAlt}
+                        style={{ color: "#6B7280" }}
+                      />
+                    </td>
+                    <td
+                      style={{
+                        color: "#374151",
+                        fontSize: "0.925rem",
+                        lineHeight: "1.4",
+                      }}
+                    >
+                      {personal.adres}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+
+            {/* SAĞ TARAF: FOTOĞRAF */}
+            <td
               style={{
-                width: "128px",
-                height: "160px",
-                objectFit: "cover",
-                border: "4px solid #E5E7EB",
-                borderRadius: "0.25rem",
-              }}
-              crossOrigin="anonymous"
-            />
-          ) : (
-            <div
-              style={{
-                width: "128px",
-                height: "160px",
-                border: "4px solid #E5E7EB",
-                borderRadius: "0.25rem",
-                backgroundColor: "#F3F4F6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: "160px",
+                verticalAlign: "top",
+                textAlign: "right",
+                paddingBottom: "30px",
               }}
             >
-              <FontAwesomeIcon
-                icon={faUser}
-                style={{ width: "64px", height: "64px", color: "#9CA3AF" }}
-              />
-            </div>
-          )}
-        </div>
-      </header>
+              {personal.foto ? (
+                <img
+                  src={personal.foto}
+                  alt="Profil"
+                  style={{
+                    width: "140px",
+                    height: "160px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    border: "1px solid #E5E7EB",
+                    display: "inline-block",
+                  }}
+                  crossOrigin="anonymous"
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "140px",
+                    height: "160px",
+                    borderRadius: "8px",
+                    backgroundColor: "#F3F4F6",
+                    border: "1px solid #E5E7EB",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginLeft: "auto",
+                  }}
+                >
+                  <FontAwesomeIcon
+                    icon={faUser}
+                    style={{ width: "64px", height: "64px", color: "#D1D5DB" }}
+                  />
+                </div>
+              )}
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
       {/* === 1. KİŞİSEL BİLGİLER === */}
       <Section title="Kişisel Bilgiler" icon={faUser}>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: "16px 24px",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "16px",
           }}
         >
           <Row label="Doğum Tarihi" value={formatDate(personal.dogumTarihi)} />
@@ -324,11 +387,13 @@ export default function CVTemplate({ data }) {
           <Row label="Uyruk" value={personal.uyruk} />
           <Row
             label="Doğum Yeri"
-            value={`${personal.dogumSehir}, ${personal.dogumUlke}`}
+            value={`${personal.dogumSehir || ""}, ${personal.dogumUlke || ""}`}
           />
           <Row
             label="İkamet Yeri"
-            value={`${personal.ikametSehir}, ${personal.ikametUlke}`}
+            value={`${personal.ikametSehir || ""}, ${
+              personal.ikametUlke || ""
+            }`}
             colSpan={true}
           />
         </div>
@@ -346,7 +411,7 @@ export default function CVTemplate({ data }) {
             "Durum",
             "GANO",
           ]}
-          rows={(education || []).map((e) => [
+          rows={education.map((e) => [
             e.seviye,
             e.okul,
             e.bolum,
@@ -368,7 +433,7 @@ export default function CVTemplate({ data }) {
             "Veriliş Tarihi",
             "Geçerlilik Tarihi",
           ]}
-          rows={(certificates || []).map((c) => [
+          rows={certificates.map((c) => [
             c.ad,
             c.kurum,
             c.sure,
@@ -382,7 +447,7 @@ export default function CVTemplate({ data }) {
       <Section title="Bilgisayar Bilgileri" icon={faLaptopCode}>
         <Table
           headers={["Program Adı", "Yetkinlik"]}
-          rows={(computer || []).map((c) => [c.programAdi, c.yetkinlik])}
+          rows={computer.map((c) => [c.programAdi, c.yetkinlik])}
         />
       </Section>
 
@@ -397,7 +462,7 @@ export default function CVTemplate({ data }) {
             "Yazma",
             "Nasıl Öğrenildi",
           ]}
-          rows={(languages || []).map((l) => [
+          rows={languages.map((l) => [
             l.dil,
             l.konuşma,
             l.dinleme,
@@ -419,7 +484,7 @@ export default function CVTemplate({ data }) {
             "Bitiş",
             "Ayrılış Nedeni",
           ]}
-          rows={(experience || []).map((e) => [
+          rows={experience.map((e) => [
             e.isAdi,
             e.departman,
             e.pozisyon,
@@ -434,7 +499,7 @@ export default function CVTemplate({ data }) {
       <Section title="Referanslar" icon={faPhoneVolume}>
         <Table
           headers={["Ad Soyad", "Kurum", "Görev", "Telefon", "Tipi"]}
-          rows={(references || []).map((r) => [
+          rows={references.map((r) => [
             `${r.referansAdi} ${r.referansSoyadi}`,
             r.referansIsYeri,
             r.referansGorevi,
@@ -449,30 +514,32 @@ export default function CVTemplate({ data }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: "16px 24px",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "16px",
           }}
         >
           <Row label="KKTC Belgesi" value={otherInfo.kktcGecerliBelge} />
           <Row label="Askerlik Durumu" value={otherInfo.askerlik} />
           <Row
             label="Ehliyet"
-            value={`${otherInfo.ehliyet} (${(
+            value={`${otherInfo.ehliyet || ""} (${(
               otherInfo.ehliyetTurleri || []
             ).join(", ")})`}
           />
           <Row
             label="Boy / Kilo"
-            value={`${otherInfo.boy} cm / ${otherInfo.kilo} kg`}
+            value={`${otherInfo.boy || "-"} cm / ${otherInfo.kilo || "-"} kg`}
           />
           <Row label="Sigara Kullanımı" value={otherInfo.sigara} />
           <Row
             label="Dava Durumu"
-            value={`${otherInfo.davaDurumu} (${otherInfo.davaNedeni || "N/A"})`}
+            value={`${otherInfo.davaDurumu || ""} (${
+              otherInfo.davaNedeni || "N/A"
+            })`}
           />
           <Row
             label="Kalıcı Rahatsızlık"
-            value={`${otherInfo.kaliciRahatsizlik} (${
+            value={`${otherInfo.kaliciRahatsizlik || ""} (${
               otherInfo.rahatsizlikAciklama || "N/A"
             })`}
             colSpan={true}
@@ -485,8 +552,8 @@ export default function CVTemplate({ data }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: "16px 24px",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "16px",
           }}
         >
           <Row
@@ -529,18 +596,24 @@ export default function CVTemplate({ data }) {
       {/* === 10. İŞLEM GEÇMİŞİ (NOTLAR) === */}
       <Section title="İşlem Geçmişi" icon={faHistory}>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {(notes || []).length > 0 ? (
+          {notes.length > 0 ? (
             notes.map((note, index) => (
               <div
                 key={index}
                 style={{
                   fontSize: "0.875rem",
-                  borderBottom: "1px solid #E5E7EB",
-                  paddingBottom: "12px",
+                  borderBottom: "1px solid #F3F4F6",
+                  paddingBottom: "10px",
                   breakInside: "avoid",
                 }}
               >
-                <p style={{ color: "#1F2937", fontStyle: "italic" }}>
+                <p
+                  style={{
+                    color: "#1F2937",
+                    fontStyle: "italic",
+                    marginBottom: "4px",
+                  }}
+                >
                   "{note.note}"
                 </p>
                 <div
@@ -548,121 +621,78 @@ export default function CVTemplate({ data }) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginTop: "6px",
                   }}
                 >
                   <span
                     style={{
                       fontSize: "0.75rem",
-                      fontWeight: "500",
+                      fontWeight: "600",
                       color: "#4B5563",
                     }}
                   >
                     - {note.user}
                   </span>
-                  <span style={{ fontSize: "0.75rem", color: "#6B7280" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#9CA3AF" }}>
                     {note.date} ({note.action})
                   </span>
                 </div>
               </div>
             ))
           ) : (
-            <p
-              style={{
-                fontSize: "0.875rem",
-                color: "#6B7280",
-                fontStyle: "italic",
-              }}
-            >
+            <p style={{ fontSize: "0.875rem", color: "#9CA3AF" }}>
               Henüz bir işlem notu yok.
             </p>
           )}
         </div>
       </Section>
 
-      {/* === 11. İMZA ALANI === */}
+      {/* === 11. İMZALAR === */}
       <Section title="Onay ve İmzalar" icon={faPenSquare}>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
-            fontFamily: "Arial, sans-serif",
-            fontSize: "0.875rem", // 14px
-            color: "#374151", // text-gray-700
+            marginTop: "30px",
           }}
         >
-          {/* İmza 1: Departman Müdürü */}
-          <div style={{ width: "30%", textAlign: "center" }}>
-            <div
-              style={{
-                borderBottom: "1px solid #4B5563", // border-gray-600
-                height: "40px",
-                marginBottom: "8px",
-              }}
-            >
-              {/* İmza için boş alan */}
-            </div>
-            <p style={{ fontWeight: "600", color: "#1F2937" }}>
-              Departman Müdürü
-            </p>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "#4B5563",
-                fontStyle: "italic",
-              }}
-            >
-              (İmza)
-            </p>
-          </div>
-
-          {/* İmza 2: Genel Müdür */}
-          <div style={{ width: "30%", textAlign: "center" }}>
-            <div
-              style={{
-                borderBottom: "1px solid #4B5563",
-                height: "40px",
-                marginBottom: "8px",
-              }}
-            >
-              {/* İmza için boş alan */}
-            </div>
-            <p style={{ fontWeight: "600", color: "#1F2937" }}>Genel Müdür</p>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "#4B5563",
-                fontStyle: "italic",
-              }}
-            >
-              (İmza)
-            </p>
-          </div>
-
-          {/* İmza 3: İnsan Kaynakları */}
-          <div style={{ width: "30%", textAlign: "center" }}>
-            <div
-              style={{
-                borderBottom: "1px solid #4B5563",
-                height: "40px",
-                marginBottom: "8px",
-              }}
-            >
-              {/* İmza için boş alan */}
-            </div>
-            <p style={{ fontWeight: "600", color: "#1F2937" }}>
-              İnsan Kaynakları
-            </p>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "#4B5563",
-                fontStyle: "italic",
-              }}
-            >
-              (İmza)
-            </p>
-          </div>
+          {["Departman Müdürü", "Genel Müdür", "İnsan Kaynakları Müdürü"].map(
+            (role) => (
+              <div
+                key={role}
+                style={{
+                  width: "30%",
+                  textAlign: "center",
+                  pageBreakInside: "avoid",
+                }}
+              >
+                <div
+                  style={{
+                    borderBottom: "1px solid #374151",
+                    height: "50px",
+                    marginBottom: "10px",
+                  }}
+                ></div>
+                <p
+                  style={{
+                    fontWeight: "700",
+                    color: "#111827",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {role}
+                </p>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6B7280",
+                    marginTop: "4px",
+                  }}
+                >
+                  (İmza)
+                </p>
+              </div>
+            )
+          )}
         </div>
       </Section>
     </div>

@@ -1,156 +1,213 @@
-// src/components/Admin/Panel/CVViewModal.jsx
-import React, { useState, useEffect } from "react"; // <--- GÜNCELLEME: useEffect eklendi
+import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faXmark,
   faDownload,
+  faTimes,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
-
-// PDF kütüphaneleri
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-
-// CV şablonumuzu kullanıyoruz
 import CVTemplate from "./CVTemplate";
 
-// Test için oluşturduğumuz sahte CV verisini import et
-import { mockCVData } from "../../../api/mockCVData";
+export default function CVViewModal({ applicationData, onClose }) {
+  const templateRef = useRef(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-export default function CVViewModal({ onClose, applicationData }) {
-  const [isLoading, setIsLoading] = useState(false);
+  const handleDownload = async () => {
+    if (!templateRef.current) return;
+    setIsDownloading(true);
 
-  // Prop olarak gelen 'applicationData'yı kullan, eğer yoksa (test aşaması) mock datayı kullan
-  const cvData = applicationData || mockCVData;
+    try {
+      // 1. Şablonu Klonla (Orijinal görünümü bozmamak için)
+      const originalElement = templateRef.current;
+      const clone = originalElement.cloneNode(true);
 
-  // --- YENİ: ESC tuşu ile kapatma ---
-  useEffect(() => {
-    const handleEsc = (event) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleEsc);
+      // A4 Boyutları (96 DPI için yaklaşık px değerleri)
+      const A4_WIDTH_PX = 794;
+      const A4_HEIGHT_PX = 1123;
+      // Sayfa altından ne kadar pay bırakılacak (Kesilmeyi önlemek için güvenli alan)
+      const PAGE_MARGIN_BOTTOM = 60;
 
-    // Component kaldırıldığında event listener'ı temizle
-    return () => {
-      window.removeEventListener("keydown", handleEsc);
-    };
-  }, [onClose]); // 'onClose' prop'u değişirse hook'u yeniden kur
-  // --- /YENİ ---
+      // Klon Ayarları (Görünmez ve A4 genişliğinde)
+      clone.style.width = `${A4_WIDTH_PX}px`;
+      clone.style.position = "absolute";
+      clone.style.top = "-10000px";
+      clone.style.left = "0";
+      clone.style.zIndex = "-1";
+      // Orijinal padding'i sıfırla, biz aşağıda yöneteceğiz
+      clone.style.padding = "0";
 
-  const handleDownloadPDF = async () => {
-    const cvElement = document.getElementById("cv-to-print");
-    if (!cvElement) {
-      console.error("Yazdırılacak CV elementi bulunamadı!");
-      return;
-    }
+      // Klonu body'ye ekle ki boyutları ölçebilelim
+      document.body.appendChild(clone);
 
-    setIsLoading(true);
+      // 2. AKILLI SAYFALAMA ALGORİTMASI
+      // Klonun içindeki ana div'i bul (CVTemplate'in root div'i)
+      const contentDiv = clone.firstElementChild;
 
-    const sections = cvElement.querySelectorAll(".pdf-section");
+      // İçerik div'ine padding verelim (Sayfa kenar boşlukları)
+      contentDiv.style.padding = "40px"; // Sağ/Sol/Üst boşluk
+      contentDiv.style.width = "100%";
+      contentDiv.style.boxSizing = "border-box";
 
-    // PDF ayarları (A4 Portre: 210mm x 297mm)
-    const pdf = new jsPDF("p", "mm", "a4");
-    const A4_WIDTH_MM = 210;
-    const A4_HEIGHT_MM = 297;
-    const MARGIN_MM = 15; // Sayfa kenar boşluğu (mm)
+      // Tüm alt elemanları (Header, Section'lar) seç
+      // Not: CVTemplate içinde her bölüm birer "div" veya "header" olarak duruyor
+      const childNodes = Array.from(contentDiv.children);
 
-    const pdfUsableWidth = A4_WIDTH_MM - MARGIN_MM * 2; // İçerik genişliği
+      let currentHeight = 40; // Başlangıçtaki üst padding (40px)
 
-    let yPosition = MARGIN_MM; // Mevcut dikey pozisyon (üst marjin ile başla)
+      childNodes.forEach((child) => {
+        const childHeight = child.offsetHeight;
+        const style = window.getComputedStyle(child);
+        const marginTop = parseInt(style.marginTop) || 0;
+        const marginBottom = parseInt(style.marginBottom) || 0;
 
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i];
-      try {
-        const canvas = await html2canvas(section, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-        });
+        // Elemanın toplam kapladığı alan (marginler dahil)
+        const totalChildHeight = childHeight + marginTop + marginBottom;
 
-        const imgData = canvas.toDataURL("image/png");
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
+        // Sayfa sonuna kalan mesafe
+        // (Mevcut yükseklik % Sayfa Boyu) -> Sayfadaki mevcut konum
+        const positionOnPage = currentHeight % A4_HEIGHT_PX;
+        const remainingOnPage = A4_HEIGHT_PX - positionOnPage;
 
-        const pdfImgHeight = (imgHeight * pdfUsableWidth) / imgWidth;
+        // EĞER bu eleman mevcut sayfaya sığmıyorsa
+        // (Ve eleman tek başına bir sayfadan büyük değilse)
+        if (
+          totalChildHeight > remainingOnPage - PAGE_MARGIN_BOTTOM &&
+          totalChildHeight < A4_HEIGHT_PX
+        ) {
+          // Araya boşluk (Spacer) ekle
+          const spacer = document.createElement("div");
+          // Boşluk yüksekliği: Kalan mesafe + Bir sonraki sayfanın üst boşluğu (40px)
+          const spacerHeight = remainingOnPage + 40;
 
-        // --- GÜNCELLENMİŞ KESME KONTROLÜ ---
-        const isTallerThanPage = pdfImgHeight > A4_HEIGHT_MM - MARGIN_MM * 2;
-        const spaceLeftOnPage = A4_HEIGHT_MM - yPosition - MARGIN_MM;
+          spacer.style.height = `${spacerHeight}px`;
+          spacer.style.display = "block";
+          spacer.style.width = "100%";
+          // Debug için (görünmez yapıyoruz ama testte red yapabilirsiniz)
+          spacer.style.backgroundColor = "transparent";
 
-        if (i > 0 && !isTallerThanPage && pdfImgHeight > spaceLeftOnPage) {
-          pdf.addPage();
-          yPosition = MARGIN_MM;
+          // Boşluğu elemandan hemen önce ekle
+          contentDiv.insertBefore(spacer, child);
+
+          // Yüksekliği güncelle (Boşluk eklendiği için imleç yeni sayfanın başına atladı)
+          // currentHeight += spacerHeight;
+          // Yeni sayfa başındayız, child oraya yerleşecek.
+          // Ancak matematiksel olarak currentHeight'i spacer kadar artırmamız yeterli.
+          currentHeight += spacerHeight;
         }
-        // --- /GÜNCELLENMİŞ KESME KONTROLÜ ---
 
-        pdf.addImage(
-          imgData,
-          "PNG",
-          MARGIN_MM,
-          yPosition,
-          pdfUsableWidth,
-          pdfImgHeight
-        );
+        // Elemanın yüksekliğini ekle
+        currentHeight += totalChildHeight;
+      });
 
-        yPosition += pdfImgHeight + 5; // 5mm bölümler arası boşluk
-      } catch (err) {
-        console.error("PDF'e bölüm eklenirken hata oluştu:", err);
+      // 3. Fotoğraf Çek (html2canvas)
+      // Klonun son yüksekliğini al
+      const totalHeight = clone.offsetHeight;
+
+      const canvas = await html2canvas(clone, {
+        scale: 2, // Yüksek kalite (Retina netliği)
+        useCORS: true,
+        width: A4_WIDTH_PX,
+        height: totalHeight,
+        windowWidth: A4_WIDTH_PX,
+        windowHeight: totalHeight,
+        // Arka planı beyaz yap (PNG transparan olmasın)
+        backgroundColor: "#ffffff",
+      });
+
+      // Klonu temizle
+      document.body.removeChild(clone);
+
+      // 4. PDF Oluştur (jsPDF)
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = 210; // mm
+      const pdfHeight = 297; // mm
+
+      // Resmin PDF üzerindeki ölçeklenmiş boyutları
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeightInPdf = (imgProps.height * pdfWidth) / imgProps.width;
+
+      let heightLeft = imgHeightInPdf;
+      let position = 0;
+
+      // İlk Sayfa
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeightInPdf);
+      heightLeft -= pdfHeight;
+
+      // Diğer Sayfalar (Varsa)
+      while (heightLeft > 0) {
+        position -= pdfHeight; // Bir sayfa boyu yukarı kaydır
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeightInPdf);
+        heightLeft -= pdfHeight;
       }
-    }
 
-    pdf.save(`${cvData.name || "aday"}-CV.pdf`);
-    setIsLoading(false);
+      // 5. İndir
+      pdf.save(`Basvuru_${applicationData?.name || "CV"}.pdf`);
+    } catch (error) {
+      console.error("PDF Hatası:", error);
+      alert("PDF oluşturulurken bir sorun oluştu.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-      {/* Arka plan overlay */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      {/* Modal İçeriği */}
-      <div className="relative w-full max-w-4xl h-full max-h-[95vh] flex flex-col rounded-2xl border border-gray-700 bg-gray-800 shadow-2xl overflow-hidden">
-        {/* Başlık */}
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-gray-700">
-          <div>
-            <h3 className="text-lg font-semibold text-white">
-              CV Önizleme: {cvData.name}
-            </h3>
-            <p className="text-xs text-gray-400">ID: {cvData.id}</p>
-          </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60  p-4 overflow-hidden">
+      <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h3 className="text-lg font-bold text-gray-800">Başvuru Önizleme</h3>
           <div className="flex items-center gap-3">
             <button
-              onClick={handleDownloadPDF}
-              disabled={isLoading}
-              className="h-10 px-4 rounded-lg border border-emerald-700 bg-emerald-600/50 hover:bg-emerald-600/80 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-all
+                ${
+                  isDownloading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg active:scale-95"
+                }
+              `}
             >
-              <FontAwesomeIcon
-                icon={isLoading ? faSpinner : faDownload}
-                className={isLoading ? "animate-spin" : ""}
-              />
-              <span className="ml-2">
-                {isLoading ? "Oluşturuluyor..." : "PDF İndir"}
-              </span>
+              {isDownloading ? (
+                <>
+                  <FontAwesomeIcon icon={faSpinner} spin /> Hazırlanıyor...
+                </>
+              ) : (
+                <>
+                  <FontAwesomeIcon icon={faDownload} /> PDF İndir
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
-              className="h-10 px-4 rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700/60 text-gray-200 cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors"
             >
-              <FontAwesomeIcon icon={faXmark} className="mr-2 w-3 h-3" />
-              Kapat
+              <FontAwesomeIcon icon={faTimes} className="text-lg" />
             </button>
           </div>
         </div>
 
-        {/* Kaydırılabilir CV Alanı (Arka plan grid oldu) */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-200">
-          {/* CVTemplate artık kendi beyaz arka planına ve ID'sine sahip */}
-          <CVTemplate data={cvData} />
+        {/* Content (Ekranda Gösterilen Önizleme) */}
+        <div className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-8 flex justify-center">
+          {/* A4 Görünümü Simülasyonu */}
+          <div
+            className="bg-white shadow-2xl"
+            style={{
+              width: "210mm",
+              minHeight: "297mm",
+              // Ekranda da PDF gibi görünsün diye padding
+              padding: "40px",
+            }}
+          >
+            <div ref={templateRef}>
+              <CVTemplate data={applicationData} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
