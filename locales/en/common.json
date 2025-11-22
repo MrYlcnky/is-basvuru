@@ -8,6 +8,20 @@
     "required": "Required field",
     "requiredSuffix": "fields are required."
   },
+  "loadProfile": {
+    "title": "Have you applied before?",
+    "description": "You can fetch your information using a verification code to update your existing record.",
+    "buttonYes": "Yes, fetch my info",
+    "emailPlaceholder": "Your email address",
+    "fetchBtn": "Fetch",
+    "otpTitle": "Verification Code",
+    "otpText": "Enter the verification code sent to {{email}} (Test: 1234):",
+    "verifyBtn": "Verify and Fetch",
+    "emailNotFound": "Error: No application found with this email address.",
+    "otpRequired": "Please enter the code",
+    "otpInvalid": "Invalid code!",
+    "success": "Profile loaded successfully"
+  },
   "statusBar": {
     "title": "Required Sections",
     "completed": "Completed",
@@ -44,7 +58,21 @@
     "checks": "Consent Checks",
     "missing": {
       "title": "Missing Information!",
-      "bodyIntro": "Please complete the sections below:"
+      "bodyIntro": "Please complete the sections below:",
+      "emailTitle": "Email Missing",
+      "emailText": "Please enter your email address in the personal information section."
+    },
+    "otp": {
+        "title": "Confirm Application",
+        "text": "Enter the code sent to <b>{{email}}</b> to complete your application:",
+        "verifyAndSubmit": "Confirm and Submit"
+    },
+    "success": {
+        "title": "Congratulations!",
+        "text": "Your application has been submitted successfully."
+    },
+    "error": {
+        "submit": "An error occurred during submission."
     },
     "toast": { "success": "Your application has been submitted successfully!" },
     "cards": {
@@ -64,7 +92,16 @@
   },
   "common": {
     "dash": "-",
-    "select": "Select"
+    "select": "Select",
+    "actions": "Actions",
+    "cancel": "Cancel",
+    "close": "Close",
+    "deleteYes": "Yes, delete!",
+    "save": "Save",
+    "update": "Update",
+    "pleaseSelect": "Please select",
+    "fillAllProperly": "Please fill all required fields properly.",
+    "error": "Error"
   },
   "certificates": {
     "table": {
@@ -132,7 +169,7 @@
       "title": "Are you sure?",
       "text": "Do you want to delete “{{name}}”?"
     },
-     "select": {
+      "select": {
       "choose": "Select"
     },
     "validations": {
@@ -200,7 +237,7 @@
     "hints": {
       "noEndWhenContinuing": "No end date is required when Continuing/Dropped."
     },
-     "select": {
+    "select": {
       "choose": "Select"
     },
     "delete": {
@@ -231,7 +268,8 @@
       "diplomaValid": "Please select a valid diploma status.",
       "formInvalid": "Please fill all required fields correctly."
     }
-  },"jobDetails": {
+  },
+  "jobDetails": {
     "info": {
       "title": "Application Details",
       "bodyBase": "In this section you can select your preferred branch, area, department and software programs.",
@@ -408,7 +446,7 @@
       "countryReq": "Job country is required.",
       "cityReq": "Job city is required."
     }
-  },"languages": {
+  }, "languages": {
     "table": {
       "language": "Language",
       "speaking": "Speaking Level",
@@ -636,7 +674,7 @@
       "kktcDoc": ["Citizenship", "Work Permit", "Student Certificate", "No Document"],
       "yesNo": { "yes": "Yes", "no": "No" },
       "license": { "have": "Have", "none": "None" },
-      "lawsuit": { "have": "Have", "none": "None" },
+      "lawsuit": { "have": "Yes", "none": "No" },
       "military": { "done": "Completed", "notDone": "Not Completed", "postponed": "Postponed", "exempt": "Exempt" }
     },
     "errors": {
