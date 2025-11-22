@@ -42,7 +42,7 @@ import { mockCVData } from "../../api/mockCVData";
 
 const MySwal = withReactContent(Swal);
 
-// SweetAlert Konfigürasyonu (Sky Tema)
+// SweetAlert Konfigürasyonu (Sky Tema - Gölgesiz Input)
 const swalSkyConfig = {
   background: "#1e293b",
   color: "#fff",
@@ -75,7 +75,7 @@ export default function JobApplicationForm() {
   // --- STATE ---
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [returningEmail, setReturningEmail] = useState("");
-  const [emailError, setEmailError] = useState(""); // E-posta format hatası
+  const [emailError, setEmailError] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const onAddWithScrollLock = (fn) => () => {
@@ -157,39 +157,41 @@ export default function JobApplicationForm() {
     jobDetails: "section-jobdetails",
   };
 
-  /* --- PROFİL GETİRME İŞLEMİ (GÜNCELLENDİ) --- */
+  /* --- PROFİL GETİRME İŞLEMİ (HIZLANDIRILMIŞ UX) --- */
   const handleFetchProfile = async () => {
-    setEmailError(""); // Önceki format hatalarını temizle
+    setEmailError("");
 
-    // 1. Zod ile Format Kontrolü (Input altında çıkar)
+    // 1. Zod Email Kontrolü
     const emailSchema = z.string().email(t("personal.errors.email.invalid"));
     const result = emailSchema.safeParse(returningEmail);
 
     if (!result.success) {
-      // Format hatalıysa input altında göster
       setEmailError(result.error.errors[0].message);
       return;
     }
 
+    // AŞAMA 1: OTP GÖNDERME SİMÜLASYONU (Sadece bu sırada spinner döner)
     setIsLoadingProfile(true);
 
+    // Kullanıcıya işlem yapıldığını hissettirmek için kısa bir bekleme (Simülasyon)
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    // Veritabanı kontrolü
+    const userExists = mockCVData.personal.eposta === returningEmail;
+
+    // Spinner'ı durdur (Modal açılmadan önce kullanıcıyı serbest bırak)
+    setIsLoadingProfile(false);
+
+    if (!userExists) {
+      toast.error(t("loadProfile.emailNotFound"), {
+        position: "top-center",
+        theme: "dark",
+      });
+      return;
+    }
+
     try {
-      // 2. Veritabanı (Mock) Kontrolü: Bu e-posta kayıtlı mı?
-      // mockCVData içindeki e-posta ile eşleşiyor mu?
-      const userExists = mockCVData.personal.eposta === returningEmail;
-
-      if (!userExists) {
-        // Kayıt yoksa Toastify ile yukarıdan uyarı ver
-        toast.error(t("loadProfile.emailNotFound"), {
-          position: "top-center",
-          theme: "dark",
-        });
-        setIsLoadingProfile(false);
-        return;
-      }
-
-      // 3. Kayıt varsa OTP Süreci Başlar
-      console.log("OTP Gönderiliyor: ", returningEmail);
+      // AŞAMA 2: MODAL AÇILIR (Spinner yok, kullanıcı rahatça yazar)
       const { value: otpCode } = await MySwal.fire({
         ...swalSkyConfig,
         title: t("loadProfile.otpTitle"),
@@ -199,7 +201,11 @@ export default function JobApplicationForm() {
         showCancelButton: true,
         confirmButtonText: t("loadProfile.verifyBtn"),
         cancelButtonText: t("actions.cancel"),
-        preConfirm: (code) => {
+        showLoaderOnConfirm: true, // Spinner sadece "Doğrula"ya basınca modal içinde döner
+        preConfirm: async (code) => {
+          // Doğrulama simülasyonu (Modal içinde spinner döner)
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
           if (!code) Swal.showValidationMessage(t("loadProfile.otpRequired"));
           if (code !== "1234")
             Swal.showValidationMessage(t("loadProfile.otpInvalid"));
@@ -227,8 +233,6 @@ export default function JobApplicationForm() {
     } catch (e) {
       console.error(e);
       toast.error(t("common.error"), { theme: "dark" });
-    } finally {
-      setIsLoadingProfile(false);
     }
   };
 
@@ -315,7 +319,7 @@ export default function JobApplicationForm() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-transparent via-sky-900/5 to-transparent pointer-events-none" />
       </div>
 
-      {/* Load Profile Section */}
+      {/* Load Profile Section (Animasyonlar Kaldırıldı - KASMA YOK) */}
       <div className="container mx-auto px-3 sm:px-6 lg:px-10 mt-8">
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl border border-sky-500/20 shadow-lg p-1 overflow-hidden relative group transition-all duration-300 hover:border-sky-500/40">
           <div className="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
@@ -337,14 +341,14 @@ export default function JobApplicationForm() {
               {!isReturningUser ? (
                 <button
                   onClick={() => setIsReturningUser(true)}
-                  className="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all text-sm border border-slate-600 hover:border-sky-500/50 "
+                  className="px-5 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all text-sm border border-slate-600 hover:border-sky-500/50"
                 >
                   {t("loadProfile.buttonYes")}
                 </button>
               ) : (
-                <div className="flex flex-col w-full sm:w-auto animate-in fade-in slide-in-from-right-4 duration-300">
+                // Animasyon sınıfları (slide-in, fade-in) kaldırıldı
+                <div className="flex flex-col w-full sm:w-auto">
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <p className="text-white"> test mail: mehmet@gmail.com </p>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none">
                         <FontAwesomeIcon icon={faEnvelope} />
@@ -367,13 +371,10 @@ export default function JobApplicationForm() {
                     <button
                       onClick={handleFetchProfile}
                       disabled={isLoadingProfile}
-                      className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-sm transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-visible:outline-none focus:ring-1 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-900"
+                      className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-sm transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus:ring-1 focus:ring-sky-500 focus:ring-offset-1 focus:ring-offset-slate-900"
                     >
                       {isLoadingProfile ? (
-                        <span className="animate-spin h-4 w-4 border-1 border-t-transparent rounded-full">
-                          {" "}
-                          asdasd
-                        </span>
+                        <span className="animate-spin h-4 w-4 border-1 border-t-transparent rounded-full"></span>
                       ) : (
                         <>
                           <span>{t("loadProfile.fetchBtn")}</span>
@@ -393,7 +394,7 @@ export default function JobApplicationForm() {
                     </button>
                   </div>
                   {emailError && (
-                    <span className="text-red-400 text-xs mt-1 ml-1 animate-pulse">
+                    <span className="text-red-400 text-xs mt-1 ml-1">
                       {emailError}
                     </span>
                   )}
@@ -408,6 +409,7 @@ export default function JobApplicationForm() {
       <div className="sticky top-4 z-40 container mx-auto px-3 sm:px-6 lg:px-10 mt-6">
         <div className="bg-[#1e293b]/80 backdrop-blur-xl rounded-xl border border-slate-700/50 shadow-2xl px-5 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-300">
           <div className="flex items-center gap-3 border-b md:border-b-0 border-slate-700 pb-2 md:pb-0 w-full md:w-auto justify-center md:justify-start">
+            {/* İKON KUTUSU: Duruma göre Kırmızı veya Yeşil */}
             <div
               className={`w-10 h-10 flex items-center justify-center rounded-full border transition-colors ${
                 allRequiredOk
@@ -417,12 +419,12 @@ export default function JobApplicationForm() {
             >
               <FontAwesomeIcon
                 icon={allRequiredOk ? faCheckCircle : faCircleXmark}
-                className={`text-xl ${
-                  allRequiredOk ? "text-green-400" : "text-red-400"
-                }`}
+                className="text-xl"
               />
             </div>
+
             <div className="flex flex-col">
+              {/* BAŞLIK: Duruma göre renk değiştiriyor */}
               <span
                 className={`text-xs font-bold uppercase tracking-widest ${
                   allRequiredOk ? "text-green-400" : "text-red-400"
@@ -430,6 +432,8 @@ export default function JobApplicationForm() {
               >
                 {t("statusBar.title")}
               </span>
+
+              {/* DURUM METNİ: Tamamlandı / Eksik */}
               <span
                 className={`text-sm font-bold ${
                   allRequiredOk ? "text-green-400" : "text-red-400"
@@ -441,6 +445,7 @@ export default function JobApplicationForm() {
               </span>
             </div>
           </div>
+
           <div className="flex flex-wrap justify-center md:justify-end gap-2 w-full md:w-auto">
             <StatusPill
               ok={statuses.personalOk}
