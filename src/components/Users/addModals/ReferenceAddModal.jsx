@@ -1,53 +1,10 @@
-// components/Users/addModals/ReferenceAddModal.jsx
 import { useEffect, useRef, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
-import { z } from "zod";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 import { useTranslation } from "react-i18next";
-
-/* -------------------- REGEX -------------------- */
-const NAME_STRICT_RE = /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/u;
-const ORG_JOB_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s'’]+$/u;
-const PHONE_RE = /^\+?[0-9\s()-]{8,20}$/;
-
-/* -------------------- ZOD ŞEMASI (i18n) -------------------- */
-const makeRefSchema = (t) =>
-  z.object({
-    calistigiKurum: z
-      .string()
-      .min(1, t("references.validations.orgTypeRequired")),
-    referansAdi: z
-      .string()
-      .trim()
-      .regex(NAME_STRICT_RE, t("references.validations.firstNameAlpha"))
-      .min(2, t("references.validations.firstNameMin"))
-      .max(50, t("references.validations.firstNameMax")),
-    referansSoyadi: z
-      .string()
-      .trim()
-      .regex(NAME_STRICT_RE, t("references.validations.lastNameAlpha"))
-      .min(2, t("references.validations.lastNameMin"))
-      .max(50, t("references.validations.lastNameMax")),
-    referansIsYeri: z
-      .string()
-      .trim()
-      .regex(ORG_JOB_RE, t("references.validations.workplaceFormat"))
-      .min(2, t("references.validations.workplaceRequired"))
-      .max(100, t("references.validations.workplaceMax")),
-    referansGorevi: z
-      .string()
-      .trim()
-      .regex(ORG_JOB_RE, t("references.validations.roleFormat"))
-      .min(2, t("references.validations.roleRequired"))
-      .max(100, t("references.validations.roleMax")),
-    referansTelefon: z
-      .string()
-      .trim()
-      .min(1, t("references.validations.phoneRequired"))
-      .regex(PHONE_RE, t("references.validations.phoneInvalid")),
-  });
+import { createReferenceSchema } from "../../../schemas/referenceSchema"; // Şema importu
 
 /* -------------------- Ortak Alan Sınıfı -------------------- */
 const FIELD_BASE =
@@ -62,7 +19,9 @@ export default function ReferenceAddModal({
   onUpdate,
 }) {
   const { t } = useTranslation();
-  const refSchema = makeRefSchema(t);
+  // Merkezi şemayı kullan
+  const refSchema = useMemo(() => createReferenceSchema(t), [t]);
+
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -134,14 +93,13 @@ export default function ReferenceAddModal({
   /* -------------------- Geçerlilik ve ipucu -------------------- */
   const isValid = useMemo(
     () => refSchema.safeParse(formData).success,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [formData, t]
+    [formData, refSchema]
   );
   const disabledTip = !isValid ? t("common.fillAllProperly") : "";
 
   /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault(); // Form submiti engelle
     const parsed = refSchema.safeParse(formData);
     if (!parsed.success) {
       const next = {};
@@ -183,8 +141,6 @@ export default function ReferenceAddModal({
     >
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         className="w-full max-w-3xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -205,8 +161,8 @@ export default function ReferenceAddModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* Form yerine DIV */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Çalıştığı Kurum */}
@@ -422,7 +378,8 @@ export default function ReferenceAddModal({
 
               {mode === "create" ? (
                 <button
-                  type="submit"
+                  type="button" // Submit değil, normal buton
+                  onClick={handleSubmit}
                   disabled={!isValid}
                   title={disabledTip}
                   className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
@@ -435,7 +392,8 @@ export default function ReferenceAddModal({
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button" // Submit değil, normal buton
+                  onClick={handleSubmit}
                   disabled={!isValid}
                   title={disabledTip}
                   className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
@@ -449,7 +407,7 @@ export default function ReferenceAddModal({
               )}
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

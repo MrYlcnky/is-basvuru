@@ -16,10 +16,10 @@ import ReCAPTCHA from "react-google-recaptcha";
 const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const ApplicationConfirmSection = ({
-  validatePersonalInfo,
-  educationRef,
-  otherInfoRef,
-  validateJobDetails,
+  isValidPersonal,
+  isValidEducation,
+  isValidOtherInfo,
+  isValidJobDetails,
   onSubmit,
 }) => {
   const { t, i18n } = useTranslation();
@@ -41,17 +41,10 @@ const ApplicationConfirmSection = ({
   const handleSubmit = async () => {
     const missingSections = [];
 
-    const personalValid = validatePersonalInfo?.() ?? false;
-    if (!personalValid) missingSections.push(t("sections.personal"));
-
-    const educationValid = (educationRef.current?.getData?.() ?? []).length > 0;
-    if (!educationValid) missingSections.push(t("sections.education"));
-
-    const otherValid = (otherInfoRef.current?.getData?.() ?? []).length > 0;
-    if (!otherValid) missingSections.push(t("sections.other"));
-
-    const jobValid = validateJobDetails?.() ?? false;
-    if (!jobValid) missingSections.push(t("sections.jobDetails"));
+    if (!isValidPersonal) missingSections.push(t("sections.personal"));
+    if (!isValidEducation) missingSections.push(t("sections.education"));
+    if (!isValidOtherInfo) missingSections.push(t("sections.other"));
+    if (!isValidJobDetails) missingSections.push(t("sections.jobDetails"));
 
     const allChecked = Object.values(checks).every(Boolean);
     if (!allChecked) missingSections.push(t("confirm.checks"));
@@ -98,8 +91,6 @@ const ApplicationConfirmSection = ({
     .toLowerCase();
 
   return (
-    // DÜZELTME: Yan paddingler (px-4 sm:px-6 lg:px-10) kaldırıldı.
-    // Böylece kutu, üstündeki kartlarla aynı hizada (container genişliğinde) olacak.
     <div className="mt-10 pb-20">
       {/* KUTU */}
       <div className="bg-[#1e293b] rounded-xl border border-slate-700 shadow-lg overflow-hidden transition-all hover:border-slate-600 hover:shadow-2xl">
@@ -112,11 +103,12 @@ const ApplicationConfirmSection = ({
             />
           </div>
           <div>
+            {/* DÜZELTME: Başlık ve açıklama çeviriye bağlandı */}
             <h3 className="text-lg font-bold text-slate-100 leading-tight">
-              Başvuru Onayı
+              {t("confirm.sectionTitle")}
             </h3>
             <p className="text-slate-400 text-sm mt-1">
-              Lütfen onay kutularını işaretleyip doğrulamayı tamamlayınız.
+              {t("confirm.sectionDesc")}
             </p>
           </div>
         </div>

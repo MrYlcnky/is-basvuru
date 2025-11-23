@@ -54,6 +54,8 @@
     "error": "Bir hata oluştu. Lütfen tekrar deneyin."
   },
   "confirm": {
+    "sectionTitle": "Başvuru Onayı",
+    "sectionDesc": "Lütfen onay kutularını işaretleyip doğrulamayı tamamlayınız.",
     "submit": "BAŞVUR",
     "checks": "Onay Kutuları",
     "missing": {
@@ -101,7 +103,11 @@
     "update": "Güncelle",
     "pleaseSelect": "Lütfen seçiniz",
     "fillAllProperly": "Tüm zorunlu alanları doğru doldurunuz.",
-    "error": "Hata"
+    "error": "Hata",
+    "areYouSure": "Emin misiniz?",
+    "clearAllWarning": "Tüm form verileri silinecek ve sıfırlanacak. Bu işlem geri alınamaz!",
+    "yesClear": "Evet, Temizle",
+    "clearFormBtn": "Formu Temizle ve Sıfırla"
   },
   "certificates": {
     "table": {

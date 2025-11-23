@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { z } from "zod";
+import { createEducationSchema } from "../../../schemas/educationSchema";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
@@ -8,12 +8,7 @@ import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 import { useTranslation } from "react-i18next";
 
-/* -------------------- Yardımcı -------------------- */
-const isValidISODate = (s) => {
-  if (!s) return false;
-  const d = new Date(s + "T00:00:00");
-  return !Number.isNaN(d.getTime());
-};
+/* -------------------- Yardımcı Fonksiyonlar -------------------- */
 const toDate = (s) => (s ? new Date(s + "T00:00:00") : null);
 
 /* -------------------- Ortak Alan Sınıfları -------------------- */
@@ -21,142 +16,6 @@ const BASE_FIELD =
   "w-full rounded-lg border px-3 py-2 transition border-gray-300 hover:border-black focus:outline-none";
 const BASE_SELECT =
   "w-full h-[43px] rounded-lg border px-3 py-2 transition border-gray-300 hover:border-black focus:outline-none cursor-pointer";
-
-/* -------------------- ZOD ŞEMASI -------------------- */
-const makeEduSchema = (t) =>
-  z
-    .object({
-      seviye: z.string().min(1, t("education.validations.levelRequired")),
-      okul: z
-        .string()
-        .trim()
-        .regex(
-          /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-          t("education.validations.schoolFormat")
-        )
-        .min(5, t("education.validations.schoolRequired"))
-        .max(100, t("education.validations.schoolMax")),
-      bolum: z
-        .string()
-        .trim()
-        .regex(
-          /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u,
-          t("education.validations.deptFormat")
-        )
-        .min(5, t("education.validations.deptRequired"))
-        .max(100, t("education.validations.deptMax")),
-      notSistemi: z.enum(["4", "100"], {
-        errorMap: () => ({ message: t("education.validations.gradeSystem") }),
-      }),
-      gano: z
-        .string()
-        .optional()
-        .refine((v) => v === "" || (!isNaN(v) && Number(v) >= 0), {
-          message: t("education.validations.gpaNumber"),
-        }),
-      baslangic: z.string().min(1, t("education.validations.startRequired")),
-      bitis: z.string().optional().default(""),
-      diplomaDurum: z
-        .string()
-        .min(1, t("education.validations.diplomaRequired"))
-        .refine(
-          (v) => ["Mezun", "Devam", "Ara Verdi", "Terk"].includes(v),
-          t("education.validations.diplomaValid")
-        ),
-    })
-    .superRefine((data, ctx) => {
-      if (!isValidISODate(data.baslangic)) {
-        ctx.addIssue({
-          path: ["baslangic"],
-          code: z.ZodIssueCode.custom,
-          message: t("education.validations.startInvalid"),
-        });
-        return;
-      }
-      const start = toDate(data.baslangic);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (start > today) {
-        ctx.addIssue({
-          path: ["baslangic"],
-          code: z.ZodIssueCode.custom,
-          message: t("education.validations.startFuture"),
-        });
-      }
-
-      const requiresEnd = ["Mezun", "Ara Verdi"].includes(data.diplomaDurum);
-
-      if (requiresEnd) {
-        if (!data.bitis || data.bitis.trim() === "") {
-          ctx.addIssue({
-            path: ["bitis"],
-            code: z.ZodIssueCode.custom,
-            message: t("education.validations.endRequired"),
-          });
-          return;
-        }
-        if (!isValidISODate(data.bitis)) {
-          ctx.addIssue({
-            path: ["bitis"],
-            code: z.ZodIssueCode.custom,
-            message: t("education.validations.endInvalid"),
-          });
-          return;
-        }
-        const end = toDate(data.bitis);
-
-        if (end > today) {
-          ctx.addIssue({
-            path: ["bitis"],
-            code: z.ZodIssueCode.custom,
-            message: t("education.validations.endFuture"),
-          });
-        }
-        if (start && end) {
-          if (
-            start.getFullYear() === end.getFullYear() &&
-            start.getMonth() === end.getMonth() &&
-            start.getDate() === end.getDate()
-          ) {
-            ctx.addIssue({
-              path: ["bitis"],
-              code: z.ZodIssueCode.custom,
-              message: t("education.validations.sameDay"),
-            });
-          }
-          if (end.getTime() < start.getTime()) {
-            ctx.addIssue({
-              path: ["bitis"],
-              code: z.ZodIssueCode.custom,
-              message: t("education.validations.endBeforeStart"),
-            });
-          }
-        }
-      }
-
-      if (data.gano && data.gano !== "") {
-        const n = Number(data.gano);
-        const max = data.notSistemi === "100" ? 100 : 4;
-        if (n > max) {
-          ctx.addIssue({
-            path: ["gano"],
-            code: z.ZodIssueCode.custom,
-            message: t("education.validations.gpaRange", { max }),
-          });
-        }
-        if (data.notSistemi === "4" && String(n).includes(".")) {
-          const decimals = String(n).split(".")[1];
-          if (decimals && decimals.length > 2) {
-            ctx.addIssue({
-              path: ["gano"],
-              code: z.ZodIssueCode.custom,
-              message: t("education.validations.gpaDecimals"),
-            });
-          }
-        }
-      }
-    });
 
 export default function EducationAddModal({
   open,
@@ -167,7 +26,7 @@ export default function EducationAddModal({
   onUpdate,
 }) {
   const { t } = useTranslation();
-  const eduSchema = makeEduSchema(t);
+  const eduSchema = useMemo(() => createEducationSchema(t), [t]);
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -255,7 +114,6 @@ export default function EducationAddModal({
         setErrors((p) => ({ ...p, bitis: "" }));
       }
     }
-
     setFormData(next);
 
     const parsed = eduSchema.safeParse(next);
@@ -270,9 +128,7 @@ export default function EducationAddModal({
       }));
     } else {
       setErrors((p) => ({ ...p, [name]: "" }));
-      if (name === "diplomaDurum") {
-        setErrors((p) => ({ ...p, bitis: "" }));
-      }
+      if (name === "diplomaDurum") setErrors((p) => ({ ...p, bitis: "" }));
     }
   };
 
@@ -280,7 +136,7 @@ export default function EducationAddModal({
   const disabledTip = !isValid ? t("education.validations.formInvalid") : "";
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault(); // Güvenlik
     const parsed = eduSchema.safeParse(formData);
     if (!parsed.success) {
       const newErrs = {};
@@ -316,7 +172,7 @@ export default function EducationAddModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30  p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onMouseDown={onBackdropClick}
     >
       <div
@@ -334,18 +190,17 @@ export default function EducationAddModal({
           <button
             type="button"
             onClick={handleClose}
-            aria-label={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 active:bg-white/25 focus:outline-none cursor-pointer"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* DÜZELTME: FORM YERİNE DIV KULLANIYORUZ (NESTED FORM SORUNU İÇİN) */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* Seviye & Okul */}
-            <div className="grid grid-cols-1  sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
                   {t("education.form.level")} *
@@ -561,36 +416,27 @@ export default function EducationAddModal({
               >
                 {t("actions.cancel")}
               </button>
-              {mode === "edit" ? (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                      : "bg-green-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.update")}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                      : "bg-blue-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.save")}
-                </button>
-              )}
+              {/* DÜZELTME: TYPE="BUTTON" ve ONCLICK KULLANIYORUZ */}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!isValid}
+                title={disabledTip}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                  isValid
+                    ? (mode === "edit"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-blue-600 hover:bg-blue-700") +
+                      " active:scale-95 cursor-pointer"
+                    : (mode === "edit" ? "bg-green-300" : "bg-blue-300") +
+                      " opacity-90 cursor-not-allowed"
+                }`}
+              >
+                {mode === "edit" ? t("actions.update") : t("actions.save")}
+              </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

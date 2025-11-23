@@ -1,6 +1,4 @@
-// components/Users/addModals/CertificatesAddModal.jsx
 import { useEffect, useRef, useState, useMemo } from "react";
-import { z } from "zod";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
@@ -8,11 +6,8 @@ import { toDateSafe, toISODate } from "../modalHooks/dateUtils";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 import { useTranslation } from "react-i18next";
+import { createCertificateSchema } from "../../../schemas/certificateSchema"; // Şema importu
 
-/* -------------------- Regex -------------------- */
-const ALNUM_TR = /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s]+$/u;
-
-/* -------------------- Input base -------------------- */
 const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
 
@@ -25,87 +20,7 @@ export default function CertificatesAddModal({
   onUpdate,
 }) {
   const { t } = useTranslation();
-
-  /* -------------------- ZOD ŞEMASI -------------------- */
-  const certSchema = useMemo(
-    () =>
-      z
-        .object({
-          ad: z
-            .string()
-            .trim()
-            .min(1, t("certificates.validations.name.required"))
-            .max(100, t("certificates.validations.name.max"))
-            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
-          kurum: z
-            .string()
-            .trim()
-            .min(1, t("certificates.validations.org.required"))
-            .max(100, t("certificates.validations.org.max"))
-            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
-          sure: z
-            .string()
-            .trim()
-            .min(1, t("certificates.validations.duration.required"))
-            .max(50, t("certificates.validations.duration.max"))
-            .regex(ALNUM_TR, t("certificates.validations.alphaNum")),
-          verilisTarihi: z.preprocess(
-            (v) => (v ? new Date(v) : null),
-            z
-              .date({
-                required_error: t("certificates.validations.issuedAt.required"),
-              })
-              .nullable()
-          ),
-          gecerlilikTarihi: z.preprocess(
-            (v) => (v ? new Date(v) : null),
-            z.date().nullable()
-          ),
-        })
-        .superRefine((data, ctx) => {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          if (!data.verilisTarihi) {
-            ctx.addIssue({
-              path: ["verilisTarihi"],
-              code: z.ZodIssueCode.custom,
-              message: t("certificates.validations.issuedAt.required"),
-            });
-            return;
-          }
-
-          if (data.verilisTarihi > today) {
-            ctx.addIssue({
-              path: ["verilisTarihi"],
-              code: z.ZodIssueCode.custom,
-              message: t("certificates.validations.issuedAt.future"),
-            });
-          }
-
-          if (data.verilisTarihi && data.gecerlilikTarihi) {
-            if (data.gecerlilikTarihi < data.verilisTarihi) {
-              ctx.addIssue({
-                path: ["gecerlilikTarihi"],
-                code: z.ZodIssueCode.custom,
-                message: t("certificates.validations.validUntil.beforeIssued"),
-              });
-            }
-            if (
-              data.gecerlilikTarihi.toDateString() ===
-              data.verilisTarihi.toDateString()
-            ) {
-              ctx.addIssue({
-                path: ["gecerlilikTarihi"],
-                code: z.ZodIssueCode.custom,
-                message: t("certificates.validations.validUntil.sameDay"),
-              });
-            }
-          }
-        }),
-    [t]
-  );
-
+  const certSchema = useMemo(() => createCertificateSchema(t), [t]);
   const dialogRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -117,7 +32,7 @@ export default function CertificatesAddModal({
   });
   const [errors, setErrors] = useState({});
 
-  /* ---------- SCROLL LOCK ---------- */
+  // Scroll Lock
   useEffect(() => {
     if (open) lockScroll();
     else unlockScroll();
@@ -129,7 +44,7 @@ export default function CertificatesAddModal({
     onClose?.();
   };
 
-  /* ---------- Modal reset ---------- */
+  // Reset Form
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -171,7 +86,15 @@ export default function CertificatesAddModal({
   const handleChange = (key, value) => {
     const updated = { ...formData, [key]: value };
     setFormData(updated);
-    const parsed = certSchema.safeParse(updated);
+
+    // Anlık validasyon (opsiyonel, kullanıcı yazarken hata görmek isterse)
+    const parsed = certSchema.safeParse({
+      ...updated,
+      // Şemadaki preprocess mantığına uymak için tarihleri Date objesi olarak gönderiyoruz
+      verilisTarihi: updated.verilisTarihi,
+      gecerlilikTarihi: updated.gecerlilikTarihi,
+    });
+
     if (!parsed.success) {
       const issue = parsed.error.issues.find((i) => i.path[0] === key);
       setErrors((p) => ({ ...p, [key]: issue ? issue.message : "" }));
@@ -181,7 +104,7 @@ export default function CertificatesAddModal({
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault(); // Güvenlik
     const parsed = certSchema.safeParse(formData);
     if (!parsed.success) {
       const newErr = {};
@@ -206,11 +129,9 @@ export default function CertificatesAddModal({
     handleClose();
   };
 
-  const parsed = certSchema.safeParse(formData);
-  const isValid = parsed.success;
-  const disabledTip = !isValid
-    ? parsed.error?.issues?.map((i) => i.message).join(" • ")
-    : "";
+  // Buton disable durumu için (Daha katı veya esnek olabilir)
+  const isValid = certSchema.safeParse(formData).success;
+  const disabledTip = !isValid ? t("common.fillAllProperly") : "";
 
   const CharCounter = ({ value, max }) => {
     const len = value?.length || 0;
@@ -226,9 +147,8 @@ export default function CertificatesAddModal({
   };
 
   const toStr = (d) => (typeof d === "string" ? d : d ? toISODate(d) : "");
-
   const handleMuiString = ({ target: { name, value } }) =>
-    handleChange(name, value || null);
+    handleChange(name, value ? new Date(value) : null);
 
   if (!open) return null;
 
@@ -252,20 +172,17 @@ export default function CertificatesAddModal({
           <button
             type="button"
             onClick={handleClose}
-            aria-label={t("actions.close")}
-            title={t("actions.close")}
             className="inline-flex items-center justify-center h-10 w-10 rounded-full hover:bg-white/15 focus:outline-none"
           >
             <FontAwesomeIcon icon={faXmark} className="text-white text-lg" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* Form yerine Div */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* Sertifika / Eğitim Adı ve Kurum */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              {/* Ad */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
                   {t("certificates.form.name")} *
@@ -288,7 +205,6 @@ export default function CertificatesAddModal({
                 </div>
               </div>
 
-              {/* Kurum */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
                   {t("certificates.form.org")} *
@@ -314,7 +230,6 @@ export default function CertificatesAddModal({
 
             {/* Süre & Veriliş Tarihi */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              {/* Süre */}
               <div className="sm:col-span-2">
                 <label className="block text-sm text-gray-600 mb-1">
                   {t("certificates.form.duration")} *
@@ -337,7 +252,6 @@ export default function CertificatesAddModal({
                 </div>
               </div>
 
-              {/* Veriliş Tarihi */}
               <div className="sm:col-span-2">
                 <MuiDateStringField
                   label={t("certificates.form.issuedAt")}
@@ -398,36 +312,25 @@ export default function CertificatesAddModal({
               >
                 {t("actions.cancel")}
               </button>
-              {mode === "edit" ? (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                      : "bg-green-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.update")}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                      : "bg-blue-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.save")}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!isValid}
+                title={disabledTip}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                  isValid
+                    ? (mode === "edit"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-blue-600 hover:bg-blue-700") +
+                      " active:scale-95 cursor-pointer"
+                    : "bg-blue-300 opacity-90 cursor-not-allowed"
+                }`}
+              >
+                {mode === "edit" ? t("actions.update") : t("actions.save")}
+              </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

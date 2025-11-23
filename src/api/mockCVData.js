@@ -16,8 +16,7 @@ export const mockCVData = {
     }
   ],
 
-  // 1. Kişisel Bilgiler (PersonalInformation.jsx)
-  // Lokasyon formatı: "İl/İlçe" (TR için) veya "Şehir/Bölge" (Yurt dışı için)
+  // 1. Kişisel Bilgiler (GÜNCELLENDİ: İl ve İlçe ayrıldı)
   personal: {
     ad: "Mehmet",
     soyad: "Yılmaz",
@@ -32,15 +31,17 @@ export const mockCVData = {
     cocukSayisi: "1",
     foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
     
-    // Lokasyonlar
+    // Lokasyonlar (Artık ayrı ayrı ve temiz)
     dogumUlke: "Türkiye",
-    dogumSehir: "Ankara/Çankaya", // Otomatik ayrıştırılacak
+    dogumSehir: "Ankara",
+    dogumIlce: "Çankaya",
     
     ikametUlke: "Türkiye",
-    ikametSehir: "İstanbul/Kadıköy" // Otomatik ayrıştırılacak
+    ikametSehir: "İstanbul",
+    ikametIlce: "Kadıköy"
   },
 
-  // 2. Eğitim Bilgileri (EducationTable.jsx)
+  // 2. Eğitim Bilgileri
   education: [
     {
       id: 1,
@@ -66,7 +67,7 @@ export const mockCVData = {
     }
   ],
 
-  // 3. Sertifikalar (CertificatesTable.jsx)
+  // 3. Sertifikalar
   certificates: [
     {
       id: 1,
@@ -86,14 +87,14 @@ export const mockCVData = {
     }
   ],
 
-  // 4. Bilgisayar Bilgileri (ComputerInformationTable.jsx)
+  // 4. Bilgisayar Bilgileri
   computer: [
     { id: 1, programAdi: "Microsoft Excel", yetkinlik: "İyi" },
     { id: 2, programAdi: "Adobe Photoshop", yetkinlik: "Orta" },
     { id: 3, programAdi: "VS Code", yetkinlik: "İyi" }
   ],
 
-  // 5. Yabancı Dil (LanguageTable.jsx)
+  // 5. Yabancı Dil
   languages: [
     {
       id: 1,
@@ -115,7 +116,7 @@ export const mockCVData = {
     }
   ],
 
-  // 6. İş Deneyimleri (JobExperiencesTable.jsx)
+  // 6. İş Deneyimleri
   experience: [
     {
       id: 1,
@@ -147,7 +148,7 @@ export const mockCVData = {
     }
   ],
 
-  // 7. Referanslar (ReferencesTable.jsx)
+  // 7. Referanslar
   references: [
     {
       id: 1,
@@ -160,13 +161,11 @@ export const mockCVData = {
     }
   ],
 
-  // 8. Diğer Kişisel Bilgiler (OtherPersonalInformationTable.jsx)
-  // "Evet", "Hayır" gibi standart değerler kullanıldı. 
-  // Ancak OtherPersonalInformationTable içindeki "fillData" eski "Var/Yok" verilerini de otomatik düzeltecektir.
+  // 8. Diğer Kişisel Bilgiler
   otherInfo: {
     kktcGecerliBelge: "Çalışma İzni",
-    davaDurumu: "Evet", // "Var" yerine "Evet" (Standart)
-    davaNedeni: "Devam eden ticari dava", // Dava durumu evet ise neden zorunlu
+    davaDurumu: "Evet",
+    davaNedeni: "Devam eden ticari dava",
     sigara: "Hayır",
     kaliciRahatsizlik: "Evet",
     rahatsizlikAciklama: "Hafif derecede miyop, gözlük kullanıyorum.",
@@ -177,7 +176,7 @@ export const mockCVData = {
     kilo: "78"
   },
 
-  // 9. İş Başvuru Detayları (JobApplicationDetails.jsx)
+  // 9. İş Başvuru Detayları
   jobDetails: {
     subeler: [
       { value: "Girne", label: "Girne" },

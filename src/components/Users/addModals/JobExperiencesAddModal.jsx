@@ -1,9 +1,8 @@
-// components/Users/addModals/JobExperiencesAddModal.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
-import { z } from "zod";
+import { createJobExpSchema } from "../../../schemas/jobExperienceSchema"; // Şema importu
 import SearchSelect from "../Selected/SearchSelect";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
@@ -14,10 +13,6 @@ import {
   yesterdayISO,
 } from "../modalHooks/dateUtils";
 import { useTranslation } from "react-i18next";
-
-/* -------------------- REGEX -------------------- */
-const NAME_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.&()'/]+$/u;
-const TEXT_RE = /^[-a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.,&()'/%]+$/u;
 
 /* -------------------- Ülke / İl seçenekleri -------------------- */
 const TR_IL_ILCE = {
@@ -49,119 +44,6 @@ const onlyLettersTR = (s) => s.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ\s]/g, "
 const FIELD_BASE =
   "w-full border rounded-lg px-3 py-2 bg-white text-gray-900 focus:outline-none border-gray-300 hover:border-black";
 
-/* -------------------- ŞEMA -------------------- */
-const makeSchema = (anotherActiveExists, t) =>
-  z
-    .object({
-      isAdi: z
-        .string()
-        .trim()
-        .regex(NAME_RE, t("jobExp.err.invalid"))
-        .min(2, t("jobExp.err.min2"))
-        .max(100, t("jobExp.err.max100")),
-      departman: z
-        .string()
-        .trim()
-        .regex(NAME_RE, t("jobExp.err.invalid"))
-        .min(2, t("jobExp.err.min2"))
-        .max(100, t("jobExp.err.max100")),
-      pozisyon: z
-        .string()
-        .trim()
-        .regex(NAME_RE, t("jobExp.err.invalid"))
-        .min(2, t("jobExp.err.min2"))
-        .max(100, t("jobExp.err.max100")),
-      gorev: z
-        .string()
-        .trim()
-        .regex(NAME_RE, t("jobExp.err.invalid"))
-        .min(2, t("jobExp.err.min2"))
-        .max(120, t("jobExp.err.max120")),
-      ayrilisSebebi: z
-        .string()
-        .trim()
-        .max(150, t("jobExp.err.max150"))
-        .regex(TEXT_RE, t("jobExp.err.invalid"))
-        .optional()
-        .or(z.literal("")),
-      ucret: z
-        .string()
-        .trim()
-        .min(1, t("jobExp.err.salaryReq"))
-        .refine(
-          (v) => !isNaN(Number(String(v).replace(",", "."))),
-          t("jobExp.err.salaryNum")
-        ),
-      baslangicTarihi: z.string().min(1, t("jobExp.err.startReq")),
-      bitisTarihi: z.string().optional().default(""),
-      isUlke: z.string().trim().min(1, t("jobExp.err.countryReq")),
-      isSehir: z.string().trim().min(1, t("jobExp.err.cityReq")),
-      halenCalisiyor: z.boolean(),
-    })
-    .superRefine((data, ctx) => {
-      const TODAY = todayISO();
-      const startOk = !!fromISODateString(data.baslangicTarihi);
-      if (!startOk) {
-        ctx.addIssue({
-          path: ["baslangicTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: t("jobExp.err.startInvalid"),
-        });
-      } else if (data.baslangicTarihi >= TODAY) {
-        ctx.addIssue({
-          path: ["baslangicTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: t("jobExp.err.startInFuture"),
-        });
-      }
-
-      if (anotherActiveExists && data.halenCalisiyor) {
-        ctx.addIssue({
-          path: ["halenCalisiyor"],
-          code: z.ZodIssueCode.custom,
-          message: t("jobExp.err.alreadyActive"),
-        });
-      }
-
-      if (!data.halenCalisiyor) {
-        const endOk =
-          !!data.bitisTarihi && !!fromISODateString(data.bitisTarihi);
-        if (!endOk) {
-          ctx.addIssue({
-            path: ["bitisTarihi"],
-            code: z.ZodIssueCode.custom,
-            message: t("jobExp.err.endReq"),
-          });
-        } else if (data.bitisTarihi > TODAY) {
-          ctx.addIssue({
-            path: ["bitisTarihi"],
-            code: z.ZodIssueCode.custom,
-            message: t("jobExp.err.endInFuture"),
-          });
-        }
-      }
-
-      const s = fromISODateString(data.baslangicTarihi);
-      const e = fromISODateString(data.bitisTarihi || "");
-      if (s && e && e.getTime() < s.getTime()) {
-        ctx.addIssue({
-          path: ["bitisTarihi"],
-          code: z.ZodIssueCode.custom,
-          message: t("jobExp.err.endBeforeStart"),
-        });
-      }
-
-      if (!data.halenCalisiyor) {
-        if (!data.ayrilisSebebi || data.ayrilisSebebi.trim().length === 0) {
-          ctx.addIssue({
-            path: ["ayrilisSebebi"],
-            code: z.ZodIssueCode.custom,
-            message: t("jobExp.err.leaveReq"),
-          });
-        }
-      }
-    });
-
 /* -------------------- COMPONENT -------------------- */
 export default function JobExperiencesAddModal({
   open,
@@ -174,6 +56,12 @@ export default function JobExperiencesAddModal({
 }) {
   const { t } = useTranslation();
   const dialogRef = useRef(null);
+
+  // Şemayı burada oluşturuyoruz (Eski makeSchema yerine)
+  const schema = useMemo(
+    () => createJobExpSchema(t, anotherActiveExists),
+    [t, anotherActiveExists]
+  );
 
   const [formData, setFormData] = useState({
     isAdi: "",
@@ -189,7 +77,6 @@ export default function JobExperiencesAddModal({
     halenCalisiyor: false,
   });
 
-  // sadece etkileşilen alanda hata göster
   const [touched, setTouched] = useState({});
   const touch = (name) =>
     setTouched((p) => (p[name] ? p : { ...p, [name]: true }));
@@ -210,11 +97,9 @@ export default function JobExperiencesAddModal({
   const [errors, setErrors] = useState({});
   const [disabledTip, setDisabledTip] = useState("");
 
-  // Dinamik sınırlar
   const todayStr = useMemo(() => todayISO(), []);
   const yesterdayStr = useMemo(() => yesterdayISO(), []);
 
-  // fd’deki isUlke/isSehir varsa öncelikle onları kullan
   const buildCandidate = (fd = formData) => {
     let countryFallback = jobCountry === "Diğer" ? jobCountryOther : jobCountry;
     let cityFallback =
@@ -226,21 +111,17 @@ export default function JobExperiencesAddModal({
     return { ...fd, isUlke: country, isSehir: city };
   };
 
-  // buton enable/disable
   const isValid = useMemo(() => {
-    const parsed = makeSchema(anotherActiveExists, t).safeParse(
-      buildCandidate()
-    );
+    const parsed = schema.safeParse(buildCandidate());
     setDisabledTip(parsed.success ? "" : t("common.fillAllProperly"));
     return parsed.success;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     formData,
     jobCountry,
     jobCountryOther,
     jobProvince,
     jobPlaceOther,
-    anotherActiveExists,
+    schema,
     t,
   ]);
 
@@ -268,18 +149,17 @@ export default function JobExperiencesAddModal({
     }
   };
 
-  /* ---------- SCROLL LOCK ---------- */
   useEffect(() => {
     if (open) lockScroll();
     else unlockScroll();
     return () => unlockScroll();
   }, [open]);
+
   const handleClose = () => {
     unlockScroll();
     onClose?.();
   };
 
-  // Modal reset
   useEffect(() => {
     if (!open) return;
     if (mode === "edit" && initialData) {
@@ -333,24 +213,19 @@ export default function JobExperiencesAddModal({
 
   const onBackdropClick = useModalDismiss(open, handleClose, dialogRef);
 
-  /* -------------------- Alan-bazlı doğrulama -------------------- */
   const validateField = (name, next) => {
-    const parsed = makeSchema(anotherActiveExists, t).safeParse(
-      buildCandidate(next)
-    );
+    const parsed = schema.safeParse(buildCandidate(next));
     const issue = !parsed.success
       ? parsed.error.issues.find((i) => i.path[0] === name)
       : null;
     setErrors((p) => ({ ...p, [name]: issue ? issue.message : "" }));
   };
 
-  // Ücret input filter: sadece rakam, nokta, virgül
   const normalizeSalaryInput = (raw) =>
     raw
       .replace(/[^\d.,]/g, "")
       .replace(/,+/g, (m) => (m.length > 1 ? "," : ","));
 
-  // ------- handlers
   const onInput = (e) => {
     const { name, value } = e.target;
     const v = name === "ucret" ? normalizeSalaryInput(value) : value;
@@ -431,9 +306,8 @@ export default function JobExperiencesAddModal({
     }));
   };
 
-  /* -------------------- Submit -------------------- */
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const allKeys = [
       "isAdi",
       "departman",
@@ -450,7 +324,7 @@ export default function JobExperiencesAddModal({
     setTouched(Object.fromEntries(allKeys.map((k) => [k, true])));
 
     const candidate = buildCandidate();
-    const parsed = makeSchema(anotherActiveExists, t).safeParse(candidate);
+    const parsed = schema.safeParse(candidate);
     if (!parsed.success) {
       const newErrs = {};
       parsed.error.issues.forEach((i) => {
@@ -491,8 +365,6 @@ export default function JobExperiencesAddModal({
     >
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         className="w-full max-w-3xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -511,8 +383,8 @@ export default function JobExperiencesAddModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* DIV yapısı (Form içinde form olmaması için) */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4 overflow-visible">
             {/* 1. Satır */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -933,36 +805,22 @@ export default function JobExperiencesAddModal({
                 {t("common.cancel")}
               </button>
 
-              {mode === "create" ? (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                      : "bg-blue-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("common.save")}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                      : "bg-green-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("common.update")}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!isValid}
+                title={disabledTip}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                  isValid
+                    ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
+                    : "bg-blue-300 opacity-90 cursor-not-allowed"
+                }`}
+              >
+                {mode === "edit" ? t("common.update") : t("common.save")}
+              </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -1,15 +1,10 @@
-import {
-  forwardRef,
-  useImperativeHandle,
-  useState,
-  useEffect,
-  useMemo,
-} from "react";
-import { z } from "zod";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useFormContext, Controller, useWatch } from "react-hook-form";
 import MuiDateStringField from "../Date/MuiDateStringField";
 import SearchSelect from "../Selected/SearchSelect";
 
+// --- Sabit Veriler ---
 const TR_IL_ILCE = {
   İstanbul: [
     "Kadıköy",
@@ -162,6 +157,7 @@ const TR_IL_ILCE = {
     "İbradı",
   ],
 };
+
 const COUNTRY_OPTIONS = [
   "Türkiye",
   "Türkmenistan",
@@ -175,6 +171,7 @@ const COUNTRY_OPTIONS = [
   "Rusya",
   "Diğer",
 ];
+
 const NATIONALITY_MAP = {
   Türkiye: "Türk",
   Türkmenistan: "Türkmen",
@@ -188,35 +185,33 @@ const NATIONALITY_MAP = {
   Rusya: "Rus",
   Diğer: "Diğer",
 };
+
 const onlyLettersTR = (s) => s.replace(/[^a-zA-ZığüşöçİĞÜŞÖÇ\s]/g, "");
 
-const PersonalInformation = forwardRef(function PersonalInformation(
-  { onValidChange },
-  ref
-) {
-  const { t, i18n } = useTranslation();
-  const [formData, setFormData] = useState({
-    ad: "",
-    soyad: "",
-    eposta: "",
-    telefon: "",
-    whatsapp: "",
-    adres: "",
-    cinsiyet: "",
-    medeniDurum: "",
-    dogumTarihi: "",
-    uyruk: "",
-    cocukSayisi: "",
-    foto: null,
-    dogumUlke: "",
-    dogumSehir: "",
-    ikametUlke: "",
-    ikametSehir: "",
-  });
-  const [errors, setErrors] = useState({});
-  const [fotoPreview, setFotoPreview] = useState(null);
-  const [fotoError, setFotoError] = useState("");
+// --- ANA BİLEŞEN ---
+export default function PersonalInformation() {
+  const { t } = useTranslation();
+  const {
+    register,
+    control,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
 
+  // --- Anlık İzleme (Watch) ---
+  // İl ve İlçe seçimi için gerekli verileri dinliyoruz
+  const birthCountry = useWatch({ name: "personal.dogumUlke" });
+  const birthCity = useWatch({ name: "personal.dogumSehir" }); // Türkiye ise 'İl'
+  const birthDistrict = useWatch({ name: "personal.dogumIlce" }); // Türkiye ise 'İlçe'
+
+  const resCountry = useWatch({ name: "personal.ikametUlke" });
+  const resCity = useWatch({ name: "personal.ikametSehir" });
+  const resDistrict = useWatch({ name: "personal.ikametIlce" });
+
+  const nationality = useWatch({ name: "personal.uyruk" });
+  const foto = useWatch({ name: "personal.foto" });
+
+  // --- Seçenekler (Memoized) ---
   const genderOptions = useMemo(
     () => [
       { value: "", label: t("personal.placeholders.select") },
@@ -229,8 +224,9 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         label: t("personal.options.gender.male"),
       },
     ],
-    [i18n.language, t]
+    [t]
   );
+
   const maritalOptions = useMemo(
     () => [
       { value: "", label: t("personal.placeholders.select") },
@@ -251,845 +247,597 @@ const PersonalInformation = forwardRef(function PersonalInformation(
         label: t("personal.options.marital.widowed"),
       },
     ],
-    [i18n.language, t]
+    [t]
   );
+
   const childOptions = useMemo(() => {
     const base = [{ value: "", label: t("personal.placeholders.select") }];
     for (let i = 0; i <= 6; i++)
       base.push({ value: String(i), label: String(i) });
     base.push({ value: "7+", label: t("personal.options.childrenMore") });
     return base;
-  }, [i18n.language, t]);
-  const countryOptions = useMemo(
+  }, [t]);
+
+  const countryOptionsList = useMemo(
     () =>
       [{ value: "", label: t("personal.placeholders.select") }].concat(
         COUNTRY_OPTIONS.map((c) => ({ value: c, label: c }))
       ),
-    [i18n.language, t]
+    [t]
   );
+
+  // Sadece İl Listesi (Türkiye için)
   const ilOptions = useMemo(
     () =>
       [{ value: "", label: t("personal.labels.selectProvince") }].concat(
         Object.keys(TR_IL_ILCE).map((il) => ({ value: il, label: il }))
       ),
-    [i18n.language, t]
+    [t]
   );
-  const ilceOptions = (il) =>
-    [
-      {
-        value: "",
-        label: il
-          ? t("personal.labels.selectDistrict")
-          : t("personal.labels.selectProvince"),
-      },
-    ].concat(
-      (TR_IL_ILCE[il] || []).map((ilce) => ({ value: ilce, label: ilce }))
+
+  // --- İlçe Seçenekleri (Dinamik) ---
+  const getIlceOptions = (selectedCity) => {
+    if (!selectedCity || !TR_IL_ILCE[selectedCity]) return [];
+    return [{ value: "", label: t("personal.labels.selectDistrict") }].concat(
+      TR_IL_ILCE[selectedCity].map((ilce) => ({ value: ilce, label: ilce }))
     );
-
-  /* ---------- Lokasyon State'leri ---------- */
-  const [birthCountry, setBirthCountry] = useState("");
-  const [birthCountryOther, setBirthCountryOther] = useState("");
-  const [birthProvince, setBirthProvince] = useState("");
-  const [birthDistrict, setBirthDistrict] = useState("");
-  const [birthPlaceOther, setBirthPlaceOther] = useState("");
-  const [birthDistrictOther, setBirthDistrictOther] = useState("");
-
-  const [resCountry, setResCountry] = useState("");
-  const [resCountryOther, setResCountryOther] = useState("");
-  const [resProvince, setResProvince] = useState("");
-  const [resDistrict, setResDistrict] = useState("");
-  const [resPlaceOther, setResPlaceOther] = useState("");
-  const [resDistrictOther, setResDistrictOther] = useState("");
-
-  const [nationalitySel, setNationalitySel] = useState("");
-  const [nationalityOther, setNationalityOther] = useState("");
-
-  const syncField = (patch) => {
-    setFormData((p) => ({ ...p, ...patch }));
-    Object.entries(patch).forEach(([k, v]) => validateField(k, v));
-  };
-
-  const syncBirthToForm = () => {
-    const country = birthCountry === "Diğer" ? birthCountryOther : birthCountry;
-    const city =
-      birthCountry === "Türkiye"
-        ? birthProvince && birthDistrict
-          ? `${birthProvince}/${birthDistrict}`
-          : birthProvince
-        : birthPlaceOther && birthDistrictOther
-        ? `${birthPlaceOther}/${birthDistrictOther}`
-        : birthPlaceOther || "";
-    syncField({ dogumUlke: country || "", dogumSehir: city || "" });
-  };
-
-  const syncResToForm = () => {
-    const country = resCountry === "Diğer" ? resCountryOther : resCountry;
-    const city =
-      resCountry === "Türkiye"
-        ? resProvince && resDistrict
-          ? `${resProvince}/${resDistrict}`
-          : resProvince
-        : resPlaceOther && resDistrictOther
-        ? `${resPlaceOther}/${resDistrictOther}`
-        : resPlaceOther || "";
-    syncField({ ikametUlke: country || "", ikametSehir: city || "" });
-  };
-
-  const syncNationalityToForm = (
-    sel = nationalitySel,
-    other = nationalityOther
-  ) => {
-    const val = sel === "Diğer" ? other || "" : sel || "";
-    syncField({ uyruk: val });
   };
 
   const handleFotoUpload = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setFotoError(t("personal.photo.typeErr"));
-      setFormData((p) => ({ ...p, foto: null }));
-      setFotoPreview(null);
+    if (!file || !file.type.startsWith("image/") || file.size > 2 * 1024 * 1024)
       return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setFotoError(t("personal.photo.sizeErr"));
-      setFormData((p) => ({ ...p, foto: null }));
-      setFotoPreview(null);
-      return;
-    }
-    setFotoError("");
-    setFormData((prev) => ({ ...prev, foto: file }));
     const reader = new FileReader();
-    reader.onloadend = () => setFotoPreview(reader.result);
+    reader.onloadend = () => setValue("personal.foto", reader.result);
     reader.readAsDataURL(file);
   };
 
-  const schema = useMemo(() => {
-    const reqMsg = (key) => ({
-      required_error: t(`personal.errors.${key}.required`),
-      invalid_type_error: t(`personal.errors.${key}.required`),
-    });
-    return z.object({
-      ad: z
-        .string(reqMsg("firstName"))
-        .min(1, t("personal.errors.firstName.required"))
-        .max(30)
-        .regex(
-          /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/,
-          t("personal.errors.firstName.regex")
-        ),
-      soyad: z
-        .string(reqMsg("lastName"))
-        .min(1, t("personal.errors.lastName.required"))
-        .max(30)
-        .regex(
-          /^[a-zA-ZığüşöçİĞÜŞÖÇ\s]+$/,
-          t("personal.errors.lastName.regex")
-        ),
-      eposta: z
-        .string(reqMsg("email"))
-        .email(t("personal.errors.email.invalid")),
-      telefon: z
-        .string(reqMsg("phone"))
-        .min(1, t("personal.errors.phone.required"))
-        .transform((v) => v.replace(/[\s()-]/g, ""))
-        .refine((v) => /^\+?[1-9]\d{6,14}$/.test(v), {
-          message: t("personal.errors.phone.format"),
-        }),
-      whatsapp: z
-        .string(reqMsg("whatsapp"))
-        .min(1, t("personal.errors.whatsapp.required"))
-        .transform((v) => v.replace(/[\s()-]/g, ""))
-        .refine((v) => /^\+?[1-9]\d{6,14}$/.test(v), {
-          message: t("personal.errors.whatsapp.format"),
-        }),
-      adres: z
-        .string(reqMsg("address"))
-        .min(5, t("personal.errors.address.min"))
-        .max(90, t("personal.errors.address.max")),
-      cinsiyet: z
-        .string(reqMsg("gender"))
-        .min(1, t("personal.errors.gender.required")),
-      medeniDurum: z
-        .string(reqMsg("marital"))
-        .min(1, t("personal.errors.marital.required")),
-      dogumTarihi: z
-        .string(reqMsg("birthDate"))
-        .min(1, t("personal.errors.birthDate.required")),
-      cocukSayisi: z.string().optional(),
-      dogumUlke: z
-        .string(reqMsg("birthCountry"))
-        .min(1, t("personal.errors.birthCountry")),
-      dogumSehir: z
-        .string(reqMsg("birthCity"))
-        .min(1, t("personal.errors.birthCity")),
-      ikametUlke: z
-        .string(reqMsg("resCountry"))
-        .min(1, t("personal.errors.resCountry")),
-      ikametSehir: z
-        .string(reqMsg("resCity"))
-        .min(1, t("personal.errors.resCity")),
-      uyruk: z
-        .string(reqMsg("nationality"))
-        .min(1, t("personal.errors.nationality")),
-    });
-  }, [i18n.language, t]);
+  // Ülke değiştiğinde (Türkiye dışına çıkılırsa) şehir/ilçe alanlarını temizleme mantığı
+  // Controller içinde yönetildiği için useEffect'e gerek kalmayabilir ama garanti olsun diye eklenebilir.
+  // Şimdilik Controller'ın onChange'i içinde yönetiyoruz.
 
-  useImperativeHandle(ref, () => ({
-    isValid: () => {
-      const result = schema.safeParse(formData);
-      const newErrors = {};
-      if (!result.success) {
-        result.error.issues.forEach((i) => {
-          newErrors[i.path[0]] = i.message;
-        });
-        setErrors(newErrors);
-      }
-      const fotoValid = !!formData.foto;
-      if (!fotoValid && !fotoError) setFotoError(t("personal.photo.required"));
-      return result.success && fotoValid;
-    },
-    getEmail: () => formData.eposta,
-    fillData: (data) => {
-      if (!data) return;
-      setFormData((prev) => ({ ...prev, ...data }));
-      if (typeof data.foto === "string") setFotoPreview(data.foto);
-
-      const setLocationStates = (
-        countryVal,
-        cityVal,
-        setC,
-        setCOther,
-        setP,
-        setD,
-        setPOther,
-        setDOther
-      ) => {
-        if (!countryVal) return;
-        const isStandard = COUNTRY_OPTIONS.includes(countryVal);
-        if (isStandard) {
-          setC(countryVal);
-          setCOther("");
-        } else {
-          setC("Diğer");
-          setCOther(countryVal);
-        }
-
-        let pVal = "",
-          dVal = "";
-        if (cityVal && cityVal.includes("/")) {
-          const parts = cityVal.split("/");
-          pVal = parts[0].trim();
-          dVal = parts[1].trim();
-        } else {
-          pVal = cityVal || "";
-        }
-
-        if (countryVal === "Türkiye") {
-          setP(pVal);
-          setD(dVal);
-          setPOther("");
-          setDOther("");
-        } else {
-          setPOther(pVal);
-          setDOther(dVal);
-          setP("");
-          setD("");
-        }
-      };
-
-      setLocationStates(
-        data.dogumUlke,
-        data.dogumSehir,
-        setBirthCountry,
-        setBirthCountryOther,
-        setBirthProvince,
-        setBirthDistrict,
-        setBirthPlaceOther,
-        setBirthDistrictOther
-      );
-      setLocationStates(
-        data.ikametUlke,
-        data.ikametSehir,
-        setResCountry,
-        setResCountryOther,
-        setResProvince,
-        setResDistrict,
-        setResPlaceOther,
-        setResDistrictOther
-      );
-
-      if (data.uyruk) {
-        const isStandardNat = Object.values(NATIONALITY_MAP).includes(
-          data.uyruk
-        );
-        if (isStandardNat) {
-          setNationalitySel(data.uyruk);
-          setNationalityOther("");
-        } else {
-          setNationalitySel("Diğer");
-          setNationalityOther(data.uyruk);
-        }
-      }
-    },
-  }));
-
-  useEffect(() => {
-    const ok = schema.safeParse(formData).success && !!formData.foto;
-    onValidChange?.(ok);
-  }, [formData, schema, onValidChange]);
-  const validateField = (name, value) => {
-    const result = schema.safeParse({ ...formData, [name]: value });
-    if (!result.success) {
-      const fieldError = result.error.issues.find((i) => i.path[0] === name);
-      setErrors((prev) => ({
-        ...prev,
-        [name]: fieldError ? fieldError.message : "",
-      }));
-    } else {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    validateField(name, value);
-  };
   const portalTarget = typeof document !== "undefined" ? document.body : null;
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8 shadow-none overscroll-contain">
-      <form noValidate autoComplete="off" onSubmit={(e) => e.preventDefault()}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Fotoğraf */}
-          <div className="flex flex-col sm:flex-row items-start gap-6">
-            <div className="relative w-32 h-32 rounded-lg overflow-hidden border-4 border-gray-300 bg-gray-100 shadow-md flex items-center justify-center">
-              {fotoPreview ? (
-                <img
-                  src={fotoPreview}
-                  alt={t("personal.labels.photo")}
-                  className="object-cover w-full h-full"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm text-center px-2">
-                  {t("personal.placeholders.noPhoto")}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* --- Fotoğraf --- */}
+        <div className="flex flex-col sm:flex-row items-start gap-6">
+          <div className="relative w-32 h-32 rounded-lg overflow-hidden border-4 border-gray-300 bg-gray-100 shadow-md flex items-center justify-center">
+            {foto ? (
+              <img
+                src={foto}
+                alt="Profil"
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <span className="text-gray-400 text-sm text-center px-2">
+                {t("personal.placeholders.noPhoto")}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <label
+              htmlFor="foto"
+              className="block text-sm font-bold text-gray-700 mb-2"
+            >
+              {t("personal.labels.photo")}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center gap-3">
               <label
                 htmlFor="foto"
-                className="block text-sm font-bold text-gray-700 mb-2"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition"
               >
-                {t("personal.labels.photo")}{" "}
-                <span className="text-red-500">*</span>
+                📤{" "}
+                {foto
+                  ? t("personal.placeholders.replace")
+                  : t("personal.placeholders.upload")}
               </label>
-              <div className="flex items-center gap-3">
-                <label
-                  htmlFor="foto"
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-200 transition"
-                >
-                  📤{" "}
-                  {fotoPreview
-                    ? t("personal.placeholders.replace")
-                    : t("personal.placeholders.upload")}
-                </label>
-                <input
-                  type="file"
-                  id="foto"
-                  accept="image/*"
-                  onChange={handleFotoUpload}
-                  className="hidden"
-                />
-              </div>
-              {fotoError && (
-                <p className="text-xs text-red-600 mt-1 font-medium">
-                  {fotoError}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <InputField
-            label={t("personal.labels.firstName")}
-            name="ad"
-            value={formData.ad}
-            placeholder={t("personal.placeholders.firstName")}
-            onChange={handleChange}
-            error={errors.ad}
-            max={30}
-          />
-          <InputField
-            label={t("personal.labels.lastName")}
-            name="soyad"
-            value={formData.soyad}
-            placeholder={t("personal.placeholders.lastName")}
-            onChange={handleChange}
-            error={errors.soyad}
-            max={30}
-          />
-          <InputField
-            label={t("personal.labels.email")}
-            name="eposta"
-            type="text"
-            value={formData.eposta}
-            placeholder={t("personal.placeholders.email")}
-            onChange={handleChange}
-            error={errors.eposta}
-          />
-          <InputField
-            label={t("personal.labels.phone")}
-            name="telefon"
-            type="text"
-            value={formData.telefon}
-            placeholder={t("personal.placeholders.phone")}
-            onChange={handleChange}
-            error={errors.telefon}
-          />
-          <InputField
-            label={t("personal.labels.whatsapp")}
-            name="whatsapp"
-            type="text"
-            value={formData.whatsapp}
-            placeholder={t("personal.placeholders.whatsapp")}
-            onChange={handleChange}
-            error={errors.whatsapp}
-          />
-          <InputField
-            label={t("personal.labels.address")}
-            name="adres"
-            value={formData.adres}
-            placeholder={t("personal.placeholders.address")}
-            onChange={handleChange}
-            error={errors.adres}
-            max={90}
-          />
-
-          <div className="shadow-none outline-none">
-            <MuiDateStringField
-              label={t("personal.labels.birthDate")}
-              name="dogumTarihi"
-              value={formData.dogumTarihi}
-              onChange={handleChange}
-              required
-              error={errors.dogumTarihi}
-              min="1950-01-01"
-              max="2025-12-31"
-              size="small"
-            />
-          </div>
-
-          <SearchSelect
-            label={t("personal.labels.gender")}
-            name="cinsiyet"
-            value={formData.cinsiyet}
-            options={genderOptions}
-            onChange={handleChange}
-            placeholder={t("personal.placeholders.select")}
-            menuPortalTarget={portalTarget}
-          />
-          <SearchSelect
-            label={t("personal.labels.marital")}
-            name="medeniDurum"
-            value={formData.medeniDurum}
-            options={maritalOptions}
-            onChange={handleChange}
-            placeholder={t("personal.placeholders.select")}
-            menuPortalTarget={portalTarget}
-          />
-          <SearchSelect
-            label={t("personal.labels.children")}
-            name="cocukSayisi"
-            value={formData.cocukSayisi}
-            options={childOptions}
-            onChange={handleChange}
-            placeholder={t("personal.placeholders.select")}
-            menuPortalTarget={portalTarget}
-          />
-
-          <div className="lg:col-span-1 mt-1">
-            <label className="block text-sm font-bold text-gray-700 ">
-              {t("personal.labels.nationality")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <SearchSelect
-                name="uyrukSelect"
-                value={nationalitySel}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setNationalitySel(v);
-                  if (v !== "Diğer") setNationalityOther("");
-                  syncNationalityToForm(
-                    v,
-                    v === "Diğer" ? nationalityOther : ""
-                  );
-                }}
-                options={[
-                  { value: "", label: t("personal.placeholders.select") },
-                  ...Object.values(NATIONALITY_MAP).map((n) => ({
-                    value: n,
-                    label: n,
-                  })),
-                ]}
-                placeholder={t("personal.placeholders.select")}
-                menuPortalTarget={portalTarget}
-              />
               <input
-                type="text"
-                placeholder={t("personal.placeholders.countryOther")}
-                value={nationalityOther}
-                onChange={(e) => {
-                  const v = onlyLettersTR(e.target.value);
-                  setNationalityOther(v);
-                  syncNationalityToForm("Diğer", v);
-                }}
-                disabled={nationalitySel !== "Diğer"}
-                className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                  nationalitySel === "Diğer"
-                    ? "bg-white border-gray-300"
-                    : "bg-gray-200 border-gray-300"
-                }`}
+                type="file"
+                id="foto"
+                accept="image/*"
+                onChange={handleFotoUpload}
+                className="hidden"
               />
             </div>
-            {errors.uyruk && (
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                {errors.uyruk}
-              </p>
-            )}
-          </div>
-
-          <div className="lg:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t("personal.labels.birthCountry")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <SearchSelect
-                name="dogumUlke"
-                value={birthCountry}
-                options={countryOptions}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setBirthCountry(v);
-                  setBirthCountryOther("");
-                  setBirthProvince("");
-                  setBirthDistrict("");
-                  setBirthPlaceOther("");
-                  setBirthDistrictOther("");
-                  syncField({
-                    dogumUlke: v === "Diğer" ? "" : v,
-                    dogumSehir: "",
-                  });
-                }}
-                placeholder={t("personal.placeholders.countrySearch")}
-                menuPortalTarget={portalTarget}
-              />
-              <input
-                type="text"
-                placeholder={t("personal.placeholders.countryOther")}
-                value={birthCountryOther}
-                onChange={(e) => {
-                  const v = onlyLettersTR(e.target.value);
-                  setBirthCountryOther(v);
-                  syncBirthToForm();
-                }}
-                disabled={birthCountry !== "Diğer"}
-                className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                  birthCountry === "Diğer"
-                    ? "bg-white border-gray-300 hover:border-black"
-                    : "bg-gray-200 border-gray-300 cursor-not-allowed"
-                }`}
-              />
-            </div>
-            {errors.dogumUlke && (
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                {errors.dogumUlke}
-              </p>
-            )}
-          </div>
-
-          {/* Doğum Yeri Şehir (2 Input veya Dropdown) */}
-          <div className="lg:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t("personal.labels.birthCity")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {birthCountry === "Türkiye" ? (
-                <>
-                  <SearchSelect
-                    name="dogumIl"
-                    value={birthProvince}
-                    onChange={(e) => {
-                      setBirthProvince(e.target.value);
-                      setBirthDistrict("");
-                      syncBirthToForm();
-                    }}
-                    options={ilOptions}
-                    placeholder={t("personal.labels.selectProvince")}
-                    menuPortalTarget={portalTarget}
-                  />
-                  <SearchSelect
-                    name="dogumIlce"
-                    value={birthDistrict}
-                    onChange={(e) => {
-                      setBirthDistrict(e.target.value);
-                      syncBirthToForm();
-                    }}
-                    options={ilceOptions(birthProvince)}
-                    placeholder={
-                      birthProvince
-                        ? t("personal.labels.selectDistrict")
-                        : t("personal.labels.selectProvince")
-                    }
-                    menuPortalTarget={portalTarget}
-                  />
-                </>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Şehir / Eyalet"
-                    value={birthPlaceOther}
-                    onChange={(e) => {
-                      const v = onlyLettersTR(e.target.value);
-                      setBirthPlaceOther(v);
-                      syncBirthToForm();
-                    }}
-                    disabled={
-                      !birthCountry ||
-                      (birthCountry === "Diğer" && !birthCountryOther)
-                    }
-                    className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                      !birthCountry ||
-                      (birthCountry === "Diğer" && !birthCountryOther)
-                        ? "bg-gray-200 border-gray-300 cursor-not-allowed"
-                        : "bg-white border-gray-300 hover:border-black"
-                    }`}
-                  />
-                  <input
-                    type="text"
-                    placeholder="İlçe / Bölge"
-                    value={birthDistrictOther}
-                    onChange={(e) => {
-                      const v = onlyLettersTR(e.target.value);
-                      setBirthDistrictOther(v);
-                      syncBirthToForm();
-                    }}
-                    disabled={
-                      !birthCountry ||
-                      (birthCountry === "Diğer" && !birthCountryOther)
-                    }
-                    className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                      !birthCountry ||
-                      (birthCountry === "Diğer" && !birthCountryOther)
-                        ? "bg-gray-200 border-gray-300 cursor-not-allowed"
-                        : "bg-white border-gray-300 hover:border-black"
-                    }`}
-                  />
-                </>
-              )}
-            </div>
-            {errors.dogumSehir && (
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                {errors.dogumSehir}
-              </p>
-            )}
-          </div>
-
-          <div className="lg:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t("personal.labels.resCountry")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <SearchSelect
-                name="ikametUlke"
-                value={resCountry}
-                options={countryOptions}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setResCountry(v);
-                  setResCountryOther("");
-                  setResProvince("");
-                  setResDistrict("");
-                  setResPlaceOther("");
-                  setResDistrictOther("");
-                  syncField({
-                    ikametUlke: v === "Diğer" ? "" : v,
-                    ikametSehir: "",
-                  });
-                }}
-                placeholder={t("personal.placeholders.countrySearch")}
-                menuPortalTarget={portalTarget}
-              />
-              <input
-                type="text"
-                placeholder={t("personal.placeholders.countryOther")}
-                value={resCountryOther}
-                onChange={(e) => {
-                  const v = onlyLettersTR(e.target.value);
-                  setResCountryOther(v);
-                  syncResToForm();
-                }}
-                disabled={resCountry !== "Diğer"}
-                className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                  resCountry === "Diğer"
-                    ? "bg-white border-gray-300 hover:border-black"
-                    : "bg-gray-200 border-gray-300 cursor-not-allowed"
-                }`}
-              />
-            </div>
-            {errors.ikametUlke && (
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                {errors.ikametUlke}
-              </p>
-            )}
-          </div>
-
-          {/* İkamet Yeri Şehir (2 Input veya Dropdown) */}
-          <div className="lg:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">
-              {t("personal.labels.resCity")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {resCountry === "Türkiye" ? (
-                <>
-                  <SearchSelect
-                    name="ikametIl"
-                    value={resProvince}
-                    onChange={(e) => {
-                      setResProvince(e.target.value);
-                      setResDistrict("");
-                      syncResToForm();
-                    }}
-                    options={ilOptions}
-                    placeholder={t("personal.labels.selectProvince")}
-                    menuPortalTarget={portalTarget}
-                  />
-                  <SearchSelect
-                    name="ikametIlce"
-                    value={resDistrict}
-                    onChange={(e) => {
-                      setResDistrict(e.target.value);
-                      syncResToForm();
-                    }}
-                    options={ilceOptions(resProvince)}
-                    placeholder={
-                      resProvince
-                        ? t("personal.labels.selectDistrict")
-                        : t("personal.labels.selectProvince")
-                    }
-                    menuPortalTarget={portalTarget}
-                  />
-                </>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Şehir / Eyalet"
-                    value={resPlaceOther}
-                    onChange={(e) => {
-                      const v = onlyLettersTR(e.target.value);
-                      setResPlaceOther(v);
-                      syncResToForm();
-                    }}
-                    disabled={
-                      !resCountry ||
-                      (resCountry === "Diğer" && !resCountryOther)
-                    }
-                    className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                      !resCountry ||
-                      (resCountry === "Diğer" && !resCountryOther)
-                        ? "bg-gray-200 border-gray-300 cursor-not-allowed"
-                        : "bg-white border-gray-300 hover:border-black"
-                    }`}
-                  />
-                  <input
-                    type="text"
-                    placeholder="İlçe / Bölge"
-                    value={resDistrictOther}
-                    onChange={(e) => {
-                      const v = onlyLettersTR(e.target.value);
-                      setResDistrictOther(v);
-                      syncResToForm();
-                    }}
-                    disabled={
-                      !resCountry ||
-                      (resCountry === "Diğer" && !resCountryOther)
-                    }
-                    className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
-                      !resCountry ||
-                      (resCountry === "Diğer" && !resCountryOther)
-                        ? "bg-gray-200 border-gray-300 cursor-not-allowed"
-                        : "bg-white border-gray-300 hover:border-black"
-                    }`}
-                  />
-                </>
-              )}
-            </div>
-            {errors.ikametSehir && (
-              <p className="text-xs text-red-600 mt-1 font-medium">
-                {errors.ikametSehir}
-              </p>
-            )}
           </div>
         </div>
-      </form>
+
+        {/* --- Temel Bilgiler --- */}
+        <InputField
+          name="personal.ad"
+          label={t("personal.labels.firstName")}
+          placeholder={t("personal.placeholders.firstName")}
+          max={30}
+          register={register}
+          error={errors.personal?.ad}
+        />
+        <InputField
+          name="personal.soyad"
+          label={t("personal.labels.lastName")}
+          placeholder={t("personal.placeholders.lastName")}
+          max={30}
+          register={register}
+          error={errors.personal?.soyad}
+        />
+        <InputField
+          name="personal.eposta"
+          label={t("personal.labels.email")}
+          placeholder={t("personal.placeholders.email")}
+          register={register}
+          error={errors.personal?.eposta}
+        />
+        <InputField
+          name="personal.telefon"
+          label={t("personal.labels.phone")}
+          placeholder={t("personal.placeholders.phone")}
+          register={register}
+          error={errors.personal?.telefon}
+        />
+        <InputField
+          name="personal.whatsapp"
+          label={t("personal.labels.whatsapp")}
+          placeholder={t("personal.placeholders.whatsapp")}
+          register={register}
+          error={errors.personal?.whatsapp}
+        />
+        <InputField
+          name="personal.adres"
+          label={t("personal.labels.address")}
+          placeholder={t("personal.placeholders.address")}
+          max={90}
+          register={register}
+          error={errors.personal?.adres}
+        />
+
+        {/* --- Tarih --- */}
+        <div className="shadow-none outline-none">
+          <Controller
+            name="personal.dogumTarihi"
+            control={control}
+            render={({ field }) => (
+              <MuiDateStringField
+                label={t("personal.labels.birthDate")}
+                value={field.value}
+                onChange={field.onChange}
+                required
+                error={errors.personal?.dogumTarihi?.message}
+                min="1950-01-01"
+                max="2025-12-31"
+                size="small"
+              />
+            )}
+          />
+        </div>
+
+        <SelectController
+          name="personal.cinsiyet"
+          label={t("personal.labels.gender")}
+          options={genderOptions}
+          control={control}
+          placeholder={t("personal.placeholders.select")}
+          error={errors.personal?.cinsiyet}
+        />
+        <SelectController
+          name="personal.medeniDurum"
+          label={t("personal.labels.marital")}
+          options={maritalOptions}
+          control={control}
+          placeholder={t("personal.placeholders.select")}
+          error={errors.personal?.medeniDurum}
+        />
+        <SelectController
+          name="personal.cocukSayisi"
+          label={t("personal.labels.children")}
+          options={childOptions}
+          control={control}
+          placeholder={t("personal.placeholders.select")}
+          error={errors.personal?.cocukSayisi}
+        />
+
+        {/* --- Uyruk --- */}
+        <div className="lg:col-span-1 mt-1">
+          <label className="block text-sm font-bold text-gray-700">
+            {t("personal.labels.nationality")}{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Controller
+              name="personal.uyruk"
+              control={control}
+              render={({ field }) => (
+                <SearchSelect
+                  name={field.name}
+                  value={
+                    Object.values(NATIONALITY_MAP).includes(field.value)
+                      ? field.value
+                      : field.value
+                      ? "Diğer"
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "Diğer") field.onChange("");
+                    else field.onChange(val);
+                  }}
+                  options={[
+                    { value: "", label: t("personal.placeholders.select") },
+                    ...Object.values(NATIONALITY_MAP).map((n) => ({
+                      value: n,
+                      label: n,
+                    })),
+                    { value: "Diğer", label: "Diğer" },
+                  ]}
+                  placeholder={t("personal.placeholders.select")}
+                  menuPortalTarget={portalTarget}
+                />
+              )}
+            />
+            <input
+              type="text"
+              placeholder={t("personal.placeholders.countryOther")}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                !Object.values(NATIONALITY_MAP).includes(nationality)
+                  ? "bg-white border-gray-300"
+                  : "bg-gray-200 border-gray-300 cursor-not-allowed"
+              }`}
+              disabled={
+                Object.values(NATIONALITY_MAP).includes(nationality) &&
+                nationality !== ""
+              }
+              value={
+                !Object.values(NATIONALITY_MAP).includes(nationality)
+                  ? nationality
+                  : ""
+              }
+              onChange={(e) =>
+                setValue("personal.uyruk", onlyLettersTR(e.target.value))
+              }
+            />
+          </div>
+          {errors.personal?.uyruk && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.personal.uyruk.message}
+            </p>
+          )}
+        </div>
+
+        {/* --- Doğum Yeri (Ülke / İl / İlçe) --- */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            {t("personal.labels.birthCountry")}{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Controller
+              name="personal.dogumUlke"
+              control={control}
+              render={({ field }) => (
+                <SearchSelect
+                  value={
+                    COUNTRY_OPTIONS.includes(field.value)
+                      ? field.value
+                      : field.value
+                      ? "Diğer"
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "Diğer") field.onChange("");
+                    else {
+                      field.onChange(val);
+                      // Ülke değişince alt alanları temizle
+                      setValue("personal.dogumSehir", "");
+                      setValue("personal.dogumIlce", "");
+                    }
+                  }}
+                  options={countryOptionsList}
+                  placeholder={t("personal.placeholders.countrySearch")}
+                  menuPortalTarget={portalTarget}
+                />
+              )}
+            />
+            <input
+              type="text"
+              placeholder={t("personal.placeholders.countryOther")}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                !COUNTRY_OPTIONS.includes(birthCountry)
+                  ? "bg-white border-gray-300"
+                  : "bg-gray-200 cursor-not-allowed"
+              }`}
+              disabled={
+                COUNTRY_OPTIONS.includes(birthCountry) && birthCountry !== ""
+              }
+              value={
+                !COUNTRY_OPTIONS.includes(birthCountry) ? birthCountry : ""
+              }
+              onChange={(e) =>
+                setValue("personal.dogumUlke", onlyLettersTR(e.target.value))
+              }
+            />
+          </div>
+          {errors.personal?.dogumUlke && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.personal.dogumUlke.message}
+            </p>
+          )}
+        </div>
+
+        {/* Doğum Şehir ve İlçe */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            {t("personal.labels.birthCity")}{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* İl Seçimi */}
+            {birthCountry === "Türkiye" ? (
+              <Controller
+                name="personal.dogumSehir"
+                control={control}
+                render={({ field }) => (
+                  <SearchSelect
+                    value={field.value}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setValue("personal.dogumIlce", ""); // İl değişince ilçeyi sıfırla
+                    }}
+                    options={ilOptions}
+                    placeholder={t("personal.labels.selectProvince")}
+                    menuPortalTarget={portalTarget}
+                  />
+                )}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="Şehir / Eyalet"
+                className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
+                value={birthCity || ""}
+                onChange={(e) =>
+                  setValue("personal.dogumSehir", onlyLettersTR(e.target.value))
+                }
+              />
+            )}
+
+            {/* İlçe Seçimi (Sadece Türkiye ise) */}
+            {birthCountry === "Türkiye" ? (
+              <Controller
+                name="personal.dogumIlce"
+                control={control}
+                render={({ field }) => (
+                  <SearchSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={getIlceOptions(birthCity)}
+                    placeholder={t("personal.labels.selectDistrict")}
+                    isDisabled={!birthCity} // İl seçilmeden ilçe seçilemez
+                    menuPortalTarget={portalTarget}
+                  />
+                )}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="İlçe / Bölge"
+                className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
+                value={birthDistrict || ""}
+                onChange={(e) =>
+                  setValue("personal.dogumIlce", onlyLettersTR(e.target.value))
+                }
+              />
+            )}
+          </div>
+          {(errors.personal?.dogumSehir || errors.personal?.dogumIlce) && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.personal?.dogumSehir?.message ||
+                errors.personal?.dogumIlce?.message}
+            </p>
+          )}
+        </div>
+
+        {/* --- İkamet Yeri (Ülke / İl / İlçe) --- */}
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            {t("personal.labels.resCountry")}{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Controller
+              name="personal.ikametUlke"
+              control={control}
+              render={({ field }) => (
+                <SearchSelect
+                  value={
+                    COUNTRY_OPTIONS.includes(field.value)
+                      ? field.value
+                      : field.value
+                      ? "Diğer"
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "Diğer") field.onChange("");
+                    else {
+                      field.onChange(val);
+                      setValue("personal.ikametSehir", "");
+                      setValue("personal.ikametIlce", "");
+                    }
+                  }}
+                  options={countryOptionsList}
+                  placeholder={t("personal.placeholders.countrySearch")}
+                  menuPortalTarget={portalTarget}
+                />
+              )}
+            />
+            <input
+              type="text"
+              placeholder={t("personal.placeholders.countryOther")}
+              className={`block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none transition ${
+                !COUNTRY_OPTIONS.includes(resCountry)
+                  ? "bg-white border-gray-300"
+                  : "bg-gray-200 cursor-not-allowed"
+              }`}
+              disabled={
+                COUNTRY_OPTIONS.includes(resCountry) && resCountry !== ""
+              }
+              value={!COUNTRY_OPTIONS.includes(resCountry) ? resCountry : ""}
+              onChange={(e) =>
+                setValue("personal.ikametUlke", onlyLettersTR(e.target.value))
+              }
+            />
+          </div>
+          {errors.personal?.ikametUlke && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.personal.ikametUlke.message}
+            </p>
+          )}
+        </div>
+
+        <div className="lg:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">
+            {t("personal.labels.resCity")}{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {resCountry === "Türkiye" ? (
+              <Controller
+                name="personal.ikametSehir"
+                control={control}
+                render={({ field }) => (
+                  <SearchSelect
+                    value={field.value}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setValue("personal.ikametIlce", "");
+                    }}
+                    options={ilOptions}
+                    placeholder={t("personal.labels.selectProvince")}
+                    menuPortalTarget={portalTarget}
+                  />
+                )}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="Şehir / Eyalet"
+                className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
+                value={resCity || ""}
+                onChange={(e) =>
+                  setValue(
+                    "personal.ikametSehir",
+                    onlyLettersTR(e.target.value)
+                  )
+                }
+              />
+            )}
+
+            {resCountry === "Türkiye" ? (
+              <Controller
+                name="personal.ikametIlce"
+                control={control}
+                render={({ field }) => (
+                  <SearchSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={getIlceOptions(resCity)}
+                    placeholder={t("personal.labels.selectDistrict")}
+                    isDisabled={!resCity}
+                    menuPortalTarget={portalTarget}
+                  />
+                )}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="İlçe / Bölge"
+                className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
+                value={resDistrict || ""}
+                onChange={(e) =>
+                  setValue("personal.ikametIlce", onlyLettersTR(e.target.value))
+                }
+              />
+            )}
+          </div>
+          {(errors.personal?.ikametSehir || errors.personal?.ikametIlce) && (
+            <p className="text-xs text-red-600 mt-1 font-medium">
+              {errors.personal?.ikametSehir?.message ||
+                errors.personal?.ikametIlce?.message}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
-});
+}
 
+// --- Helper Components ---
 function InputField({
   label,
   name,
-  value,
-  type = "text",
   placeholder,
-  onChange,
+  type = "text",
+  register,
   error,
   max,
 }) {
-  const inputType =
-    name === "eposta" || name === "telefon" || name === "whatsapp"
-      ? "text"
-      : type;
-  const length = typeof value === "string" ? value.length : 0;
   return (
     <div className="mt-0.5">
       <label htmlFor={name} className="block text-sm font-bold text-gray-700">
         {label} <span className="text-red-500">*</span>
       </label>
       <input
-        type={inputType}
+        type={type}
         id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
         placeholder={placeholder}
+        maxLength={max}
+        {...register(name)}
         className="block w-full h-[43px] rounded-lg border mt-0.5 px-3 py-2 bg-white text-gray-900 focus:outline-none transition border-gray-300 hover:border-black"
       />
-      <div className="mt-1 flex justify-between">
-        {error ? (
-          <p className="text-xs text-red-600 font-medium">{error}</p>
-        ) : (
-          <span />
+      <div className="mt-1 flex justify-between min-h-[1rem]">
+        {error && (
+          <p className="text-xs text-red-600 font-medium">{error.message}</p>
         )}
-        {typeof max === "number" && (
-          <p
-            className={`text-xs ${
-              length >= max ? "text-red-500" : "text-gray-400"
-            }`}
-          >
-            {length}/{max}
-          </p>
-        )}
+        {max && <p className="text-xs text-gray-400">Max: {max}</p>}
       </div>
     </div>
   );
 }
 
-export default PersonalInformation;
+function SelectController({
+  name,
+  label,
+  options,
+  control,
+  placeholder,
+  error,
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-bold text-gray-700 mb-1">
+        {label} <span className="text-red-500">*</span>
+      </label>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <SearchSelect
+            name={name}
+            value={field.value}
+            options={options}
+            onChange={field.onChange}
+            placeholder={placeholder}
+            menuPortalTarget={
+              typeof document !== "undefined" ? document.body : null
+            }
+          />
+        )}
+      />
+      {error && (
+        <p className="text-xs text-red-600 mt-1 font-medium">{error.message}</p>
+      )}
+    </div>
+  );
+}

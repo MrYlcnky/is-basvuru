@@ -1,13 +1,6 @@
-import {
-  forwardRef,
-  useState,
-  useMemo,
-  useEffect,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { useMemo } from "react";
+import { useFormContext, Controller, useWatch } from "react-hook-form";
 import Select from "react-select";
-import { z } from "zod";
 import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -21,13 +14,88 @@ import {
   faClapperboard,
 } from "@fortawesome/free-solid-svg-icons";
 
-const JobApplicationDetails = forwardRef(function JobApplicationDetails(
-  { onValidChange },
-  ref
-) {
-  const { t } = useTranslation(); // i18n kaldırıldı
+// --- Sabit Veriler (Bileşen dışına alındı) ---
+// Bu veriler ileride veritabanından (API) gelebilir.
+const departmentPrograms = {
+  "Casino F&B": ["Asist"],
+  "Casino Kasa": ["drCage"],
+  "Casino Slot": ["Asist", "drReports"],
+  "Casino Canlı Oyun": [],
+  "Otel Resepsiyon": ["Opera PMS"],
+  "Otel Housekeeping": ["HotelLogix"],
+};
 
-  // --- Sabit veri kümeleri (Memoized) ---
+// React-Select stilleri
+const customStyles = {
+  control: (base, state) => ({
+    ...base,
+    backgroundColor: state.isDisabled ? "#f3f4f6" : "white",
+    border: "1px solid #d1d5db",
+    boxShadow: "none",
+    cursor: state.isDisabled ? "not-allowed" : "pointer",
+    "&:hover": { borderColor: "#000000" },
+    opacity: state.isDisabled ? 0.8 : 1,
+  }),
+  dropdownIndicator: (base) => ({ ...base, cursor: "pointer" }),
+  option: (base, state) => ({
+    ...base,
+    cursor: "pointer",
+    backgroundColor: state.isSelected
+      ? "#e0f2fe"
+      : state.isFocused
+      ? "#f0f9ff"
+      : "white",
+    color: "#111827",
+  }),
+};
+
+export default function JobApplicationDetails() {
+  const { t } = useTranslation();
+  const {
+    control,
+    register,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
+
+  // --- Anlık Veri Takibi (Watch) ---
+  // Formdaki seçimleri dinliyoruz
+  const subeler = useWatch({ name: "jobDetails.subeler" }) || [];
+  const alanlar = useWatch({ name: "jobDetails.alanlar" }) || [];
+  const departmanlar = useWatch({ name: "jobDetails.departmanlar" }) || [];
+  const programlar = useWatch({ name: "jobDetails.programlar" }) || [];
+  const departmanPozisyonlari =
+    useWatch({ name: "jobDetails.departmanPozisyonlari" }) || [];
+  const kagitOyunlari = useWatch({ name: "jobDetails.kagitOyunlari" }) || [];
+  const lojman = useWatch({ name: "jobDetails.lojman" });
+  const tercihNedeni = useWatch({ name: "jobDetails.tercihNedeni" }) || "";
+
+  // --- Seçenek Tanımları (Memoized) ---
+
+  const subeOptions = useMemo(
+    () => [
+      { value: "Prestige", label: "Prestige" },
+      { value: "Girne", label: "Girne" },
+    ],
+    []
+  );
+
+  const alanOptions = useMemo(
+    () => [
+      { value: "Otel", label: t("jobDetails.areas.hotel") },
+      { value: "Casino", label: t("jobDetails.areas.casino") },
+    ],
+    [t]
+  );
+
+  const lojmanOptions = useMemo(
+    () => [
+      { value: "Evet", label: t("jobDetails.housing.yes") },
+      { value: "Hayır", label: t("jobDetails.housing.no") },
+    ],
+    [t]
+  );
+
   const otelDepartments = useMemo(
     () => [
       {
@@ -58,18 +126,7 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     [t]
   );
 
-  const departmentPrograms = useMemo(
-    () => ({
-      "Casino F&B": ["Asist"],
-      "Casino Kasa": ["drCage"],
-      "Casino Slot": ["Asist", "drReports"],
-      "Casino Canlı Oyun": [],
-      "Otel Resepsiyon": ["Opera PMS"],
-      "Otel Housekeeping": ["HotelLogix"],
-    }),
-    []
-  );
-
+  // Roller (MainSchema'da da kullanıldı, burada UI için tekrar tanımlıyoruz)
   const departmentRoles = useMemo(
     () => ({
       "Casino F&B": [
@@ -118,60 +175,30 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
     [t]
   );
 
-  const [formData, setFormData] = useState({
-    subeler: [],
-    alanlar: [],
-    departmanlar: [],
-    programlar: [],
-    departmanPozisyonlari: [],
-    kagitOyunlari: [],
-    lojman: "",
-    tercihNedeni: "",
-  });
-  const [errors, setErrors] = useState({});
+  // --- Filtreleme Mantığı ---
 
-  const subeOptions = useMemo(
-    () => [
-      { value: "Prestige", label: "Prestige" },
-      { value: "Girne", label: "Girne" },
-    ],
-    []
-  );
-  const alanOptions = useMemo(
-    () => [
-      { value: "Otel", label: t("jobDetails.areas.hotel") },
-      { value: "Casino", label: t("jobDetails.areas.casino") },
-    ],
-    [t]
-  );
-  const lojmanOptions = useMemo(
-    () => [
-      { value: "Evet", label: t("jobDetails.housing.yes") },
-      { value: "Hayır", label: t("jobDetails.housing.no") },
-    ],
-    [t]
-  );
-
+  // Seçilen Alanlara göre Departman Listesi
   const availableDepartments = useMemo(() => {
     let list = [];
-    if (formData.alanlar.some((a) => a.value === "Otel"))
-      list.push(...otelDepartments);
-    if (formData.alanlar.some((a) => a.value === "Casino"))
+    if (alanlar.some((a) => a.value === "Otel")) list.push(...otelDepartments);
+    if (alanlar.some((a) => a.value === "Casino"))
       list.push(...casinoDepartments);
     return list;
-  }, [formData.alanlar, otelDepartments, casinoDepartments]);
+  }, [alanlar, otelDepartments, casinoDepartments]);
 
+  // Seçilen Departmanlara göre Program Listesi
   const availablePrograms = useMemo(() => {
     const set = new Set();
-    formData.departmanlar.forEach((d) => {
+    departmanlar.forEach((d) => {
       (departmentPrograms[d.value] || []).forEach((p) => set.add(p));
     });
     return Array.from(set).map((p) => ({ value: p, label: p }));
-  }, [formData.departmanlar, departmentPrograms]);
+  }, [departmanlar]);
 
+  // Seçilen Departmanlara göre Roller (Pozisyonlar)
   const availableRoles = useMemo(() => {
     const groups = [];
-    formData.departmanlar.forEach((d) => {
+    departmanlar.forEach((d) => {
       const roleLabels = departmentRoles[d.value] || [];
       const roles = roleLabels.map((r) => ({
         value: `${d.value}::${r}`,
@@ -187,182 +214,51 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
       }
     });
     return groups;
-  }, [
-    formData.departmanlar,
-    departmentRoles,
-    otelDepartments,
-    casinoDepartments,
-  ]);
+  }, [departmanlar, departmentRoles, otelDepartments, casinoDepartments]);
 
-  const canliOyunSelected = formData.departmanlar.some(
+  // Durum Kontrolleri
+  const hasSubeSelected = subeler.length > 0;
+  const needsRoles = availableRoles.length > 0;
+  const canliOyunSelected = departmanlar.some(
     (d) => d.value === "Casino Canlı Oyun"
   );
-  const hasSubeSelected = formData.subeler.length > 0;
-  const needsRoles = availableRoles.length > 0;
 
-  const customStyles = {
-    control: (base, state) => ({
-      ...base,
-      backgroundColor: state.isDisabled ? "#f3f4f6" : "white",
-      border: "1px solid #d1d5db",
-      boxShadow: "none",
-      cursor: state.isDisabled ? "not-allowed" : "pointer",
-      "&:hover": { borderColor: "#000000" },
-      opacity: state.isDisabled ? 0.8 : 1,
-    }),
-    dropdownIndicator: (base) => ({ ...base, cursor: "pointer" }),
-    option: (base, state) => ({
-      ...base,
-      cursor: "pointer",
-      backgroundColor: state.isSelected
-        ? "#e0f2fe"
-        : state.isFocused
-        ? "#f0f9ff"
-        : "white",
-      color: "#111827",
-    }),
+  // --- Handlers (Resetleme Mantığı) ---
+  // React-Select onChange ile tetiklenir, alt alanları sıfırlarız.
+
+  const handleSubeChange = (val, field) => {
+    field.onChange(val);
+    // Şube değişince alt tarafta sıfırlama yapmaya gerek var mı?
+    // Genelde şube değişse de alan/departman kalabilir,
+    // ama şube silinirse alan seçimi geçersiz olabilir.
+    // Şimdilik kullanıcı deneyimini bozmamak için sıfırlamıyoruz.
   };
 
-  /* ---------- Zod Schema ---------- */
-  const schema = useMemo(() => {
-    const optionSchema = z.object({ value: z.string(), label: z.string() });
-    const roleOptionSchema = z.object({
-      value: z.string(),
-      label: z.string(),
-      dept: z.string(),
-    });
-    const arrayNonEmpty = (schema, msg) => z.array(schema).min(1, msg);
-
-    return z
-      .object({
-        subeler: arrayNonEmpty(
-          optionSchema,
-          t("jobDetails.errors.branchRequired")
-        ),
-        alanlar: arrayNonEmpty(
-          optionSchema,
-          t("jobDetails.errors.areaRequired")
-        ),
-        departmanlar: arrayNonEmpty(
-          optionSchema,
-          t("jobDetails.errors.departmentRequired")
-        ),
-        programlar: arrayNonEmpty(
-          optionSchema,
-          t("jobDetails.errors.programRequired")
-        ),
-        departmanPozisyonlari: z.array(roleOptionSchema).optional().default([]),
-        kagitOyunlari: z.array(optionSchema).optional().default([]),
-        lojman: z
-          .string()
-          .refine(
-            (v) => ["Evet", "Hayır"].includes(v),
-            t("jobDetails.errors.housingRequired")
-          ),
-        tercihNedeni: z
-          .string()
-          .min(1, t("jobDetails.errors.reasonRequired"))
-          .regex(
-            /^[a-zA-Z0-9ığüşöçİĞÜŞÖÇ\s.,]+$/u,
-            t("jobDetails.errors.reasonChars")
-          )
-          .max(500, t("jobDetails.errors.reasonMax")),
-      })
-      .superRefine((data, ctx) => {
-        const anyDeptHasRoles = data.departmanlar.some(
-          (d) => (departmentRoles[d.value] || []).length > 0
-        );
-        if (
-          anyDeptHasRoles &&
-          (!data.departmanPozisyonlari ||
-            data.departmanPozisyonlari.length === 0)
-        ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["departmanPozisyonlari"],
-            message: t("jobDetails.errors.rolesRequired"),
-          });
-        }
-        const canliOyun = data.departmanlar.some(
-          (d) => d.value === "Casino Canlı Oyun"
-        );
-        if (
-          canliOyun &&
-          (!data.kagitOyunlari || data.kagitOyunlari.length === 0)
-        ) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["kagitOyunlari"],
-            message: t("jobDetails.errors.cardGamesRequired"),
-          });
-        }
-      });
-  }, [t, departmentRoles]); // optionSchema vb. içe taşındı, dependency sorunu çözüldü
-
-  const validateAll = useCallback(
-    (nextData = formData, { silent = false } = {}) => {
-      const res = schema.safeParse(nextData);
-      const ok = res.success;
-      if (!silent) {
-        if (!ok) {
-          const newErrors = {};
-          res.error.issues.forEach((i) => {
-            if (i.path[0]) newErrors[i.path[0]] = i.message;
-          });
-          setErrors(newErrors);
-        } else {
-          setErrors({});
-        }
-      }
-      onValidChange?.(ok);
-      return ok;
-    },
-    [formData, onValidChange, schema]
-  );
-
-  const validateField = (name, value) => {
-    const next = { ...formData, [name]: value };
-    validateAll(next);
+  const handleAlanChange = (val, field) => {
+    field.onChange(val);
+    // Alan değişince, seçili departmanların hala geçerli olup olmadığını kontrol et
+    // Basitlik adına departmanları, rolleri vb. sıfırlayabiliriz.
+    setValue("jobDetails.departmanlar", []);
+    setValue("jobDetails.departmanPozisyonlari", []);
+    setValue("jobDetails.programlar", []);
+    setValue("jobDetails.kagitOyunlari", []);
   };
 
-  useImperativeHandle(ref, () => ({
-    isValid: () => validateAll(undefined, { silent: false }),
-    fillData: (data) => {
-      if (!data) return;
-      setFormData((prev) => ({ ...prev, ...data }));
-    },
-  }));
-
-  useEffect(() => {
-    validateAll(formData, { silent: true });
-  }, [formData, validateAll]);
-
-  const handleMultiChange = (key, value) => {
-    const v = value || [];
-    setFormData((p) => ({ ...p, [key]: v }));
-    validateField(key, v);
-  };
-  const handleSingleChange = (key, value) => {
-    const v = value ? value.value : "";
-    setFormData((p) => ({ ...p, [key]: v }));
-    validateField(key, v);
-  };
-  const onDepartmentsChange = (v) => {
-    const allowedDepts = new Set((v || []).map((x) => x.value));
-    const filteredRoles = (formData.departmanPozisyonlari || []).filter((r) =>
-      allowedDepts.has(r.dept)
-    );
-    const next = {
-      ...formData,
-      departmanlar: v || [],
-      departmanPozisyonlari: filteredRoles,
-    };
-    setFormData(next);
-    validateAll(next);
+  const handleDepartmanChange = (val, field) => {
+    field.onChange(val);
+    // Departman değişince, seçili rolleri ve programları temizle
+    setValue("jobDetails.departmanPozisyonlari", []);
+    setValue("jobDetails.programlar", []);
+    // Eğer canlı oyun seçimi kalktıysa kağıt oyunlarını temizle
+    const hasLive = (val || []).some((d) => d.value === "Casino Canlı Oyun");
+    if (!hasLive) {
+      setValue("jobDetails.kagitOyunlari", []);
+    }
   };
 
   return (
     <div className="bg-gray-50 rounded-b-lg p-4 sm:p-6 lg:p-8">
+      {/* Bilgilendirme Kutusu */}
       <div className="mb-6 bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 rounded-md shadow-sm">
         <p className="text-sm sm:text-base leading-relaxed">
           <strong>📋 {t("jobDetails.info.title")}</strong>{" "}
@@ -376,125 +272,168 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           )}
         </p>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-        <SelectField
-          label={t("jobDetails.labels.branches")}
-          name="subeler"
-          options={subeOptions}
-          value={formData.subeler}
-          onChange={(v) => handleMultiChange("subeler", v)}
-          placeholder={t("jobDetails.placeholders.selectBranch")}
-          error={errors.subeler}
-          isMulti
-          styles={customStyles}
+        {/* Şubeler */}
+        <Controller
+          name="jobDetails.subeler"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.branches")}
+              options={subeOptions}
+              {...field}
+              onChange={(val) => handleSubeChange(val, field)}
+              placeholder={t("jobDetails.placeholders.selectBranch")}
+              error={errors.jobDetails?.subeler}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
-        <SelectField
-          label={t("jobDetails.labels.areas")}
-          name="alanlar"
-          options={alanOptions}
-          value={formData.alanlar}
-          onChange={(v) => handleMultiChange("alanlar", v)}
-          placeholder={
-            hasSubeSelected
-              ? t("jobDetails.placeholders.selectArea")
-              : t("jobDetails.placeholders.selectBranchFirst")
-          }
-          isDisabled={!hasSubeSelected}
-          error={errors.alanlar}
-          isMulti
-          styles={customStyles}
+
+        {/* Alanlar */}
+        <Controller
+          name="jobDetails.alanlar"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.areas")}
+              options={alanOptions}
+              {...field}
+              onChange={(val) => handleAlanChange(val, field)}
+              placeholder={
+                hasSubeSelected
+                  ? t("jobDetails.placeholders.selectArea")
+                  : t("jobDetails.placeholders.selectBranchFirst")
+              }
+              isDisabled={!hasSubeSelected}
+              error={errors.jobDetails?.alanlar}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
-        <SelectField
-          label={t("jobDetails.labels.departments")}
-          name="departmanlar"
-          options={availableDepartments}
-          value={formData.departmanlar}
-          onChange={onDepartmentsChange}
-          placeholder={
-            availableDepartments.length === 0
-              ? t("jobDetails.placeholders.selectAreaFirst")
-              : t("jobDetails.placeholders.selectDepartment")
-          }
-          isDisabled={availableDepartments.length === 0}
-          error={errors.departmanlar}
-          isMulti
-          styles={customStyles}
+
+        {/* Departmanlar */}
+        <Controller
+          name="jobDetails.departmanlar"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.departments")}
+              options={availableDepartments}
+              {...field}
+              onChange={(val) => handleDepartmanChange(val, field)}
+              placeholder={
+                availableDepartments.length === 0
+                  ? t("jobDetails.placeholders.selectAreaFirst")
+                  : t("jobDetails.placeholders.selectDepartment")
+              }
+              isDisabled={availableDepartments.length === 0}
+              error={errors.jobDetails?.departmanlar}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
-        <SelectField
-          label={t("jobDetails.labels.roles")}
-          name="departmanPozisyonlari"
-          options={availableRoles}
-          value={formData.departmanPozisyonlari}
-          onChange={(v) => handleMultiChange("departmanPozisyonlari", v)}
-          placeholder={
-            needsRoles
-              ? t("jobDetails.placeholders.selectRoles")
-              : t("jobDetails.placeholders.selectDeptForRoles")
-          }
-          isDisabled={!needsRoles}
-          error={errors.departmanPozisyonlari}
-          isMulti
-          styles={customStyles}
+
+        {/* Roller / Pozisyonlar */}
+        <Controller
+          name="jobDetails.departmanPozisyonlari"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.roles")}
+              options={availableRoles}
+              {...field}
+              placeholder={
+                needsRoles
+                  ? t("jobDetails.placeholders.selectRoles")
+                  : t("jobDetails.placeholders.selectDeptForRoles")
+              }
+              isDisabled={!needsRoles}
+              error={errors.jobDetails?.departmanPozisyonlari}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
-        <SelectField
-          label={t("jobDetails.labels.programs")}
-          name="programlar"
-          options={availablePrograms}
-          value={formData.programlar}
-          onChange={(v) => handleMultiChange("programlar", v)}
-          placeholder={
-            availablePrograms.length === 0
-              ? t("jobDetails.placeholders.selectDeptFirst")
-              : t("jobDetails.placeholders.selectProgram")
-          }
-          isDisabled={availablePrograms.length === 0}
-          error={errors.programlar}
-          isMulti
-          styles={customStyles}
+
+        {/* Programlar */}
+        <Controller
+          name="jobDetails.programlar"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.programs")}
+              options={availablePrograms}
+              {...field}
+              placeholder={
+                availablePrograms.length === 0
+                  ? t("jobDetails.placeholders.selectDeptFirst")
+                  : t("jobDetails.placeholders.selectProgram")
+              }
+              isDisabled={availablePrograms.length === 0}
+              error={errors.jobDetails?.programlar}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
-        <SelectField
-          label={t("jobDetails.labels.cardGames")}
-          name="kagitOyunlari"
-          options={kagitOyunlariList}
-          value={formData.kagitOyunlari}
-          onChange={(v) => handleMultiChange("kagitOyunlari", v)}
-          placeholder={
-            canliOyunSelected
-              ? t("jobDetails.placeholders.selectCardGame")
-              : t("jobDetails.placeholders.cardGameOnlyForLive")
-          }
-          isDisabled={!canliOyunSelected}
-          error={errors.kagitOyunlari}
-          isMulti
-          styles={customStyles}
+
+        {/* Kağıt Oyunları */}
+        <Controller
+          name="jobDetails.kagitOyunlari"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label={t("jobDetails.labels.cardGames")}
+              options={kagitOyunlariList}
+              {...field}
+              placeholder={
+                canliOyunSelected
+                  ? t("jobDetails.placeholders.selectCardGame")
+                  : t("jobDetails.placeholders.cardGameOnlyForLive")
+              }
+              isDisabled={!canliOyunSelected}
+              error={errors.jobDetails?.kagitOyunlari}
+              isMulti
+              styles={customStyles}
+            />
+          )}
         />
       </div>
+
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
+        {/* Lojman */}
         <div className="lg:col-span-2">
-          <SelectField
-            label={t("jobDetails.labels.housing")}
-            name="lojman"
-            options={[
-              {
-                value: "",
-                label: t("jobDetails.common.pleaseSelect"),
-                isDisabled: true,
-              },
-              ...lojmanOptions,
-            ]}
-            value={
-              lojmanOptions.find((o) => o.value === formData.lojman) || {
-                value: "",
-                label: t("jobDetails.common.pleaseSelect"),
-                isDisabled: true,
-              }
-            }
-            onChange={(v) => handleSingleChange("lojman", v)}
-            placeholder={t("jobDetails.placeholders.selectHousing")}
-            error={errors.lojman}
-            styles={customStyles}
+          <Controller
+            name="jobDetails.lojman"
+            control={control}
+            render={({ field }) => {
+              // Lojman tekli seçim olduğu için value object değil string geliyor olabilir
+              // React-select object bekler {value, label}
+              const valObj =
+                lojmanOptions.find((o) => o.value === field.value) || null;
+              return (
+                <SelectField
+                  label={t("jobDetails.labels.housing")}
+                  options={lojmanOptions}
+                  {...field} // onChange, onBlur vb.
+                  value={valObj} // Value'yu override et
+                  onChange={(opt) => field.onChange(opt ? opt.value : "")} // String kaydet
+                  placeholder={t("jobDetails.placeholders.selectHousing")}
+                  error={errors.jobDetails?.lojman}
+                  styles={customStyles}
+                  isMulti={false}
+                />
+              );
+            }}
           />
         </div>
+
+        {/* Tercih Nedeni */}
         <div className="lg:col-span-10 flex flex-col">
           <label
             htmlFor="tercihNedeni"
@@ -505,41 +444,36 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
           </label>
           <textarea
             id="tercihNedeni"
-            name="tercihNedeni"
             rows={2}
             maxLength={500}
             placeholder={t("jobDetails.placeholders.whyUs")}
-            value={formData.tercihNedeni}
-            onChange={(e) =>
-              handleSingleChange("tercihNedeni", { value: e.target.value })
-            }
+            {...register("jobDetails.tercihNedeni")}
             className={`w-full rounded-lg px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none resize-none shadow-none border ${
-              errors.tercihNedeni
+              errors.jobDetails?.tercihNedeni
                 ? "border-red-500 focus:border-red-500"
                 : "border-gray-300 focus:border-black"
             }`}
           />
           <div className="flex justify-between items-center mt-1">
-            {errors.tercihNedeni ? (
+            {errors.jobDetails?.tercihNedeni ? (
               <p className="text-xs text-red-600 font-medium">
-                {errors.tercihNedeni}
+                {errors.jobDetails.tercihNedeni.message}
               </p>
             ) : (
               <span />
             )}
             <p
               className={`text-xs ${
-                formData.tercihNedeni.length >= 480
-                  ? "text-red-500"
-                  : "text-gray-400"
+                tercihNedeni.length >= 480 ? "text-red-500" : "text-gray-400"
               }`}
             >
-              {formData.tercihNedeni.length}/500
+              {tercihNedeni.length}/500
             </p>
           </div>
         </div>
       </div>
-      {/* Önizleme Bölümü (Aynı) */}
+
+      {/* Önizleme Bölümü */}
       <div className="mt-10 bg-white rounded-lg border border-gray-200 shadow-sm p-5 sm:p-6 md:p-8 transition-all">
         <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
           <FontAwesomeIcon icon={faEye} className="text-red-600 text-lg" />
@@ -550,39 +484,37 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
             {
               icon: faBuilding,
               label: t("jobDetails.preview.branches"),
-              value: formData.subeler.map((s) => s.label).join(", "),
+              value: subeler.map((s) => s.label).join(", "),
             },
             {
               icon: faLayerGroup,
               label: t("jobDetails.preview.areas"),
-              value: formData.alanlar.map((a) => a.label).join(", "),
+              value: alanlar.map((a) => a.label).join(", "),
             },
             {
               icon: faBriefcase,
               label: t("jobDetails.preview.departments"),
-              value: formData.departmanlar.map((d) => d.label).join(", "),
+              value: departmanlar.map((d) => d.label).join(", "),
             },
             {
               icon: faBriefcase,
               label: t("jobDetails.preview.roles"),
-              value: formData.departmanPozisyonlari
-                .map((p) => p.label)
-                .join(", "),
+              value: departmanPozisyonlari.map((p) => p.label).join(", "),
             },
             {
               icon: faComputer,
               label: t("jobDetails.preview.programs"),
-              value: formData.programlar.map((p) => p.label).join(", "),
+              value: programlar.map((p) => p.label).join(", "),
             },
             {
               icon: faClapperboard,
               label: t("jobDetails.preview.cardGames"),
-              value: formData.kagitOyunlari.map((k) => k.label).join(", "),
+              value: kagitOyunlari.map((k) => k.label).join(", "),
             },
             {
               icon: faHouseUser,
               label: t("jobDetails.preview.housing"),
-              value: formData.lojman || "—",
+              value: lojman || "—",
             },
           ].map(({ icon, label, value }, i) => (
             <p
@@ -605,7 +537,9 @@ const JobApplicationDetails = forwardRef(function JobApplicationDetails(
       </div>
     </div>
   );
-});
+}
+
+// --- Yardımcı Bileşenler ---
 
 function ClampText({ text, lines = 2 }) {
   return (
@@ -626,6 +560,8 @@ function ClampText({ text, lines = 2 }) {
     </span>
   );
 }
+
+// Hata mesajını içinde gösteren Select Wrapper
 function SelectField({ label, error, ...props }) {
   return (
     <div className="w-full">
@@ -633,9 +569,9 @@ function SelectField({ label, error, ...props }) {
         {label}
       </label>
       <Select {...props} />
-      {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
+      {error && (
+        <p className="text-red-600 text-xs mt-1">{error.message || error}</p>
+      )}
     </div>
   );
 }
-
-export default JobApplicationDetails;

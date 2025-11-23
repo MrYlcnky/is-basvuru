@@ -1,44 +1,16 @@
-// components/Users/addModals/LanguageAddModal.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import useModalDismiss from "../modalHooks/useModalDismiss";
-import { z } from "zod";
 import { lockScroll, unlockScroll } from "../modalHooks/scrollLock";
 import { useTranslation } from "react-i18next";
+import { createLanguageSchema } from "../../../schemas/languageSchema"; // Şema importu
 
 /* -------------------- Ortak Sınıflar -------------------- */
 const BASE_SELECT =
   "w-full h-[43px] border rounded-lg px-3 py-2 focus:outline-none transition border-gray-300 hover:border-black cursor-pointer";
 const BASE_INPUT =
   "w-full h-[43px] border rounded-lg px-3 py-2 focus:outline-none transition border-gray-300 hover:border-black";
-
-/* -------------------- ZOD ŞEMASI (i18n) -------------------- */
-const makeSchema = (t) =>
-  z.object({
-    dil: z
-      .string()
-      .trim()
-      .min(1, t("languages.validations.languageRequired"))
-      .max(40, t("languages.validations.languageMax"))
-      .regex(
-        /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
-        t("languages.validations.languageRegex")
-      ),
-    konusma: z.string().min(1, t("languages.validations.speakingRequired")),
-    yazma: z.string().min(1, t("languages.validations.writingRequired")),
-    okuma: z.string().min(1, t("languages.validations.readingRequired")),
-    dinleme: z.string().min(1, t("languages.validations.listeningRequired")),
-    ogrenilenKurum: z
-      .string()
-      .trim()
-      .min(1, t("languages.validations.learnedHowRequired"))
-      .max(80, t("languages.validations.learnedHowMax"))
-      .regex(
-        /^[a-zA-ZığüşöçİĞÜŞÖÇ\s.-]+$/,
-        t("languages.validations.learnedHowRegex")
-      ),
-  });
 
 export default function LanguageAddModal({
   open,
@@ -49,7 +21,7 @@ export default function LanguageAddModal({
   onUpdate,
 }) {
   const { t } = useTranslation();
-  const schema = makeSchema(t);
+  const schema = useMemo(() => createLanguageSchema(t), [t]);
 
   const dialogRef = useRef(null);
 
@@ -134,7 +106,6 @@ export default function LanguageAddModal({
       dinleme: "",
       ogrenilenKurum: "",
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, initialData, t]);
 
   // backdrop click ile kapat
@@ -167,7 +138,7 @@ export default function LanguageAddModal({
 
   // Submit
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const sanitized = {
       ...formData,
       dil: formData.dil.trim(),
@@ -188,7 +159,7 @@ export default function LanguageAddModal({
     if (mode === "edit") onUpdate?.(payload);
     else onSave?.(payload);
 
-    handleClose(); // kilidi kaldır + kapat
+    handleClose();
   };
 
   if (!open) return null;
@@ -209,8 +180,6 @@ export default function LanguageAddModal({
     >
       <div
         ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
         className="w-full max-w-2xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -231,8 +200,8 @@ export default function LanguageAddModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+        {/* Form (DIV'e çevrildi) */}
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* 1 Dil - (Diğer Dil Adı) */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -406,36 +375,22 @@ export default function LanguageAddModal({
                 {t("actions.cancel")}
               </button>
 
-              {mode === "create" ? (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
-                      : "bg-blue-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.save")}
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  title={disabledTip}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
-                    isValid
-                      ? "bg-green-600 hover:bg-green-700 active:bg-green-800 active:scale-95 cursor-pointer"
-                      : "bg-green-300 opacity-90 cursor-not-allowed"
-                  }`}
-                >
-                  {t("actions.update")}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!isValid}
+                title={disabledTip}
+                className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white transition ${
+                  isValid
+                    ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 active:scale-95 cursor-pointer"
+                    : "bg-blue-300 opacity-90 cursor-not-allowed"
+                }`}
+              >
+                {mode === "edit" ? t("actions.update") : t("actions.save")}
+              </button>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

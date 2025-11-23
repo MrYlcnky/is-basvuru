@@ -1,13 +1,12 @@
+import { useState, forwardRef, useImperativeHandle } from "react";
+import { useFormContext, useWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle, useEffect } from "react";
-import { useTranslation } from "react-i18next";
-
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import useCrudTable from "../modalHooks/useCrudTable";
 import JobExperiencesAddModal from "../addModals/JobExperiencesAddModal";
 import { formatDate } from "../modalHooks/dateUtils";
 
@@ -18,11 +17,21 @@ const formatMoney = (val) => {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 };
 
-const JobExperiencesTable = forwardRef(function JobExperiencesTable(
-  { onValidChange },
-  ref
-) {
+const JobExperiencesTable = forwardRef((props, ref) => {
   const { t } = useTranslation();
+
+  // --- Hook Form Entegrasyonu ---
+  const { control, setValue } = useFormContext();
+  // Ana formdaki 'experience' listesini izliyoruz
+  const rows = useWatch({ control, name: "experience" }) || [];
+
+  // --- Local Modal State ---
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+
+  const notify = (msg) => toast.success(msg);
 
   const confirmDelete = async (row) => {
     const res = await Swal.fire({
@@ -40,36 +49,69 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(
     return res.isConfirmed;
   };
 
-  const notify = (msg) => toast.success(msg);
+  // --- Actions ---
+  const openCreate = () => {
+    setModalMode("create");
+    setSelectedRow(null);
+    setSelectedIndex(-1);
+    setModalOpen(true);
+  };
 
-  const {
-    rows,
-    setRows,
-    modalOpen,
-    modalMode,
-    selectedRow,
-    closeModal,
-    openCreate,
-    openEdit,
-    handleSave,
-    handleUpdate,
-    handleDelete,
-  } = useCrudTable(staticJobExperiencesTableDB, { confirmDelete, notify });
+  const openEdit = (row, index) => {
+    setModalMode("edit");
+    setSelectedRow(row);
+    setSelectedIndex(index);
+    setModalOpen(true);
+  };
 
-  useEffect(() => {
-    onValidChange?.(rows.length > 0);
-  }, [rows, onValidChange]);
+  const closeModal = () => setModalOpen(false);
+
+  const handleSave = (newData) => {
+    const updatedList = [...rows, newData];
+    setValue("experience", updatedList, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    notify(t("toast.saved"));
+    closeModal();
+  };
+
+  const handleUpdate = (updatedData) => {
+    if (selectedIndex > -1) {
+      const updatedList = [...rows];
+      updatedList[selectedIndex] = updatedData;
+      setValue("experience", updatedList, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      notify(t("toast.updated"));
+    }
+    closeModal();
+  };
+
+  const handleDelete = async (row, index) => {
+    const confirmed = await confirmDelete(row);
+    if (confirmed) {
+      const updatedList = rows.filter((_, i) => i !== index);
+      setValue("experience", updatedList, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      notify(t("toast.deleted"));
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     openCreate,
     getData: () => rows,
     fillData: (data) => {
       if (Array.isArray(data)) {
-        setRows(data);
+        setValue("experience", data);
       }
     },
   }));
 
+  // Aktif iş kontrolü (Modal'a prop olarak geçmek için)
   const anyActive = rows.some(
     (r) => r?.halenCalisiyor === true || !r?.bitisTarihi
   );
@@ -106,8 +148,8 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(
               </tr>
             </thead>
             <tbody>
-              {rows.map((item) => (
-                <tr key={item.id} className="bg-white border-t">
+              {rows.map((item, index) => (
+                <tr key={index} className="bg-white border-t">
                   <td
                     className="px-4 py-3 font-medium text-gray-900 max-w-[150px] truncate"
                     title={item.isAdi}
@@ -179,7 +221,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(
                       <button
                         type="button"
                         aria-label={t("common.edit")}
-                        onClick={() => openEdit(item)}
+                        onClick={() => openEdit(item, index)}
                         className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
                       >
                         <FontAwesomeIcon icon={faPen} />
@@ -187,7 +229,7 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(
                       <button
                         type="button"
                         aria-label={t("common.delete")}
-                        onClick={() => handleDelete(item)}
+                        onClick={() => handleDelete(item, index)}
                         className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
                       >
                         <FontAwesomeIcon icon={faTrash} />
@@ -214,10 +256,5 @@ const JobExperiencesTable = forwardRef(function JobExperiencesTable(
     </div>
   );
 });
-
-function staticJobExperiencesTableDB() {
-  const rows = [];
-  return rows;
-}
 
 export default JobExperiencesTable;

@@ -1,22 +1,72 @@
+import { useState, forwardRef, useImperativeHandle } from "react";
+import { useFormContext, useWatch } from "react-hook-form"; // YENİ: Form entegrasyonu
+import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { forwardRef, useImperativeHandle, useEffect } from "react";
-import CertificatesAddModal from "../addModals/CertificatesAddModal";
-import { formatDate } from "../modalHooks/dateUtils";
-import useCrudTable from "../modalHooks/useCrudTable";
-import { useTranslation } from "react-i18next";
-
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const CertificateTable = forwardRef(function CertificateTable(
-  { onValidChange },
-  ref
-) {
+import CertificatesAddModal from "../addModals/CertificatesAddModal";
+import { formatDate } from "../modalHooks/dateUtils";
+
+const CertificateTable = forwardRef((props, ref) => {
   const { t } = useTranslation();
 
-  const confirmDelete = async (row) => {
+  // --- 1. React Hook Form Entegrasyonu ---
+  const { control, setValue } = useFormContext();
+  // Ana formdaki 'certificates' listesini izle (rows yerine bunu kullanacağız)
+  const rows = useWatch({ control, name: "certificates" }) || [];
+
+  // --- 2. Local Modal State ---
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+
+  const notify = (msg) => toast.success(msg);
+
+  // --- 3. Actions (CRUD) ---
+  const openCreate = () => {
+    setModalMode("create");
+    setSelectedRow(null);
+    setSelectedIndex(-1);
+    setModalOpen(true);
+  };
+
+  const openEdit = (row, index) => {
+    setModalMode("edit");
+    setSelectedRow(row);
+    setSelectedIndex(index);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => setModalOpen(false);
+
+  const handleSave = (newData) => {
+    const updatedList = [...rows, newData];
+    setValue("certificates", updatedList, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    notify(t("toast.saved"));
+    closeModal();
+  };
+
+  const handleUpdate = (updatedData) => {
+    if (selectedIndex > -1) {
+      const updatedList = [...rows];
+      updatedList[selectedIndex] = updatedData;
+      setValue("certificates", updatedList, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      notify(t("toast.updated"));
+    }
+    closeModal();
+  };
+
+  const handleDelete = async (row, index) => {
     const res = await Swal.fire({
       title: t("certificates.delete.title"),
       text: t("certificates.delete.text", {
@@ -29,38 +79,24 @@ const CertificateTable = forwardRef(function CertificateTable(
       cancelButtonText: t("actions.cancel"),
       confirmButtonText: t("actions.delete"),
     });
-    return res.isConfirmed;
+
+    if (res.isConfirmed) {
+      const updatedList = rows.filter((_, i) => i !== index);
+      setValue("certificates", updatedList, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      notify(t("toast.deleted"));
+    }
   };
 
-  const notify = (msg) => toast.success(msg);
-
-  const {
-    rows,
-    setRows,
-    modalOpen,
-    modalMode,
-    selectedRow,
-    closeModal,
-    openCreate,
-    openEdit,
-    handleSave,
-    handleUpdate,
-    handleDelete,
-  } = useCrudTable(staticCertificatesDB, {
-    confirmDelete,
-    notify: (m) => notify(m || t("toast.saved")),
-  });
-
-  useEffect(() => {
-    onValidChange?.(rows.length > 0);
-  }, [rows, onValidChange]);
-
+  // --- 4. Dışarı Açılan Metodlar ---
   useImperativeHandle(ref, () => ({
     openCreate,
     getData: () => rows,
     fillData: (data) => {
       if (Array.isArray(data)) {
-        setRows(data);
+        setValue("certificates", data);
       }
     },
   }));
@@ -69,7 +105,7 @@ const CertificateTable = forwardRef(function CertificateTable(
 
   return (
     <div>
-      {/* Tablo */}
+      {/* Tablo: Sadece veri varsa görünür */}
       {rows.length !== 0 && (
         <div className="overflow-x-auto rounded-b-lg ring-1 ring-gray-200 bg-white">
           <table className="min-w-full text-sm">
@@ -92,12 +128,12 @@ const CertificateTable = forwardRef(function CertificateTable(
               </tr>
             </thead>
             <tbody>
-              {rows.map((item) => {
+              {rows.map((item, idx) => {
                 const issued = formatDate(item.verilisTarihi);
                 const valid = formatDate(item.gecerlilikTarihi) || dash;
 
                 return (
-                  <tr key={item.id} className="bg-white border-t table-fixed">
+                  <tr key={idx} className="bg-white border-t table-fixed">
                     <td
                       className="px-4 py-3 font-medium text-gray-800 max-w-[140px] truncate"
                       title={item.ad}
@@ -131,19 +167,19 @@ const CertificateTable = forwardRef(function CertificateTable(
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
                         <button
-                          type="button"
+                          type="button" // ÖNEMLİ: Sayfa yenilenmesini önler
                           aria-label={t("actions.update")}
                           title={t("actions.update")}
-                          onClick={() => openEdit(item)}
+                          onClick={() => openEdit(item, idx)}
                           className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-50 active:scale-[0.98] transition cursor-pointer"
                         >
                           <FontAwesomeIcon icon={faPen} />
                         </button>
                         <button
-                          type="button"
+                          type="button" // ÖNEMLİ: Sayfa yenilenmesini önler
                           aria-label={t("actions.delete")}
                           title={t("actions.delete")}
-                          onClick={() => handleDelete(item)}
+                          onClick={() => handleDelete(item, idx)}
                           className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-sm text-white hover:bg-red-700 active:scale-[0.98] transition cursor-pointer"
                         >
                           <FontAwesomeIcon icon={faTrash} />
@@ -169,10 +205,5 @@ const CertificateTable = forwardRef(function CertificateTable(
     </div>
   );
 });
-
-function staticCertificatesDB() {
-  const rows = [];
-  return rows;
-}
 
 export default CertificateTable;
