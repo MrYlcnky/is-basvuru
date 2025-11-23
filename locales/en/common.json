@@ -54,6 +54,8 @@
     "error": "Something went wrong. Please try again."
   },
   "confirm": {
+    "sectionTitle": "Application Confirmation",
+    "sectionDesc": "Please check the boxes and complete the verification.",
     "submit": "SUBMIT",
     "checks": "Consent Checks",
     "missing": {
@@ -101,7 +103,11 @@
     "update": "Update",
     "pleaseSelect": "Please select",
     "fillAllProperly": "Please fill all required fields properly.",
-    "error": "Error"
+    "error": "Error",
+    "areYouSure": "Are you sure?",
+    "clearAllWarning": "All form data will be deleted and reset. This action cannot be undone!",
+    "yesClear": "Yes, Clear",
+    "clearFormBtn": "Clear and Reset Form"
   },
   "certificates": {
     "table": {
@@ -237,9 +243,6 @@
     "hints": {
       "noEndWhenContinuing": "No end date is required when Continuing/Dropped."
     },
-    "select": {
-      "choose": "Select"
-    },
     "delete": {
       "title": "Are you sure?",
       "text": "Do you want to delete “{{school}} - {{dept}}”?"
@@ -372,15 +375,6 @@
       "rolesRequired": "Please select role(s)",
       "cardGamesRequired": "Select at least one card game"
     }
-  },"common": {
-    "actions": "Actions",
-    "cancel": "Cancel",
-    "close": "Close",
-    "deleteYes": "Yes, delete!",
-    "save": "Save",
-    "update": "Update",
-    "pleaseSelect": "Please select",
-    "fillAllProperly": "Please fill all required fields properly."
   },
   "jobExp": {
     "title": { "add": "Add Job Experience", "edit": "Edit Job Experience" },
@@ -505,8 +499,7 @@
       "learnedHowMax": "This field can be at most 80 characters.",
       "learnedHowRegex": "Only letters, spaces, dot and hyphen are allowed."
     }
-  },
-  "references": {
+  },"references": {
     "table": {
       "orgType": "Organization Type",
       "firstName": "First Name",
@@ -559,8 +552,7 @@
       "phoneRequired": "Phone is required.",
       "phoneInvalid": "Invalid phone number. E.g., +90 5XX XXX XX XX"
     }
-  },
-   "personal": {
+  }, "personal": {
     "labels": {
       "photo": "Passport Photo",
       "firstName": "First Name",
