@@ -51,7 +51,8 @@
     "saved": "Başarıyla kaydedildi.",
     "updated": "Başarıyla güncellendi.",
     "deleted": "Silindi.",
-    "error": "Bir hata oluştu. Lütfen tekrar deneyin."
+    "error": "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "formCleared": "Form başarıyla temizlendi."
   },
   "confirm": {
     "sectionTitle": "Başvuru Onayı",
