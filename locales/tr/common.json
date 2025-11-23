@@ -589,7 +589,9 @@
       "select": "Seçiniz",
       "upload": "Yükle",
       "replace": "Değiştir",
-      "noPhoto": "Fotoğraf Yok"
+      "noPhoto": "Fotoğraf Yok",
+      "cityState": "Şehir / Eyalet",
+    "districtRegion": "İlçe / Bölge"
     },
     "options": {
       "gender": { "female": "Kadın", "male": "Erkek" },
@@ -645,7 +647,7 @@
       "nationality": "Uyruğu seçiniz"
     }
   },
-  "otherInfo": {
+"otherInfo": {
     "labels": {
       "kktcDoc": "KKTC Geçerli Belge",
       "lawsuit": "Dava Durumu",
@@ -663,7 +665,8 @@
       "lawsuitReason": "Dava nedenini yazınız",
       "diseaseDesc": "Rahatsızlığınızı açıklayınız",
       "height": "Örn: 173",
-      "weight": "Örn: 82"
+      "weight": "Örn: 82",
+      "licenseTypePlaceholder": "Türler"
     },
     "options": {
       "kktcDoc": ["Vatandaşlık", "Çalışma İzni", "Öğrenci Belgesi", "Belge Yok"],
@@ -684,10 +687,12 @@
       "military": "Askerlik durumu seçiniz",
       "heightNum": "Boy sayı olmalıdır",
       "heightInt": "Boy tam sayı olmalıdır",
-      "heightMinMax": "Boy 120 ile 230 cm arasında olmalıdır",
+      "heightMin": "Boy en az 50 cm olmalıdır",
+      "heightMax": "Boy en fazla 250 cm olabilir",
       "weightNum": "Kilo sayı olmalıdır",
       "weightInt": "Kilo tam sayı olmalıdır",
-      "weightMinMax": "Kilo 30 ile 250 kg arasında olmalıdır"
+      "weightMin": "Kilo en az 20 kg olmalıdır",
+      "weightMax": "Kilo en fazla 300 kg olabilir"
     }
   }
 }
