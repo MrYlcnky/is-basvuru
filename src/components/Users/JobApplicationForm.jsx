@@ -284,8 +284,8 @@ export default function JobApplicationForm() {
       // 4. Kullanıcıyı yukarı kaydır ve bilgi ver
       window.scrollTo({ top: 0, behavior: "smooth" });
       // İstersen burayı da çevirebilirsin: t("toast.formCleared") gibi
-      toast.info("Form temizlendi.", {
-        theme: "light",
+      toast.info(t("toast.formCleared"), {
+        theme: "dark",
         position: "top-center",
       });
     }

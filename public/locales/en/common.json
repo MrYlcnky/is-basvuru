@@ -51,7 +51,8 @@
     "saved": "Saved successfully.",
     "updated": "Updated successfully.",
     "deleted": "Deleted.",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "formCleared": "Form cleared successfully."
   },
   "confirm": {
     "sectionTitle": "Application Confirmation",
