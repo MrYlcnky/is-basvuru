@@ -210,7 +210,6 @@ export default function AdminPanel() {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 1. Dinamik Filtre Listeleri (Aynı)
