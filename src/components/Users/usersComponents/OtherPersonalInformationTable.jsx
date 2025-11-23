@@ -282,7 +282,8 @@ export default function OtherPersonalInformationTable() {
                 isMulti
                 closeMenuOnSelect={false}
                 options={ehliyetTurOptions}
-                placeholder="Türler"
+                // DÜZELTME: Sabit string yerine çeviri fonksiyonu
+                placeholder={t("otherInfo.placeholders.licenseTypePlaceholder")}
                 value={ehliyetMultiValue}
                 onChange={(selected) =>
                   field.onChange(selected ? selected.map((o) => o.value) : [])

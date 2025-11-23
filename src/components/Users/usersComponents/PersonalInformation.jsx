@@ -292,10 +292,6 @@ export default function PersonalInformation() {
     reader.readAsDataURL(file);
   };
 
-  // Ülke değiştiğinde (Türkiye dışına çıkılırsa) şehir/ilçe alanlarını temizleme mantığı
-  // Controller içinde yönetildiği için useEffect'e gerek kalmayabilir ama garanti olsun diye eklenebilir.
-  // Şimdilik Controller'ın onChange'i içinde yönetiyoruz.
-
   const portalTarget = typeof document !== "undefined" ? document.body : null;
 
   return (
@@ -593,7 +589,7 @@ export default function PersonalInformation() {
             ) : (
               <input
                 type="text"
-                placeholder="Şehir / Eyalet"
+                placeholder={t("personal.placeholders.cityState")}
                 className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
                 value={birthCity || ""}
                 onChange={(e) =>
@@ -621,7 +617,7 @@ export default function PersonalInformation() {
             ) : (
               <input
                 type="text"
-                placeholder="İlçe / Bölge"
+                placeholder={t("personal.placeholders.districtRegion")}
                 className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
                 value={birthDistrict || ""}
                 onChange={(e) =>
@@ -722,7 +718,7 @@ export default function PersonalInformation() {
             ) : (
               <input
                 type="text"
-                placeholder="Şehir / Eyalet"
+                placeholder={t("personal.placeholders.cityState")}
                 className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
                 value={resCity || ""}
                 onChange={(e) =>
@@ -752,7 +748,7 @@ export default function PersonalInformation() {
             ) : (
               <input
                 type="text"
-                placeholder="İlçe / Bölge"
+                placeholder={t("personal.placeholders.districtRegion")}
                 className="block w-full h-[43px] rounded-lg border px-3 py-2 focus:outline-none bg-white border-gray-300 hover:border-black"
                 value={resDistrict || ""}
                 onChange={(e) =>

@@ -586,7 +586,9 @@
       "select": "Select",
       "upload": "Upload",
       "replace": "Replace",
-      "noPhoto": "No Photo"
+      "noPhoto": "No Photo",
+      "cityState": "City / State",
+    "districtRegion": "District / Region"
     },
     "options": {
       "gender": { "female": "Female", "male": "Male" },
@@ -642,7 +644,7 @@
       "nationality": "Select nationality"
     }
   },
-  "otherInfo": {
+"otherInfo": {
     "labels": {
       "kktcDoc": "Valid Document for TRNC",
       "lawsuit": "Lawsuit Status",
@@ -660,7 +662,8 @@
       "lawsuitReason": "Write the reason",
       "diseaseDesc": "Explain your condition",
       "height": "e.g., 173",
-      "weight": "e.g., 82"
+      "weight": "e.g., 82",
+      "licenseTypePlaceholder": "Types"
     },
     "options": {
       "kktcDoc": ["Citizenship", "Work Permit", "Student Certificate", "No Document"],
@@ -681,10 +684,12 @@
       "military": "Select military service status",
       "heightNum": "Height must be a number",
       "heightInt": "Height must be an integer",
-      "heightMinMax": "Height must be between 120 and 230 cm",
+      "heightMin": "Height must be at least 50 cm",
+      "heightMax": "Height must be at most 250 cm",
       "weightNum": "Weight must be a number",
       "weightInt": "Weight must be an integer",
-      "weightMinMax": "Weight must be between 30 and 250 kg"
+      "weightMin": "Weight must be at least 20 kg",
+      "weightMax": "Weight must be at most 300 kg"
     }
   }
 }
