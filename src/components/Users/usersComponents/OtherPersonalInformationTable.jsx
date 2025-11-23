@@ -330,6 +330,9 @@ export default function OtherPersonalInformationTable() {
 
 // --- Helper Components ---
 
+// --- Helper Components ---
+
+// DÜZELTME: 'valueAsNumber' mantığını kaldırdık. Artık her şey string gidiyor, Zod halledecek.
 function InputField({
   label,
   name,
@@ -355,7 +358,7 @@ function InputField({
         placeholder={placeholder}
         disabled={disabled}
         maxLength={max}
-        {...register(name, { valueAsNumber: type === "number" })}
+        {...register(name)}
         className={`block w-full rounded-lg border px-3 py-2 transition focus:outline-none focus:ring-0 ${
           disabled
             ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
@@ -373,6 +376,8 @@ function InputField({
     </div>
   );
 }
+
+// ... (SelectController aynı kalabilir)
 
 function SelectController({
   name,
