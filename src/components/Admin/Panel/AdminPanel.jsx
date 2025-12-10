@@ -21,7 +21,7 @@ import {
   faSliders,
   faXmarkCircle,
   faSearch,
-  faFilePdf, // PDF ikonu
+  faFilePdf,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ApplicationModal from "./ApplicationModal";
@@ -32,8 +32,10 @@ import {
 
 // PDF Modalını import et
 import CVViewModal from "./CVViewModal";
+// Tarih Formatlayıcı
+import { formatDate } from "../../../utils/dateFormatter";
 
-// Dışarı tıklamayı algılayan yardımcı bir hook (Aynı)
+// Dışarı tıklamayı algılayan yardımcı bir hook
 function useOutsideAlerter(ref, callback) {
   useEffect(() => {
     function handleClickOutside(event) {
@@ -48,7 +50,7 @@ function useOutsideAlerter(ref, callback) {
   }, [ref, callback]);
 }
 
-// ... getPaginationRange fonksiyonu (Aynı) ...
+// Sayfalama Hesaplayıcı
 const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
   currentPage = currentPage + 1;
   const totalPageNumbers = siblingCount + 5;
@@ -84,7 +86,7 @@ const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
   return Array.from({ length: totalPages }, (_, i) => i + 1);
 };
 
-/* -------------------- Yardımcı UI parçaları (Revize eklendi) -------------------- */
+/* -------------------- Yardımcı UI parçaları -------------------- */
 function StatusBadge({ status }) {
   const map = {
     Onaylanan: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -104,7 +106,6 @@ function StatusBadge({ status }) {
 }
 
 function ListCell({ items = [], max = 2 }) {
-  // ... (Aynı)
   const visible = items.slice(0, max);
   const extra = Math.max(0, items.length - max);
   const title = items.join(", ");
@@ -128,7 +129,7 @@ function ListCell({ items = [], max = 2 }) {
   );
 }
 
-/* -------------------- Filtre State (Aynı) -------------------- */
+/* -------------------- Filtre State -------------------- */
 const initialFilterState = {
   ageMin: "",
   ageMax: "",
@@ -142,7 +143,6 @@ const initialFilterState = {
 
 /* -------------------- Ana Panel -------------------- */
 export default function AdminPanel() {
-  // 1. Oturum & Yetki...
   const auth = useMemo(() => {
     try {
       const raw = sessionStorage.getItem("authUser");
@@ -193,23 +193,34 @@ export default function AdminPanel() {
 
   // PDF Modalı State'i
   const [isCVModalOpen, setIsCVModalOpen] = useState(false);
-  // const [selectedCVData, setSelectedCVData] = useState(null);
 
   const [applicationData, setApplicationData] = useState([]);
 
-  // YENİ: fetchData fonksiyonu güncellendi
+  // --- DÜZELTİLDİ: Veri Çekme Fonksiyonu ---
   const fetchData = () => {
-    console.log("Veri yeniden çekiliyor...");
+    console.log("AdminPanel: Veriler yenileniyor...");
     const data = getApplications();
     setApplicationData(data);
-
-    // YENİ: Navbar'ı güncellemesi için sinyal gönder
-    // Bu sinyal, Navbar'daki bildirim çanının sayısını günceller
-    window.dispatchEvent(new CustomEvent("applicationsUpdated"));
+    // BURADA dispatchEvent KALDIRILDI (Loop olmaması için)
   };
 
+  // --- DÜZELTİLDİ: Event Listener (Dinleyici) Eklendi ---
   useEffect(() => {
+    // İlk açılışta veriyi çek
     fetchData();
+
+    // Navbar veya başka yerden gelen 'applicationsUpdated' sinyalini dinle
+    const handleUpdateSignal = () => {
+      console.log("AdminPanel: Güncelleme sinyali alındı!");
+      fetchData();
+    };
+
+    window.addEventListener("applicationsUpdated", handleUpdateSignal);
+
+    // Component unmount olduğunda dinleyiciyi kaldır
+    return () => {
+      window.removeEventListener("applicationsUpdated", handleUpdateSignal);
+    };
   }, []);
 
   // 1. Dinamik Filtre Listeleri (Aynı)
@@ -250,22 +261,16 @@ export default function AdminPanel() {
   );
 
   // Modal Açma Fonksiyonları
-  // Onay/Red modalını açar
   const handleViewDetails = (row) => {
     setActiveRow(row);
     setOpenModal(true);
   };
 
-  // --- DÜZELTME (ESLint Hatası) ---
-  // PDF/CV modalını açar (artık 'row' parametresi almıyor)
   const handleViewCV = () => {
-    // Şimdilik mock data kullanıyoruz, ilerde 'row'u prop olarak geçeceğiz
-    // setSelectedCVData(row);
     setIsCVModalOpen(true);
   };
-  // --- /DÜZELTME ---
 
-  // 2. Sütun Tanımları (PDF Butonu Eklendi)
+  // 2. Sütun Tanımları
   const columns = useMemo(
     () => [
       {
@@ -311,7 +316,7 @@ export default function AdminPanel() {
         cell: (info) => (
           <div
             className="font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
-            onClick={() => handleViewDetails(info.row.original)} // Detay modalını açar
+            onClick={() => handleViewDetails(info.row.original)}
             title="Başvuru detayını aç"
           >
             {info.getValue()}
@@ -338,7 +343,7 @@ export default function AdminPanel() {
         header: "Tarih",
         cell: (info) => (
           <span className="text-gray-600 whitespace-nowrap">
-            {info.getValue()}
+            {formatDate(info.getValue())}
           </span>
         ),
       },
@@ -364,18 +369,16 @@ export default function AdminPanel() {
         header: "İşlemler",
         cell: ({ row }) => (
           <div className="flex items-center gap-2 justify-end">
-            {/* --- DÜZELTME (ESLint Hatası) --- */}
             <button
-              onClick={() => handleViewCV()} // CV modalını açar (artık 'row.original' göndermiyor)
+              onClick={() => handleViewCV()}
               className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
               title="CV Görüntüle / PDF İndir"
             >
               <FontAwesomeIcon icon={faFilePdf} />
             </button>
-            {/* --- /DÜZELTME --- */}
 
             <button
-              onClick={() => handleViewDetails(row.original)} // Detay modalını açar
+              onClick={() => handleViewDetails(row.original)}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent hover:border-gray-300 transition-all"
               title="Detay Görüntüle ve İşlem Yap"
             >
@@ -420,7 +423,6 @@ export default function AdminPanel() {
 
     let dataToFilter = applicationData;
 
-    // (İstek 2)
     if (!isAllAccess) {
       dataToFilter = dataToFilter.filter((app) =>
         (app.branches || []).includes(auth.branch)
@@ -448,7 +450,6 @@ export default function AdminPanel() {
         gender,
       } = activeFilters;
 
-      // Tab filtresi
       if (tab !== "all") {
         const statusMap = {
           pending: "Bekleyen",
@@ -511,7 +512,7 @@ export default function AdminPanel() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  // 6. UI Filtrelerini Eşle (Revize Geri Geldi)
+  // 6. UI Filtrelerini Eşle
   useEffect(() => {
     const newFilters = [];
     if (tab !== "all") {
@@ -526,7 +527,7 @@ export default function AdminPanel() {
     setColumnFilters(newFilters);
   }, [tab]);
 
-  /* -------------------- İşlem Fonksiyonları (Revize Geri Geldi) -------------------- */
+  /* -------------------- İşlem Fonksiyonları -------------------- */
   const handleModalAction = (actionType, note) => {
     if (!activeRow) return;
 
@@ -559,7 +560,11 @@ export default function AdminPanel() {
       }
 
       Swal.fire(title, text, icon);
-      fetchData(); // <-- Burası Navbar'a sinyali gönderecek
+
+      // --- DÜZELTİLDİ: SİNYAL GÖNDERİLİYOR ---
+      // Hem tabloyu yenile hem de Navbar'a haber ver
+      fetchData();
+      window.dispatchEvent(new CustomEvent("applicationsUpdated"));
     } else {
       Swal.fire({
         icon: "error",
@@ -579,7 +584,7 @@ export default function AdminPanel() {
   return (
     <>
       <div className="space-y-4">
-        {/* ÜST PANEL: Başlık, Tablar ve Arama */}
+        {/* ÜST PANEL */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
@@ -590,7 +595,7 @@ export default function AdminPanel() {
                 Toplam {preFilteredData.length} başvuru görüntüleniyor
               </p>
             </div>
-            {/* Revize Tabı (Sadece İK SPV görür) */}
+            {/* Revize Tabı */}
             <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 bg-gray-100/80 p-1.5 rounded-xl">
               {[
                 { id: "all", label: "Tümü", show: true },
@@ -620,7 +625,7 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          {/* FİLTRELEME BÖLÜMÜ (Aynı) */}
+          {/* FİLTRELEME BÖLÜMÜ */}
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <FontAwesomeIcon
@@ -786,7 +791,7 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        {/* TABLO ALANI (Aynı) */}
+        {/* TABLO ALANI */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -797,10 +802,10 @@ export default function AdminPanel() {
                       <th
                         key={header.id}
                         className={`py-4 text-[13px] font-semibold text-gray-600 uppercase tracking-wider select-none whitespace-nowrap 
-                                        ${
-                                          header.column.columnDef.meta
-                                            ?.thClassName || "px-6"
-                                        }`}
+                                                ${
+                                                  header.column.columnDef.meta
+                                                    ?.thClassName || "px-6"
+                                                }`}
                       >
                         {header.isPlaceholder ? null : (
                           <div
@@ -816,18 +821,8 @@ export default function AdminPanel() {
                               header.getContext()
                             )}
                             {{
-                              asc: (
-                                <FontAwesomeIcon
-                                  icon={faSortUp}
-                                  className="text-gray-400"
-                                />
-                              ),
-                              desc: (
-                                <FontAwesomeIcon
-                                  icon={faSortDown}
-                                  className="text-gray-400"
-                                />
-                              ),
+                              asc: <FontAwesomeIcon icon={faSortUp} />,
+                              desc: <FontAwesomeIcon icon={faSortDown} />,
                             }[header.column.getIsSorted()] ??
                               (header.column.getCanSort() ? (
                                 <FontAwesomeIcon
@@ -862,10 +857,14 @@ export default function AdminPanel() {
                         <td
                           key={cell.id}
                           className={`py-4 text-sm text-gray-600 
-                                            ${
-                                              cell.column.columnDef.meta
-                                                ?.tdClassName || "px-6"
-                                            }`}
+                                                                    ${
+                                                                      cell
+                                                                        .column
+                                                                        .columnDef
+                                                                        .meta
+                                                                        ?.tdClassName ||
+                                                                      "px-6"
+                                                                    }`}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
@@ -880,7 +879,7 @@ export default function AdminPanel() {
             </table>
           </div>
 
-          {/* Sayfalama (Pagination) (Aynı) */}
+          {/* Sayfalama (Pagination) */}
           {table.getRowModel().rows.length > 0 && (
             <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex flex-wrap items-center justify-between gap-4">
               <span className="text-sm text-gray-500">
@@ -995,7 +994,7 @@ export default function AdminPanel() {
         />
       )}
 
-      {/* Lightbox (Aynı) */}
+      {/* Lightbox */}
       {lightboxImage && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity"
@@ -1013,7 +1012,7 @@ export default function AdminPanel() {
   );
 }
 
-// Filtre Paneli için Yardımcı Bileşen (Aynı)
+// Filtre Paneli için Yardımcı Bileşen
 function FilterInput({
   label,
   name,

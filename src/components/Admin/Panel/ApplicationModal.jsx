@@ -4,13 +4,16 @@ import {
   faFileLines,
   faGavel,
   faXmark,
-  faHistory,
   faCheckCircle,
   faBan,
   faInfoCircle,
+  faClockRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import ReadOnlyApplicationView from "./ReadOnlyApplicationView";
+import HistoryAndChanges from "./HistoryAndChanges";
 import Swal from "sweetalert2";
+// YENİ EKLENDİ: Tarih formatlayıcı
+import { formatDate } from "../../../utils/dateFormatter";
 
 // --- Akış Tanımları ---
 const STAGES = [
@@ -123,7 +126,7 @@ export default function ApplicationModal({
   const showRevisionSection =
     canRequestRevision || canDecideRevision || data.status === "Revize Talebi";
 
-  // Ortak Buton Stili (Modern & Sade)
+  // Ortak Buton Stili
   const baseBtnStyle =
     "group relative h-12 w-full flex items-center justify-center gap-3 rounded-xl border font-medium transition-all duration-300 active:scale-[0.98]";
 
@@ -147,7 +150,8 @@ export default function ApplicationModal({
                 {data.id}
               </span>
               <span>•</span>
-              <span>{data.date}</span>
+              {/* GÜNCELLENDİ: Tarih Formatı */}
+              <span>{formatDate(data.date)}</span>
             </div>
           </div>
           <button
@@ -168,6 +172,13 @@ export default function ApplicationModal({
               isActive={activeTab === "summary"}
               onClick={() => setActiveTab("summary")}
             />
+            {/* YENİ SEKME: Geçmiş & Değişiklikler */}
+            <TabButton
+              icon={faClockRotateLeft}
+              label="Geçmiş & Değişiklikler"
+              isActive={activeTab === "history"}
+              onClick={() => setActiveTab("history")}
+            />
             <TabButton
               icon={faFileLines}
               label="Tüm Başvuru Formu"
@@ -179,6 +190,7 @@ export default function ApplicationModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-900/50">
+          {/* TAB 1: ÖZET & KARAR */}
           <div
             className={activeTab === "summary" ? "block space-y-6" : "hidden"}
           >
@@ -268,7 +280,6 @@ export default function ApplicationModal({
 
                   {canTakeAction ? (
                     <div className="grid grid-cols-1 gap-3 h-full">
-                      {/* ONAYLA BUTONU (MODERN & SADE) */}
                       <button
                         onClick={() => handleApprovalClick("approve")}
                         className={`${baseBtnStyle} border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer hover:shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)]`}
@@ -280,7 +291,6 @@ export default function ApplicationModal({
                         <span>Onayla</span>
                       </button>
 
-                      {/* REDDET BUTONU (MODERN & SADE) */}
                       <button
                         onClick={() => handleApprovalClick("reject")}
                         className={`${baseBtnStyle} border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white cursor-pointer hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.4)]`}
@@ -322,12 +332,14 @@ export default function ApplicationModal({
                         oluşturabilirsiniz.
                       </p>
 
-                      {/* REVİZE TALEP BUTONU (MODERN & SADE) */}
                       <button
                         onClick={handleRevisionRequestClick}
                         className={`${baseBtnStyle} cursor-pointer w-auto px-10 mx-auto border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white hover:shadow-[0_0_20px_-5px_rgba(99,102,241,0.4)]`}
                       >
-                        <FontAwesomeIcon icon={faHistory} className="text-lg" />
+                        <FontAwesomeIcon
+                          icon={faClockRotateLeft}
+                          className="text-lg"
+                        />
                         <span>Revize Talebi Oluştur</span>
                       </button>
                     </div>
@@ -339,7 +351,6 @@ export default function ApplicationModal({
                         Revize talebini değerlendiriniz.
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        {/* REVİZE ONAYLA */}
                         <button
                           onClick={() =>
                             handleRevisionDecisionClick("approve_revision")
@@ -349,7 +360,6 @@ export default function ApplicationModal({
                           <FontAwesomeIcon icon={faCheckCircle} /> Onayla
                         </button>
 
-                        {/* REVİZE REDDET */}
                         <button
                           onClick={() =>
                             handleRevisionDecisionClick("reject_revision")
@@ -393,7 +403,8 @@ export default function ApplicationModal({
                         <div className="flex justify-between items-center text-xs text-gray-500">
                           <span>{note.user}</span>
                           <span>
-                            {note.date} • {note.action}
+                            {/* GÜNCELLENDİ: Tarih Formatı */}
+                            {formatDate(note.date)} • {note.action}
                           </span>
                         </div>
                       </div>
@@ -408,7 +419,15 @@ export default function ApplicationModal({
             </div>
           </div>
 
-          {/* Tab 2: Detaylı Görünüm */}
+          {/* TAB 2: GEÇMİŞ & DEĞİŞİKLİKLER (YENİ) */}
+          <div className={activeTab === "history" ? "block" : "hidden"}>
+            <HistoryAndChanges
+              currentData={data}
+              previousData={data.previousVersion || null}
+            />
+          </div>
+
+          {/* TAB 3: DETAYLI GÖRÜNÜM */}
           <div className={activeTab === "details" ? "block" : "hidden"}>
             <ReadOnlyApplicationView data={data} />
           </div>

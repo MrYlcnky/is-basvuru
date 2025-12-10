@@ -9,6 +9,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Login from "./components/Admin/Login/Login";
 import AdminPanel from "./components/Admin/Panel/AdminPanel";
+import Logs from "./components/Admin/Logs/ApplicationLogs";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="panel" element={<AdminPanel />} />
+            <Route path="logs" element={<Logs />} />
           </Route>
         </Route>
       </Routes>
