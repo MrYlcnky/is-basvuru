@@ -1,5 +1,6 @@
 // src/components/Admin/Panel/AdminPanel.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
   useReactTable,
@@ -22,6 +23,9 @@ import {
   faXmarkCircle,
   faSearch,
   faFilePdf,
+  faUserTie,
+  faFlagCheckered,
+  faArrowRight, // YENİ
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ApplicationModal from "./ApplicationModal";
@@ -30,12 +34,9 @@ import {
   updateApplicationStatus,
 } from "../../../api/staticDB";
 
-// PDF Modalını import et
 import CVViewModal from "./CVViewModal";
-// Tarih Formatlayıcı
 import { formatDate } from "../../../utils/dateFormatter";
 
-// Dışarı tıklamayı algılayan yardımcı bir hook
 function useOutsideAlerter(ref, callback) {
   useEffect(() => {
     function handleClickOutside(event) {
@@ -50,19 +51,19 @@ function useOutsideAlerter(ref, callback) {
   }, [ref, callback]);
 }
 
-// Sayfalama Hesaplayıcı
+// --- GÜNCELLENMİŞ SAYFALAMA MANTIĞI ---
 const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
   currentPage = currentPage + 1;
   const totalPageNumbers = siblingCount + 5;
-  if (totalPageNumbers >= totalPages) {
+  if (totalPageNumbers >= totalPages)
     return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
   const leftSiblingIndex = Math.max(currentPage - siblingCount, 1);
   const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages);
   const shouldShowLeftDots = leftSiblingIndex > 2;
   const shouldShowRightDots = rightSiblingIndex < totalPages - 1;
   const firstPageIndex = 1;
   const lastPageIndex = totalPages;
+
   if (!shouldShowLeftDots && shouldShowRightDots) {
     let leftItemCount = 3 + 2 * siblingCount;
     let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
@@ -86,7 +87,7 @@ const getPaginationRange = (currentPage, totalPages, siblingCount = 1) => {
   return Array.from({ length: totalPages }, (_, i) => i + 1);
 };
 
-/* -------------------- Yardımcı UI parçaları -------------------- */
+/* -------------------- Yardımcı UI Bileşenleri -------------------- */
 function StatusBadge({ status }) {
   const map = {
     Onaylanan: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -96,7 +97,7 @@ function StatusBadge({ status }) {
   };
   return (
     <span
-      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+      className={`px-2.5 py-1 rounded-full text-xs font-medium border  ${
         map[status] || "bg-gray-100 text-gray-800 border-gray-300"
       }`}
     >
@@ -104,12 +105,51 @@ function StatusBadge({ status }) {
     </span>
   );
 }
-
+function CurrentStageBadge({ stage, status }) {
+  if (status === "Onaylanan" || status === "Reddedilen")
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+        <FontAwesomeIcon icon={faFlagCheckered} className="text-emerald-500" />{" "}
+        Süreç Tamamlandı
+      </span>
+    );
+  if (status === "Revize Talebi")
+    return (
+      <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
+        <FontAwesomeIcon icon={faUserTie} /> İK (Revize)
+      </span>
+    );
+  const stageMap = {
+    departman_muduru: {
+      label: "Departman Müdürü",
+      color: "text-purple-700 bg-purple-50 border-purple-200",
+    },
+    genel_mudur: {
+      label: "Genel Müdür",
+      color: "text-orange-700 bg-orange-50 border-orange-200",
+    },
+    ik: {
+      label: "İnsan Kaynakları",
+      color: "text-sky-700 bg-sky-50 border-sky-200",
+    },
+    tamamlandi: { label: "Tamamlandı", color: "text-gray-500" },
+  };
+  const info = stageMap[stage] || {
+    label: "Bilinmiyor",
+    color: "text-gray-500",
+  };
+  return (
+    <span
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-bold whitespace-nowrap ${info.color}`}
+    >
+      <FontAwesomeIcon icon={faUserTie} /> {info.label}
+    </span>
+  );
+}
 function ListCell({ items = [], max = 2 }) {
   const visible = items.slice(0, max);
   const extra = Math.max(0, items.length - max);
   const title = items.join(", ");
-
   return (
     <div className="flex items-center gap-1 flex-wrap" title={title}>
       {visible.map((it, idx) => (
@@ -128,8 +168,6 @@ function ListCell({ items = [], max = 2 }) {
     </div>
   );
 }
-
-/* -------------------- Filtre State -------------------- */
 const initialFilterState = {
   ageMin: "",
   ageMax: "",
@@ -141,8 +179,8 @@ const initialFilterState = {
   gender: "all",
 };
 
-/* -------------------- Ana Panel -------------------- */
 export default function AdminPanel() {
+  const location = useLocation();
   const auth = useMemo(() => {
     try {
       const raw = sessionStorage.getItem("authUser");
@@ -153,7 +191,6 @@ export default function AdminPanel() {
       return null;
     }
   }, []);
-
   const isAllAccess = useMemo(
     () => ["ik_spv", "ik_user", "admin"].includes(auth?.role),
     [auth]
@@ -166,16 +203,23 @@ export default function AdminPanel() {
     () => ["ik_spv", "admin"].includes(auth?.role),
     [auth]
   );
-
   const allBranches = ["Girne", "Prestige"];
 
-  // 2. UI State'leri...
   const [globalFilter, setGlobalFilter] = useState("");
   const [tab, setTab] = useState("all");
 
+  // Sayfaya Git Input State
+  const [pageInput, setPageInput] = useState(1);
+
+  useEffect(() => {
+    if (location.state && location.state.targetTab) {
+      setTab(location.state.targetTab);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterPanelRef = useRef(null);
-
   const [filters, setFilters] = useState({
     ...initialFilterState,
     branch: userBranch,
@@ -190,55 +234,35 @@ export default function AdminPanel() {
   const [openModal, setOpenModal] = useState(false);
   const [activeRow, setActiveRow] = useState(null);
   const [lightboxImage, setLightboxImage] = useState(null);
-
-  // PDF Modalı State'i
   const [isCVModalOpen, setIsCVModalOpen] = useState(false);
-
   const [applicationData, setApplicationData] = useState([]);
 
-  // --- DÜZELTİLDİ: Veri Çekme Fonksiyonu ---
   const fetchData = () => {
-    console.log("AdminPanel: Veriler yenileniyor...");
     const data = getApplications();
     setApplicationData(data);
-    // BURADA dispatchEvent KALDIRILDI (Loop olmaması için)
   };
 
-  // --- DÜZELTİLDİ: Event Listener (Dinleyici) Eklendi ---
   useEffect(() => {
-    // İlk açılışta veriyi çek
     fetchData();
-
-    // Navbar veya başka yerden gelen 'applicationsUpdated' sinyalini dinle
-    const handleUpdateSignal = () => {
-      console.log("AdminPanel: Güncelleme sinyali alındı!");
-      fetchData();
-    };
-
+    const handleUpdateSignal = () => fetchData();
     window.addEventListener("applicationsUpdated", handleUpdateSignal);
-
-    // Component unmount olduğunda dinleyiciyi kaldır
     return () => {
       window.removeEventListener("applicationsUpdated", handleUpdateSignal);
     };
   }, []);
 
-  // 1. Dinamik Filtre Listeleri (Aynı)
   const allDeptRolePairs = useMemo(
     () =>
       applicationData.flatMap((d) => d.jobDetails?.departmanPozisyonlari || []),
     [applicationData]
   );
-
   const dynamicDepartments = useMemo(
     () => [...new Set(allDeptRolePairs.map((p) => p.dept))].sort(),
     [allDeptRolePairs]
   );
-
   const dynamicRolesForSelectedDept = useMemo(() => {
-    if (filters.department === "all") {
+    if (filters.department === "all")
       return [...new Set(allDeptRolePairs.map((p) => p.label))].sort();
-    }
     return [
       ...new Set(
         allDeptRolePairs
@@ -247,7 +271,6 @@ export default function AdminPanel() {
       ),
     ].sort();
   }, [filters.department, allDeptRolePairs]);
-
   const dynamicEducationLevels = useMemo(
     () =>
       [
@@ -260,17 +283,14 @@ export default function AdminPanel() {
     [applicationData]
   );
 
-  // Modal Açma Fonksiyonları
   const handleViewDetails = (row) => {
     setActiveRow(row);
     setOpenModal(true);
   };
-
   const handleViewCV = () => {
     setIsCVModalOpen(true);
   };
 
-  // 2. Sütun Tanımları
   const columns = useMemo(
     () => [
       {
@@ -348,21 +368,32 @@ export default function AdminPanel() {
         ),
       },
       {
-        accessorKey: "age",
-        header: "Yaş",
-        meta: {
-          thClassName: "w-20 px-4 text-center",
-          tdClassName: "w-20 px-4 text-center",
-        },
-        cell: (info) => (
-          <span className="text-gray-600">{info.getValue()}</span>
-        ),
-      },
-      {
         accessorKey: "status",
         header: "Durum",
-        meta: { thClassName: "w-36 px-4", tdClassName: "w-36 px-4" },
+        meta: { thClassName: "w-32 px-4", tdClassName: "w-32 px-4" },
         cell: (info) => <StatusBadge status={info.getValue()} />,
+      },
+      {
+        id: "currentStage",
+        header: "Onay Sırası",
+        sortingFn: (rowA, rowB, columnId) => {
+          const stageOrder = {
+            departman_muduru: 1,
+            genel_mudur: 2,
+            ik: 3,
+            tamamlandi: 4,
+          };
+          return (
+            (stageOrder[rowA.getValue(columnId)] || 99) -
+            (stageOrder[rowB.getValue(columnId)] || 99)
+          );
+        },
+        cell: ({ row }) => (
+          <CurrentStageBadge
+            stage={row.original.approvalStage}
+            status={row.original.status}
+          />
+        ),
       },
       {
         id: "actions",
@@ -372,15 +403,12 @@ export default function AdminPanel() {
             <button
               onClick={() => handleViewCV()}
               className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
-              title="CV Görüntüle / PDF İndir"
             >
               <FontAwesomeIcon icon={faFilePdf} />
             </button>
-
             <button
               onClick={() => handleViewDetails(row.original)}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent hover:border-gray-300 transition-all"
-              title="Detay Görüntüle ve İşlem Yap"
             >
               <FontAwesomeIcon icon={faEye} />
             </button>
@@ -391,38 +419,26 @@ export default function AdminPanel() {
     []
   );
 
-  // Filtre Fonksiyonları (Aynı)
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (name === "department") {
-      setFilters((prev) => ({ ...prev, role: "all" }));
-    }
+    setFilters((prev) => ({ ...prev, [name]: value }));
+    if (name === "department") setFilters((prev) => ({ ...prev, role: "all" }));
   };
-
   const handleApplyFilters = () => {
     setActiveFilters(filters);
     setIsFilterOpen(false);
   };
-
   const clearFilters = () => {
     setFilters({ ...initialFilterState, branch: userBranch });
     setActiveFilters({ ...initialFilterState, branch: userBranch });
     setIsFilterOpen(false);
   };
 
-  // 3. Manuel Ön Filtreleme (DM Departman Filtresi) (Aynı)
   const preFilteredData = useMemo(() => {
     const isDefault =
       JSON.stringify(activeFilters) ===
       JSON.stringify({ ...initialFilterState, branch: userBranch });
-
     let dataToFilter = applicationData;
-
     if (!isAllAccess) {
       dataToFilter = dataToFilter.filter((app) =>
         (app.branches || []).includes(auth.branch)
@@ -433,11 +449,7 @@ export default function AdminPanel() {
         );
       }
     }
-
-    if (isDefault && tab === "all") {
-      return dataToFilter;
-    }
-
+    if (isDefault && tab === "all") return dataToFilter;
     return dataToFilter.filter((row) => {
       const {
         ageMin,
@@ -449,7 +461,6 @@ export default function AdminPanel() {
         education,
         gender,
       } = activeFilters;
-
       if (tab !== "all") {
         const statusMap = {
           pending: "Bekleyen",
@@ -459,21 +470,21 @@ export default function AdminPanel() {
         };
         if (row.status !== statusMap[tab]) return false;
       }
-
       if (branch !== "all" && !row.branches?.includes(branch)) return false;
       if (area !== "all" && !row.areas?.includes(area)) return false;
       if (department !== "all" && !row.departments?.includes(department))
         return false;
       if (role !== "all" && !row.roles?.includes(role)) return false;
       if (gender !== "all" && row.personal?.cinsiyet !== gender) return false;
-      if (education !== "all") {
-        if (!row.education?.some((e) => e.seviye === education)) return false;
-      }
+      if (
+        education !== "all" &&
+        !row.education?.some((e) => e.seviye === education)
+      )
+        return false;
       if (ageMin || ageMax) {
         const age = Number(row.age);
-        const numMin = Number(ageMin) || 0;
-        const numMax = Number(ageMax) || 999;
-        if (age < numMin || age > numMax) return false;
+        if (age < (Number(ageMin) || 0) || age > (Number(ageMax) || 999))
+          return false;
       }
       return true;
     });
@@ -488,7 +499,6 @@ export default function AdminPanel() {
     userBranch,
   ]);
 
-  // 5. Tablo Konfigürasyonu
   const [columnFilters, setColumnFilters] = useState([]);
   const [sorting, setSorting] = useState([{ id: "date", desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -496,12 +506,7 @@ export default function AdminPanel() {
   const table = useReactTable({
     data: preFilteredData,
     columns,
-    state: {
-      globalFilter,
-      columnFilters,
-      sorting,
-      pagination,
-    },
+    state: { globalFilter, columnFilters, sorting, pagination },
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,
@@ -512,7 +517,6 @@ export default function AdminPanel() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  // 6. UI Filtrelerini Eşle
   useEffect(() => {
     const newFilters = [];
     if (tab !== "all") {
@@ -527,63 +531,59 @@ export default function AdminPanel() {
     setColumnFilters(newFilters);
   }, [tab]);
 
-  /* -------------------- İşlem Fonksiyonları -------------------- */
+  // Input State Güncelleme
+  useEffect(() => {
+    setPageInput(table.getState().pagination.pageIndex + 1);
+  }, [table.getState().pagination.pageIndex]);
+
+  const handleGoToPage = () => {
+    const page = pageInput ? Number(pageInput) - 1 : 0;
+    if (page >= 0 && page < table.getPageCount()) {
+      table.setPageIndex(page);
+    } else {
+      setPageInput(table.getState().pagination.pageIndex + 1);
+    }
+  };
+
   const handleModalAction = (actionType, note) => {
     if (!activeRow) return;
-
     const result = updateApplicationStatus(
       activeRow.id,
       actionType,
       note,
       auth
     );
-
     if (result.success) {
-      let title = "İşlem Başarılı";
-      let text = result.message;
-      let icon = "success";
-
-      if (actionType === "approve") {
-        title = "Onaylandı";
-      } else if (actionType === "reject") {
+      let title = "İşlem Başarılı",
+        icon = "success";
+      if (actionType === "approve") title = "Onaylandı";
+      else if (actionType === "reject") {
         title = "Reddedildi";
         icon = "error";
       } else if (actionType === "request_revision") {
         title = "Revize Talebi Gönderildi";
         icon = "info";
-      } else if (actionType === "approve_revision") {
-        title = "Revize Onaylandı";
-        icon = "success";
-      } else if (actionType === "reject_revision") {
+      } else if (actionType === "approve_revision") title = "Revize Onaylandı";
+      else if (actionType === "reject_revision") {
         title = "Revize Reddedildi";
         icon = "warning";
       }
-
-      Swal.fire(title, text, icon);
-
-      // --- DÜZELTİLDİ: SİNYAL GÖNDERİLİYOR ---
-      // Hem tabloyu yenile hem de Navbar'a haber ver
+      Swal.fire(title, result.message, icon);
       fetchData();
       window.dispatchEvent(new CustomEvent("applicationsUpdated"));
     } else {
-      Swal.fire({
-        icon: "error",
-        title: "Hata",
-        text: result.message,
-        background: "#1F2937",
-        color: "#E5E7EB",
-        confirmButtonColor: "#3B82F6",
-      });
+      Swal.fire({ icon: "error", title: "Hata", text: result.message });
     }
-
     setOpenModal(false);
     setActiveRow(null);
   };
 
-  /* -------------------- RENDER -------------------- */
   return (
     <>
       <div className="space-y-4">
+        {/* CSS: Input Oklarını Kaldır */}
+        <style>{`input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }`}</style>
+
         {/* ÜST PANEL */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -595,8 +595,7 @@ export default function AdminPanel() {
                 Toplam {preFilteredData.length} başvuru görüntüleniyor
               </p>
             </div>
-            {/* Revize Tabı */}
-            <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 bg-gray-100/80 p-1.5 rounded-xl">
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-1 bg-gray-100/80 p-1.5 rounded-xl ">
               {[
                 { id: "all", label: "Tümü", show: true },
                 { id: "pending", label: "Bekleyen", show: true },
@@ -613,7 +612,7 @@ export default function AdminPanel() {
                   <button
                     key={t.id}
                     onClick={() => setTab(t.id)}
-                    className={`flex-grow px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    className={`flex-grow px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer ${
                       tab === t.id
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
@@ -624,8 +623,6 @@ export default function AdminPanel() {
                 ))}
             </div>
           </div>
-
-          {/* FİLTRELEME BÖLÜMÜ */}
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <FontAwesomeIcon
@@ -643,12 +640,11 @@ export default function AdminPanel() {
             <div className="relative" ref={filterPanelRef}>
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="w-full lg:w-auto px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                className="w-full lg:w-auto px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <FontAwesomeIcon icon={faSliders} />
                 <span>Gelişmiş Filtrele</span>
               </button>
-
               {isFilterOpen && (
                 <div className="absolute top-full right-0 mt-2 w-full lg:w-[480px] z-40 bg-white border border-gray-300 rounded-xl shadow-2xl p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -656,7 +652,6 @@ export default function AdminPanel() {
                       <h4 className="text-sm font-semibold text-gray-500 border-b border-gray-200 pb-2">
                         Pozisyon Bilgileri
                       </h4>
-
                       <FilterInput
                         label="Şube"
                         name="branch"
@@ -664,11 +659,6 @@ export default function AdminPanel() {
                         onChange={handleFilterChange}
                         type="select"
                         disabled={!isAllAccess}
-                        title={
-                          !isAllAccess
-                            ? "Sadece kendi şubenizi görebilirsiniz"
-                            : ""
-                        }
                       >
                         {isAllAccess && (
                           <option value="all">Tüm Şubeler</option>
@@ -679,7 +669,6 @@ export default function AdminPanel() {
                           </option>
                         ))}
                       </FilterInput>
-
                       <FilterInput
                         label="Alan"
                         name="area"
@@ -772,14 +761,14 @@ export default function AdminPanel() {
                   <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
                     <button
                       onClick={clearFilters}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
                     >
                       <FontAwesomeIcon icon={faXmarkCircle} />
                       Temizle
                     </button>
                     <button
                       onClick={handleApplyFilters}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 cursor-pointer"
                     >
                       <FontAwesomeIcon icon={faSearch} />
                       Ara
@@ -801,11 +790,9 @@ export default function AdminPanel() {
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className={`py-4 text-[13px] font-semibold text-gray-600 uppercase tracking-wider select-none whitespace-nowrap 
-                                                ${
-                                                  header.column.columnDef.meta
-                                                    ?.thClassName || "px-6"
-                                                }`}
+                        className={`py-4 text-[13px] font-semibold text-gray-600 uppercase tracking-wider select-none whitespace-nowrap ${
+                          header.column.columnDef.meta?.thClassName || "px-6"
+                        }`}
                       >
                         {header.isPlaceholder ? null : (
                           <div
@@ -837,7 +824,7 @@ export default function AdminPanel() {
                   </tr>
                 ))}
               </thead>
-              <tbody className="">
+              <tbody>
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
                     <td
@@ -856,15 +843,9 @@ export default function AdminPanel() {
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={`py-4 text-sm text-gray-600 
-                                                                    ${
-                                                                      cell
-                                                                        .column
-                                                                        .columnDef
-                                                                        .meta
-                                                                        ?.tdClassName ||
-                                                                      "px-6"
-                                                                    }`}
+                          className={`py-4 text-sm text-gray-600 ${
+                            cell.column.columnDef.meta?.tdClassName || "px-6"
+                          }`}
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
@@ -879,43 +860,30 @@ export default function AdminPanel() {
             </table>
           </div>
 
-          {/* Sayfalama (Pagination) */}
+          {/* --- MODERN PAGINATION (GÜNCELLENDİ) --- */}
           {table.getRowModel().rows.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex flex-wrap items-center justify-between gap-4">
-              <span className="text-sm text-gray-500">
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-gray-500 order-2 sm:order-1">
                 Toplam{" "}
-                <strong>{table.getFilteredRowModel().rows.length}</strong>{" "}
-                kayıttan{" "}
-                <strong>
-                  {table.getState().pagination.pageIndex *
-                    table.getState().pagination.pageSize +
-                    1}
-                </strong>
-                -
-                <strong>
-                  {Math.min(
-                    (table.getState().pagination.pageIndex + 1) *
-                      table.getState().pagination.pageSize,
-                    table.getFilteredRowModel().rows.length
-                  )}
-                </strong>
-              </span>
-              <div className="flex items-center gap-1.5">
+                <strong>{table.getFilteredRowModel().rows.length}</strong> kayıt
+              </div>
+
+              <div className="flex items-center gap-1.5 order-1 sm:order-2">
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-sm font-medium bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   onClick={() => table.previousPage()}
                   disabled={!table.getCanPreviousPage()}
-                  title="Önceki Sayfa"
+                  className="w-9 h-9 flex items-center justify-center text-sm font-medium bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+                  <FontAwesomeIcon icon={faChevronLeft} size="xs" />
                 </button>
+
                 {getPaginationRange(
                   table.getState().pagination.pageIndex,
                   table.getPageCount()
                 ).map((page, index) => {
                   const isCurrent =
                     page === table.getState().pagination.pageIndex + 1;
-                  if (page === "...") {
+                  if (page === "...")
                     return (
                       <span
                         key={index}
@@ -924,41 +892,68 @@ export default function AdminPanel() {
                         ...
                       </span>
                     );
-                  }
                   return (
                     <button
                       key={index}
+                      onClick={() => table.setPageIndex(page - 1)}
                       className={`w-9 h-9 flex items-center justify-center text-sm font-medium border rounded-lg transition-all ${
                         isCurrent
                           ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                           : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                       }`}
-                      onClick={() => table.setPageIndex(page - 1)}
                     >
                       {page}
                     </button>
                   );
                 })}
+
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-sm font-medium bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   onClick={() => table.nextPage()}
                   disabled={!table.getCanNextPage()}
-                  title="Sonraki Sayfa"
+                  className="w-9 h-9 flex items-center justify-center text-sm font-medium bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+                  <FontAwesomeIcon icon={faChevronRight} size="xs" />
                 </button>
+
+                {/* Hızlı Git (Input + Buton) */}
+                <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-200">
+                  <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 focus-within:ring-2 focus-within:ring-sky-100 focus-within:border-sky-400 transition-all shadow-sm group">
+                    <input
+                      type="number"
+                      min="1"
+                      max={table.getPageCount()}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleGoToPage();
+                      }}
+                      placeholder="#"
+                      className="w-8 h-7 text-center text-xs font-semibold text-gray-700 bg-transparent border-none outline-none focus:ring-0 placeholder-gray-300"
+                    />
+                    <button
+                      onClick={handleGoToPage}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-sky-600 hover:bg-sky-50 transition-all active:scale-95 cursor-pointer"
+                      title="Git"
+                    >
+                      <FontAwesomeIcon
+                        icon={faArrowRight}
+                        className="w-3 h-3"
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span className="font-medium">Göster:</span>
+
+              <div className="flex items-center gap-2 order-3">
+                <span className="text-xs text-gray-500 hidden sm:inline">
+                  Göster:
+                </span>
                 <select
-                  id="pageSize"
                   value={table.getState().pagination.pageSize}
-                  onChange={(e) => {
-                    table.setPageSize(Number(e.target.value));
-                  }}
-                  className="px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none cursor-pointer focus:ring-0 focus:border-black hover:border-black transition-all"
+                  onChange={(e) => table.setPageSize(Number(e.target.value))}
+                  className="text-xs bg-white border border-gray-300 text-gray-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-sky-500 cursor-pointer shadow-sm"
                 >
-                  {[10, 20, 50, 100].map((pageSize) => (
+                  {[5, 10, 20, 50, 100].map((pageSize) => (
                     <option key={pageSize} value={pageSize}>
                       {pageSize}
                     </option>
@@ -970,8 +965,6 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* İki Modalın da Çağrılması */}
-      {/* Onay/Red Modalı */}
       {openModal && activeRow && (
         <ApplicationModal
           data={activeRow}
@@ -984,17 +977,7 @@ export default function AdminPanel() {
           onAction={handleModalAction}
         />
       )}
-
-      {/* CV/PDF Modalı */}
-      {isCVModalOpen && (
-        <CVViewModal
-          // Not: Şimdilik mock data kullanıyor, ilerde 'selectedCVData'yı geçeceğiz
-          // applicationData={selectedCVData}
-          onClose={() => setIsCVModalOpen(false)}
-        />
-      )}
-
-      {/* Lightbox */}
+      {isCVModalOpen && <CVViewModal onClose={() => setIsCVModalOpen(false)} />}
       {lightboxImage && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity"
@@ -1012,7 +995,6 @@ export default function AdminPanel() {
   );
 }
 
-// Filtre Paneli için Yardımcı Bileşen
 function FilterInput({
   label,
   name,
@@ -1024,7 +1006,6 @@ function FilterInput({
 }) {
   const commonClasses =
     "w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none transition-all hover:border-black focus:border-black focus:ring-0";
-
   return (
     <div className="w-full">
       <label

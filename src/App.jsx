@@ -9,14 +9,14 @@ import "react-toastify/dist/ReactToastify.css";
 import Login from "./components/Admin/Login/Login";
 import AdminPanel from "./components/Admin/Panel/AdminPanel";
 import Logs from "./components/Admin/Logs/ApplicationLogs";
+import UserLogs from "./components/Admin/Logs/UserLogs";
 
 function App() {
   return (
     <>
       <Routes>
         {/* User */}
-
-        <Route path="/" element={<JobApplicationForm />} />
+        <Route path="/" element={<JobApplicationForm />}></Route>
 
         {/* Login */}
         <Route path="/login" element={<Login />} />
@@ -26,6 +26,7 @@ function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="panel" element={<AdminPanel />} />
             <Route path="logs" element={<Logs />} />
+            <Route path="user-logs" element={<UserLogs />} />
           </Route>
         </Route>
       </Routes>

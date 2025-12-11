@@ -1,88 +1,107 @@
 // src/api/staticDB.js
 
 // --- KULLANICILAR (MOCK USERS) ---
+// Not: lastLogin alanları UserLogs tablosu için eklendi.
 const USERS = [
   {
     id: 1,
     username: "admin",
     password: "123",
     role: "admin",
-    name: "Admin",
+    name: "Admin User",
+    branch: "Girne",
+    department: "IT",
+    lastLogin: "2025-11-21T09:30:00",
   },
   {
     id: 2,
     username: "ik_spv",
     password: "123",
     role: "ik_spv",
-    name: "Ayşe Yılmaz (İK SPV)",
+    name: "Ayşe Yılmaz", // İK Yöneticisi
+         branch: "Girne",
+    department: "İnsan Kaynakları",
+    lastLogin: "2025-11-20T14:15:00",
   },
   {
     id: 3,
     username: "ik_user",
     password: "123",
     role: "ik_user",
-    name: "Fatma Demir (İK)",
+    name: "Fatma Demir", // İK Uzmanı
+     branch: "Girne",
+    department: "İnsan Kaynakları",
+    lastLogin: "2025-11-21T08:45:00",
   },
   {
     id: 4,
     username: "gm_girne",
     password: "123",
     role: "gm",
-    name: "Sezgin Bingül (GM)",
+    name: "Sezgin Bingül", // Girne GM
     branch: "Girne",
+    department: "Casino Genel Müdür",
+    lastLogin: "2025-11-19T17:00:00",
   },
   {
     id: 5,
     username: "gm_prestige",
     password: "123",
     role: "gm",
-    name: "Prestige Genel Müdür (GM)",
+    name: "Prestige Genel Müdür", // Prestige GM
     branch: "Prestige",
+    department: "Casino Genel Müdür",
+    lastLogin: "2025-11-18T10:20:00",
   },
   {
     id: 6,
     username: "it_girne",
     password: "123",
     role: "dm",
-    name: "Ulaş Gencan (IT Girne)",
+    name: "Ulaş Gencan", // IT Girne DM
     department: "IT",
     branch: "Girne",
+    lastLogin: "2025-11-21T11:00:00",
   },
   {
     id: 10,
     username: "it_prestige",
     password: "123",
     role: "dm",
-    name: "Mehmet Gencan (IT Prestige)",
+    name: "Mehmet Gencan", // IT Prestige DM
     department: "IT",
     branch: "Prestige",
+    lastLogin: "2025-11-21T10:00:00",
   },
   {
     id: 7,
     username: "fb_girne",
     password: "123",
     role: "dm",
-    name: "Gökhan Evran (F&B Müdürü)",
+    name: "Gökhan Evran", // F&B Girne DM
     department: "Casino F&B",
     branch: "Girne",
+    lastLogin: "2025-11-15T09:00:00",
   },
   {
     id: 9,
     username: "fb_prestige",
     password: "123",
     role: "dm",
-    name: "Oktay Bey (F&B Müdürü)",
+    name: "Oktay Bey", // F&B Prestige DM
     department: "Casino F&B",
     branch: "Prestige",
+    lastLogin: "2025-11-14T16:30:00",
   },
   {
     id: 8,
     username: "live_prestige",
     password: "123",
     role: "dm",
-    name: "Murat Bilgin (Canlı Oyun Müdürü)",
+    name: "Murat Bilgin", // Canlı Oyun Prestige DM
     department: "Casino Canlı Oyun",
     branch: "Prestige",
+    lastLogin: "2025-11-20T13:45:00",
   },
 ];
 
@@ -91,7 +110,7 @@ const APPLICATIONS = [
   // === 1. SENARYO: ALİ VURAL (Eğitim Güncellemesi & Yönetici Geçmişi) ===
   {
     id: "A-40001",
-    name: "Ali Vural ",
+    name: "Ali Vural (IT Girne)",
     branches: ["Girne"],
     areas: ["Hotel"],
     departments: ["IT"],
@@ -106,7 +125,7 @@ const APPLICATIONS = [
     // --- LIVE (GÜNCEL) NOTLAR ---
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)",
+        user: "Ulaş Gencan",
         note: "Aday, eğitim bilgisindeki 'Ön Lisans' hatasını 'Lisans' olarak güncelledi. Bu düzeltme sonrası pozisyon kriterlerini karşılıyor, tekrar değerlendirmeye alıyorum.",
         date: "2025-11-21",
         action: "İNCELEME",
@@ -114,7 +133,6 @@ const APPLICATIONS = [
     ],
 
     // --- LIVE (GÜNCEL v11) VERİLER ---
-    // Burada "Anadolu Üniversitesi" artık LİSANS seviyesinde.
     personal: {
       foto: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
       ad: "Ali",
@@ -161,19 +179,19 @@ const APPLICATIONS = [
     // --- VERSİYON GEÇMİŞİ ---
     versionHistory: [
       {
-        version: 3,
+        version: 10,
         date: "2025-10-15",
         status: "Revize Talebi", 
         updatedBy: "Aday",
         logs: [
           {
-            user: "Sezgin Bingül (GM)", 
+            user: "Ayşe Yılmaz", 
             note: "Departman müdürünün talebi üzerine; sehven reddedilen başvuru, adayın bilgilerini güncellemesi amacıyla 'Revize' statüsüne çekilmiştir. Süreç baştan başlatıldı.",
             date: "2025-10-16",
             action: "REVİZE_ONAYI",
           },
           {
-            user: "Ulaş Gencan (IT Girne)", 
+            user: "Ulaş Gencan", 
             note: "Bu adayı reddetmiştim ancak CV'sini tekrar incelediğimde potansiyeli olduğunu fark ettim. Lütfen reddi geri çekip revizeye düşürün, tekrar değerlendirmek istiyorum.",
             date: "2025-10-15",
             action: "REQUEST_REVISION",
@@ -210,13 +228,13 @@ const APPLICATIONS = [
         },
       },
       {
-        version: 2,
+        version: 9,
         date: "2025-09-01",
         status: "Reddedilen",
-        updatedBy: "Ulaş Gencan (IT Girne)",
+        updatedBy: "Ulaş Gencan",
         logs: [
           {
-            user: "Ulaş Gencan (IT Girne)",
+            user: "Ulaş Gencan",
             note: "Adayın eğitim seviyesi (Ön Lisans) bu pozisyonun teknik gereksinimleri için yetersiz kalmaktadır. Reddediyorum.",
             date: "2025-09-01",
             action: "REDDEDİLDİ",
@@ -256,7 +274,7 @@ const APPLICATIONS = [
     approvalStage: "genel_mudur", // PRESTIGE GM
     notes: [
       {
-        user: "Mehmet Gencan (IT Prestige)", // Önce DM
+        user: "Mehmet Gencan", // Önce DM
         note: "Adayın GitHub portfolyosunu inceledim, yazdığı kod yapısı bizim standartlarımıza çok uygun. Teknik mülakattan tam not aldı. GM onayına sunulmuştur.",
         date: "2025-11-10",
         action: "ONAYLANDI",
@@ -275,58 +293,6 @@ const APPLICATIONS = [
         { value: "IT::Yazılımcı", label: "Yazılımcı", dept: "IT" },
       ],
     },
-        // --- VERSİYON GEÇMİŞİ ---
-    versionHistory: [
-
-        {
-        version: 1,
-        date: "2025-10-15",
-        status: "Revize Talebi", 
-        updatedBy: "Aday",
-        logs: [
-          {
-            user: "Sezgin Bingül (GM)", 
-            note: "Departman müdürünün talebi üzerine; sehven reddedilen başvuru, adayın bilgilerini güncellemesi amacıyla 'Revize' statüsüne çekilmiştir. Süreç baştan başlatıldı.",
-            date: "2025-10-16",
-            action: "REVİZE_ONAYI",
-          },
-          {
-            user: "Ulaş Gencan (IT Girne)", 
-            note: "Bu adayı reddetmiştim ancak CV'sini tekrar incelediğimde potansiyeli olduğunu fark ettim. Lütfen reddi geri çekip revizeye düşürün, tekrar değerlendirmek istiyorum.",
-            date: "2025-10-15",
-            action: "REQUEST_REVISION",
-          },
-        ],
-        data: {
-          // v10 VERİSİ (Eski Hatalı Veri)
-          personal: {
-            ad: "Emre ", soyad: "Taş (IT Prestige)",
-            telefon: "+905559998877",
-            eposta: "ali.vural@gmail.com",
-            adres: "Girne Merkez, Kıbrıs",
-            medeniDurum: "Evli",
-            dogumTarihi: "1997-01-15",
-          },
-          education: [
-            {
-              seviye: "Lisans",
-              okul: "ODTÜ", // Değişmediği için tabloda çıkmaz
-              bolum: "Bilgisayar Müh.",
-              mezuniyetYili: "2019",
-            },
-            {
-              // ESKİ HALİ (Kırmızı görünecek)
-              seviye: "Ön Lisans", 
-              okul: "Anadolu Üniversitesi", 
-              bolum: "Yönetim Bilişim Sis.",
-              mezuniyetYili: "2015",
-            },
-          ],
-          otherInfo: { ehliyet: "B Sınıfı", sigara: "Hayır", askerlik: "Yapıldı" },
-          jobDetails: { subeler: [{ label: "Girne" }], lojman: "Hayır" },
-        },
-      },
-    ],
   },
 
   // === 3. SENARYO: İK ONAYINDA BEKLEYEN (İkili Başvuru) ===
@@ -343,13 +309,13 @@ const APPLICATIONS = [
     approvalStage: "ik", // DM ve GM Onayladı -> SIRA İK'DA
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)", // 1. DM Onayı
+        user: "Ulaş Gencan", // 1. DM Onayı
         note: "Ağ altyapısı konusundaki tecrübesi, Girne ve Prestige arasındaki veri akışını yönetmek için ideal. Teknik olarak uygundur.",
         date: "2025-11-10",
         action: "ONAYLANDI",
       },
       {
-        user: "Sezgin Bingül (GM)", // 2. GM Onayı
+        user: "Sezgin Bingül", // 2. GM Onayı
         note: "Bütçe planlamasına uygundur. İki şube ortak personel olarak çalışabilir. Onaylıyorum.",
         date: "2025-11-11",
         action: "ONAYLANDI",
@@ -370,6 +336,7 @@ const APPLICATIONS = [
     },
   },
 
+
   // === 4. SENARYO: İK SÜRECİNDEYKEN DM REVİZE İSTEMİŞ (Derya Sancak) ===
   {
     id: "A-40004",
@@ -385,25 +352,25 @@ const APPLICATIONS = [
     reviseRequestedByRole: "dm", 
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)", // 1. DM Onayı
+        user: "Ulaş Gencan", // 1. DM Onayı
         note: "Teknik bilgisi giriş seviyesi için yeterli. Onaylıyorum.",
         date: "2025-11-07",
         action: "ONAYLANDI",
       },
       {
-        user: "Sezgin Bingül (GM)", // 2. GM Onayı
+        user: "Sezgin Bingül", // 2. GM Onayı
         note: "Uygundur.",
         date: "2025-11-08",
         action: "ONAYLANDI",
       },
       {
-        user: "Fatma Demir (İK)", // 3. İK İşlemde
+        user: "Fatma Demir", // 3. İK İşlemde
         note: "Evraklar hazırlanıyor, giriş işlemleri başlatıldı.",
         date: "2025-11-09",
         action: "İŞLEMDE",
       },
       {
-        user: "Ulaş Gencan (IT Girne)", // 4. DM Revize İstiyor (Geri Dönüş)
+        user: "Ulaş Gencan", // 4. DM Revize İstiyor (Geri Dönüş)
         note: "DİKKAT: Adayın eski iş yerinden olumsuz referans bilgisi tarafıma ulaştı. Lütfen işe alımı durdurup dosyayı bana geri çekin (Revize Talebi).",
         date: "2025-11-10",
         action: "REQUEST_REVISION",
@@ -441,13 +408,13 @@ const APPLICATIONS = [
     status: "Reddedilen",
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)", // Önce DM Onayı
+        user: "Ulaş Gencan", // Önce DM Onayı
         note: "Teknik açıdan uygundur, GM onayına sunulmuştur.",
         date: "2025-11-09",
         action: "ONAYLANDI",
       },
       {
-        user: "Sezgin Bingül (GM)", // Sonra GM Reddi
+        user: "Sezgin Bingül", // Sonra GM Reddi
         note: "Adayın maaş beklentisi, bu pozisyon için ayrılan bütçenin %40 üzerinde. Maalesef olumsuz.",
         date: "2025-11-10",
         action: "REDDEDİLDİ",
@@ -475,19 +442,19 @@ const APPLICATIONS = [
     status: "Onaylanan",
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)", // 1. DM
+        user: "Ulaş Gencan", // 1. DM
         note: "Teknik mülakat olumlu.",
         date: "2025-11-08",
         action: "ONAYLANDI",
       },
       {
-        user: "Sezgin Bingül (GM)", // 2. GM
+        user: "Sezgin Bingül", // 2. GM
         note: "Uygundur.",
         date: "2025-11-09",
         action: "ONAYLANDI",
       },
       {
-        user: "Fatma Demir (İK)", // 3. İK
+        user: "Fatma Demir", // 3. İK
         note: "Tüm evraklar eksiksiz teslim alındı, sigorta girişi yapıldı. Yarın işbaşı yapacak.",
         date: "2025-11-10",
         action: "ONAYLANDI",
@@ -515,7 +482,7 @@ const APPLICATIONS = [
     status: "Reddedilen",
     notes: [
       {
-        user: "Mehmet Gencan (IT Prestige)", // DM Direkt Reddetmiş
+        user: "Mehmet Gencan", // DM Direkt Reddetmiş
         note: "Pozisyonun gerektirdiği 'Cisco CCNA' sertifikası eksik. Bu sebeple uygun görülmemiştir.",
         date: "2025-11-09",
         action: "REDDEDİLDİ",
@@ -548,19 +515,19 @@ const APPLICATIONS = [
     status: "Onaylanan",
     notes: [
       {
-        user: "Mehmet Gencan (IT Prestige)",
+        user: "Mehmet Gencan",
         note: "Onaylandı.",
         date: "2025-11-08",
         action: "ONAYLANDI",
       },
       {
-        user: "Prestige Genel Müdür (GM)",
+        user: "Prestige Genel Müdür",
         note: "Onaylandı.",
         date: "2025-11-09",
         action: "ONAYLANDI",
       },
       {
-        user: "Ayşe Yılmaz (İK SPV)",
+        user: "Ayşe Yılmaz",
         note: "İşe alım tamamlandı.",
         date: "2025-11-10",
         action: "ONAYLANDI",
@@ -595,13 +562,13 @@ const APPLICATIONS = [
     reviseRequestedByRole: "dm",
     notes: [
       {
-        user: "Mehmet Gencan (IT Prestige)",
+        user: "Mehmet Gencan",
         note: "Reddedildi, tecrübesi yok.",
         date: "2025-11-07",
         action: "REDDEDİLDİ",
       },
       {
-        user: "Mehmet Gencan (IT Prestige)",
+        user: "Mehmet Gencan",
         note: "Yanlışlıkla reddettim, CV'yi tekrar inceledim. Lütfen DM adımına geri alın (İç Revize).",
         date: "2025-11-10",
         action: "REQUEST_REVISION",
@@ -633,19 +600,19 @@ const APPLICATIONS = [
     status: "Onaylanan",
     notes: [
       {
-        user: "Ulaş Gencan (IT Girne)",
+        user: "Ulaş Gencan",
         note: "Aday Girne için değerlendirildi ve onaylandı.",
         date: "2025-11-05",
         action: "ONAYLANDI",
       },
       {
-        user: "Sezgin Bingül (GM)",
+        user: "Sezgin Bingül",
         note: "Onaylandı.",
         date: "2025-11-06",
         action: "ONAYLANDI",
       },
       {
-        user: "Ayşe Yılmaz (İK SPV)",
+        user: "Ayşe Yılmaz",
         note: "İşe alım Girne şubesi üzerinden tamamlandı.",
         date: "2025-11-07",
         action: "ONAYLANDI",
@@ -695,13 +662,20 @@ const isIKSupervisor = (role) => {
 
 // --- API FONKSİYONLARI ---
 
+// YENİ: Kullanıcı Listesini Getir (UserLogs.jsx için)
+export const getUsers = () => {
+    return JSON.parse(JSON.stringify(USERS));
+};
+
 export const dbLogin = (username, password) => {
   const user = USERS.find(
     (u) => u.username === username && u.password === password
   );
   if (user) {
-    const { password: _password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    // Giriş tarihini güncelle
+    user.lastLogin = new Date().toISOString(); 
+    const { password: _p, ...rest } = user;
+    return rest;
   }
   return null;
 };
@@ -809,8 +783,50 @@ export const dbChangePassword = (username, oldP, newP) => {
   return { success: true, message: "Şifre güncellendi." };
 };
 
-// --- YENİ EKLENEN YARDIMCI FONKSİYON ---
+// --- YARDIMCI FONKSİYON (Log Tablosu İçin) ---
 export const getUserRoleByName = (nameString) => {
+  // Tam eşleşme yapmaya çalışır. 
+  // Not: staticDB içindeki "user" isimleri ile buradaki "name" alanları birebir tutmalı.
   const user = USERS.find(u => u.name === nameString);
   return user ? user.role : null;
 };
+
+// ... (Mevcut kodların devamı) ...
+
+// --- TEST İÇİN GEÇİCİ KOD (Test bitince silersin) ---
+// Otomatik olarak 10 tane 'Bekleyen' statüsünde başvuru ekler
+for (let i = 1; i <= 10; i++) {
+  APPLICATIONS.push({
+    id: `TEST-${1000 + i}`,
+    name: `Test Adayı ${i}`,
+    branches: ["Girne"],
+    areas: ["Hotel"],
+    departments: ["IT"],
+    roles: ["Test Uzmanı"],
+    date: new Date().toISOString(),
+    age: 20 + i,
+    status: "Bekleyen", // Bildirimde görünmesi için Bekleyen olmalı
+    approvalStage: "departman_muduru", // Hangi rol ile gireceksen ona uygun aşama olmalı
+    notes: [],
+    personal: { ad: `Test${i}`, soyad: "Aday" },
+    jobDetails: { departmanPozisyonlari: [] }
+  });
+}
+
+for (let i = 1; i <= 100; i++) {
+  APPLICATIONS.push({
+    id: `TEST-${1010 + i}`,
+    name: `IK-Test Adayı ${i}`,
+    branches: ["Prestige"],
+    areas: ["Casino"],
+    departments: ["IT"],
+    roles: ["Test Uzmanı"],
+    date: new Date().toISOString(),
+    age: 20 + i,
+    status: "Bekleyen", // Bildirimde görünmesi için Bekleyen olmalı
+    approvalStage: "ik", // Hangi rol ile gireceksen ona uygun aşama olmalı
+    notes: [],
+    personal: { ad: `Test${i}`, soyad: "Aday" },
+    jobDetails: { departmanPozisyonlari: [] }
+  });
+}
