@@ -813,7 +813,7 @@ for (let i = 1; i <= 10; i++) {
   });
 }
 
-for (let i = 1; i <= 100; i++) {
+for (let i = 1; i <= 90; i++) {
   APPLICATIONS.push({
     id: `TEST-${1010 + i}`,
     name: `IK-Test Adayı ${i}`,
